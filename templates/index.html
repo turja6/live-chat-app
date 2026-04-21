@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IdlyCall - Connected</title>
-    <link rel="icon" type="image/png" href="IC.png">
+    <link rel="icon" type="image/png" href="/static/IC.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* === CORE VARIABLES (CLEAN ORANGE THEME) === */
@@ -152,7 +152,6 @@
         .local-video-area video { width: 100%; height: 100%; object-fit: cover; }
         .local-video-area:active { cursor: grabbing; }
 
-        /* Discord-style Pill Controls */
         .call-controls {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 15px; background: #2f3136; padding: 10px 20px;
@@ -169,7 +168,6 @@
         .call-btn.danger { background: var(--danger); color: white; width: 60px; border-radius: 30px; }
         .call-btn.danger:hover { background: #d83c3e; }
 
-        /* === MOBILE RESPONSIVENESS === */
         @media (max-width: 768px) {
             .mobile-toggle { display: block; }
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
@@ -188,7 +186,7 @@
 
     <div id="login-screen" class="modal-overlay">
         <div class="modal-box">
-            <img src="IC.png" alt="IdlyCall Logo" class="app-logo">
+            <img src="/static/IC.png" alt="IdlyCall Logo" class="app-logo">
             <h2 style="margin-bottom: 20px; color: white;">Welcome Back</h2>
             <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
             <label for="login-file" style="display: block; color: var(--accent); cursor: pointer; margin-bottom: 15px;">📷 Upload Avatar</label>
@@ -225,7 +223,7 @@
     <div id="app-container">
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="IC.png" alt="IdlyCall" style="height: 30px; object-fit: contain;">
+                <img src="/static/IC.png" alt="IdlyCall" style="height: 30px; object-fit: contain;">
                 <button style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size: 1.2rem;" onclick="openSettings()" title="Settings">⚙️</button>
             </div>
             <div class="user-list" id="user-list-container">
@@ -524,7 +522,7 @@
         function handleIncomingCall(data) {
             incomingOfferData = data;
             document.getElementById("incoming-caller-name").innerText = data.sender;
-            document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "IC.png";
+            document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "/static/IC.png";
             document.getElementById("incoming-call-modal").style.display = "flex";
             ringSound.play().catch(e=>{});
             notifyUser(`Incoming call from ${data.sender}`, "IdlyCall Ringing");

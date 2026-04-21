@@ -6,9 +6,11 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
+from fastapi.staticfiles import StaticFiles
 import database
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Point to the templates directory to serve the HTML file
 templates = Jinja2Templates(directory="templates")
