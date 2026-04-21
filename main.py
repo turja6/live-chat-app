@@ -42,26 +42,23 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket, username)
     
     try:
-        # Wait for user profile setup
         setup_data = await websocket.receive_text()
         setup_json = json.loads(setup_data)
         pic = setup_json.get("pic", "")
 
         database.update_user(username, pic, "Online")
         
-        # Send Public history by default upon login
         history = database.get_history(username, "Public")
         await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
         
-        # Broadcast updated user list
         users = database.get_all_users()
         await manager.broadcast({"type": "user_list", "data": users})
         
         while True:
-            # Handle incoming messages from the frontend
             data_str = await websocket.receive_text()
             data = json.loads(data_str)
             
+            # 1. Handle Standard Chat Messages
             if data["type"] == "chat":
                 receiver = data["receiver"]
                 msg_text = data["message"]
@@ -79,17 +76,19 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     await manager.send_personal_message(payload, receiver)
                     if username != receiver:
                         await manager.send_personal_message(payload, username)
-                        
+            
+            # 2. Handle History Requests
             elif data["type"] == "get_history":
                 target = data["target"]
                 history = database.get_history(username, target)
                 await manager.send_personal_message({"type": "history", "target": target, "data": history}, username)
             
-            elif data["type"] == "update_settings":
-                pic = data["pic"]
-                database.update_user(username, pic, "Online")
-                users = database.get_all_users()
-                await manager.broadcast({"type": "user_list", "data": users})
+            # 3. Handle WebRTC Call Signaling (The Telephone Operator)
+            elif data["type"] in ["call_offer", "call_answer", "ice_candidate"]:
+                # Simply route the connection data to the target user
+                target_user = data["target"]
+                data["sender"] = username # Let the receiver know who the signal is from
+                await manager.send_personal_message(data, target_user)
 
     except WebSocketDisconnect:
         manager.disconnect(username)
