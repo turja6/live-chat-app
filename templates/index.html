@@ -4,29 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IdlyCall - Connected</title>
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2950/2950822.png">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="IC.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* === CORE VARIABLES === */
+        /* === CORE VARIABLES (CLEAN ORANGE THEME) === */
         :root {
-            --space-bg: #0a0a0c;
-            --glass-bg: rgba(25, 25, 30, 0.6);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --neon-accent: #00f0ff;
-            --neon-secondary: #ff0055;
-            --text-primary: #ffffff;
-            --text-dim: #888899;
+            --bg-dark: #202225;
+            --bg-mid: #2f3136;
+            --bg-light: #36393f;
+            --text-main: #dcddde;
+            --text-muted: #8e9297;
+            --accent: #ff9800; /* Solid Orange */
+            --accent-hover: #e68a00;
+            --input-bg: #40444b;
+            --online: #3ba55d;
+            --danger: #ed4245;
             --sidebar-width: 260px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body {
-            background-color: var(--space-bg);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(255, 0, 85, 0.05), transparent 25%);
-            color: var(--text-primary);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
             height: 100vh;
             overflow: hidden;
             display: flex;
@@ -34,31 +34,34 @@
 
         /* === MODALS (Login, Settings, Incoming Call) === */
         .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
             display: flex; justify-content: center; align-items: center; z-index: 2000;
         }
         .modal-box {
-            background: rgba(20, 20, 25, 0.9); border: 1px solid var(--neon-accent);
-            padding: 30px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center;
-            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+            background: var(--bg-light); border: 1px solid var(--bg-dark);
+            padding: 30px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
         .modal-box input {
-            width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: none;
-            background: rgba(255,255,255,0.1); color: white; outline: none; font-size: 1rem;
+            width: 100%; padding: 12px; margin: 15px 0; border-radius: 4px; border: none;
+            background: var(--bg-dark); color: white; outline: none; font-size: 1rem;
         }
         .modal-box button {
-            width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold;
-            background: var(--neon-accent); color: #000; font-size: 1rem; cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); transition: 0.2s; margin-bottom: 10px;
+            width: 100%; padding: 12px; border-radius: 4px; border: none; font-weight: bold;
+            background: var(--accent); color: white; font-size: 1rem; cursor: pointer;
+            transition: 0.2s; margin-bottom: 10px;
         }
-        .modal-box button:hover { transform: scale(1.05); }
-        .modal-box button.cancel { background: transparent; color: var(--text-dim); box-shadow: none; border: 1px solid var(--glass-border); }
-        .modal-box button.danger { background: var(--neon-secondary); color: white; box-shadow: 0 0 15px rgba(255, 0, 85, 0.4); }
+        .modal-box button:hover { background: var(--accent-hover); }
+        .modal-box button.cancel { background: transparent; color: var(--text-main); border: 1px solid var(--bg-mid); }
+        .modal-box button.cancel:hover { background: var(--bg-mid); }
+        .modal-box button.danger { background: var(--danger); color: white; }
+        .modal-box button.danger:hover { background: #d83c3e; }
 
-        .avatar-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 2px solid var(--neon-accent); }
+        .app-logo { height: 60px; object-fit: contain; margin-bottom: 10px; }
+        .avatar-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid var(--accent); }
         
-        .pulse-avatar { animation: pulse 1.5s infinite; border: 3px solid var(--neon-accent); }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(0, 240, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); } }
+        .pulse-avatar { animation: pulse 1.5s infinite; border: 3px solid var(--accent); }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 152, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); } }
 
         /* === LAYOUT === */
         #app-container { display: none; width: 100%; height: 100%; }
@@ -66,116 +69,114 @@
         /* === SIDEBAR (DMs) === */
         .sidebar {
             width: var(--sidebar-width);
-            background: rgba(15, 15, 18, 0.5);
-            border-right: 1px solid var(--glass-border);
-            display: flex; flex-direction: column;
-            backdrop-filter: blur(10px); z-index: 20; transition: transform 0.3s ease;
+            background: var(--bg-mid);
+            border-right: 1px solid var(--bg-dark);
+            display: flex; flex-direction: column; z-index: 20; transition: transform 0.3s ease;
         }
         .sidebar-header {
-            padding: 20px; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--glass-border);
+            height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--bg-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
         .user-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .user-list::-webkit-scrollbar { display: none; }
+        .user-list::-webkit-scrollbar { width: 6px; }
+        .user-list::-webkit-scrollbar-thumb { background: var(--bg-dark); border-radius: 3px; }
         
         .user-item {
-            display: flex; align-items: center; padding: 10px; border-radius: 12px;
-            cursor: pointer; transition: 0.2s; margin-bottom: 5px; position: relative;
+            display: flex; align-items: center; padding: 8px 10px; border-radius: 4px;
+            cursor: pointer; transition: 0.2s; margin-bottom: 2px; position: relative;
         }
-        .user-item:hover, .user-item.active { background: rgba(255,255,255,0.1); }
-        .user-item img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
-        .online { background: var(--neon-accent); box-shadow: 0 0 8px var(--neon-accent); }
-        .offline { background: var(--text-dim); }
-        .unread-badge { background: var(--neon-secondary); color: white; font-size: 11px; font-weight: bold; border-radius: 12px; padding: 2px 6px; margin-left: auto; }
+        .user-item:hover, .user-item.active { background: var(--bg-light); color: white; }
+        .user-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
+        .online { background: var(--online); }
+        .offline { background: var(--text-muted); }
+        .unread-badge { background: var(--danger); color: white; font-size: 11px; font-weight: bold; border-radius: 12px; padding: 2px 6px; margin-left: auto; }
 
         /* === MAIN CHAT AREA === */
-        .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; background: var(--bg-light); }
         
         header {
-            padding: 20px; display: flex; align-items: center; justify-content: space-between;
-            border-bottom: 1px solid rgba(255,255,255,0.03); z-index: 10;
+            height: 60px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--bg-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.2); z-index: 10;
         }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-        .chat-title { font-size: 1.5rem; font-weight: 700; text-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
+        .chat-title { font-size: 1.1rem; font-weight: bold; color: white; }
+        .call-buttons button { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; transition: 0.2s; margin-left: 15px; }
+        .call-buttons button:hover { color: white; }
 
         #chat-stream {
-            flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px;
-            display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth;
         }
-        #chat-stream::-webkit-scrollbar { display: none; }
+        #chat-stream::-webkit-scrollbar { width: 8px; }
+        #chat-stream::-webkit-scrollbar-thumb { background: var(--bg-dark); border-radius: 4px; }
 
         /* Message Bubbles */
-        .message { display: flex; flex-direction: column; max-width: 85%; animation: slideUp 0.3s ease forwards; }
-        .msg-theirs { align-self: flex-start; }
-        .msg-mine { align-self: flex-end; align-items: flex-end; }
+        .message { display: flex; align-items: flex-start; position: relative; transition: 0.1s; border-radius: 4px; padding: 4px 20px; margin: 0 -20px; }
+        .message:hover { background: #32353b; }
+        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; object-fit: cover; margin-top: 4px; }
         
-        .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-left: 4px; }
-        .msg-header img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
-        .msg-sender { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+        .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .msg-sender { font-weight: bold; color: white; font-size: 1rem; }
+        .msg-time { font-size: 0.75rem; color: var(--text-muted); }
 
-        .msg-bubble { padding: 12px 18px; font-size: 1rem; line-height: 1.4; backdrop-filter: blur(10px); word-wrap: break-word; }
-        .msg-theirs .msg-bubble { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 20px 20px 20px 4px; }
-        .msg-mine .msg-bubble { background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(0, 150, 255, 0.05)); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 20px 20px 4px 20px; }
-        .msg-image-attachment { max-width: 100%; max-height: 250px; border-radius: 12px; margin-top: 8px; object-fit: cover; border: 1px solid var(--glass-border); }
-        @keyframes slideUp { 0% { opacity: 0; transform: translateY(15px); } 100% { opacity: 1; transform: translateY(0); } }
+        .msg-content { color: var(--text-main); font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
+        .msg-image-attachment { max-width: 350px; max-height: 350px; border-radius: 8px; margin-top: 8px; object-fit: cover; cursor: pointer; }
 
-        /* Floating Dock Input */
-        .floating-dock {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: calc(100% - 40px); max-width: 800px; background: rgba(15, 15, 18, 0.85);
-            border: 1px solid var(--glass-border); border-radius: 30px; padding: 8px 15px;
-            display: flex; align-items: center; gap: 10px; backdrop-filter: blur(20px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.4); z-index: 100;
-        }
-        #msg-input {
-            flex: 1; background: transparent; border: none; color: var(--text-primary);
-            font-size: 1rem; padding: 10px; outline: none;
-        }
-        .dock-btn {
-            width: 40px; height: 40px; border-radius: 50%; background: transparent; border: none;
-            color: var(--text-primary); font-size: 1.2rem; cursor: pointer; transition: 0.2s;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .dock-btn.primary { background: var(--neon-accent); color: #000; box-shadow: 0 0 10px rgba(0, 240, 255, 0.4); }
+        /* Input Area */
+        .input-wrapper { padding: 0 20px 20px 20px; position: relative; }
+        .input-box { display: flex; align-items: center; background: var(--input-bg); border-radius: 8px; padding: 10px 15px; }
+        .input-box input { flex: 1; background: transparent; border: none; color: white; font-size: 1rem; outline: none; }
+        .input-box input::placeholder { color: var(--text-muted); }
+        .action-btn { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; margin-right: 15px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .action-btn:hover { color: white; }
+        .send-btn { color: var(--accent); margin-left: 10px; margin-right: 0; }
 
-        /* === VIDEO CALL UI === */
+        /* === EFFICIENT CALLING SYSTEM UI === */
         #call-interface {
             display: none; position: absolute; inset: 0; background: #000; z-index: 150;
             flex-direction: column; overflow: hidden;
         }
-        .remote-video-area { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; }
+        .call-top-bar { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 160; pointer-events: none; }
+        .call-status { background: rgba(0,0,0,0.6); color: var(--online); padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.1); }
+        
+        .remote-video-area { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; background: #000; }
         .remote-video-area video { width: 100%; height: 100%; object-fit: contain; }
         
         .local-video-area {
-            position: absolute; bottom: 100px; right: 20px; width: 140px; height: 200px;
-            background: #111; border-radius: 15px; overflow: hidden; border: 2px solid var(--neon-accent);
-            box-shadow: 0 10px 30px rgba(0, 240, 255, 0.2); z-index: 160; cursor: grab;
+            position: absolute; bottom: 90px; right: 20px; width: 240px; height: 140px;
+            background: #18191c; border-radius: 8px; overflow: hidden; border: 1px solid #36393f;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6); z-index: 160; cursor: grab;
         }
         .local-video-area video { width: 100%; height: 100%; object-fit: cover; }
         .local-video-area:active { cursor: grabbing; }
 
+        /* Discord-style Pill Controls */
         .call-controls {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 15px; background: rgba(20, 20, 25, 0.8); padding: 12px 20px;
-            border-radius: 40px; backdrop-filter: blur(15px); border: 1px solid var(--glass-border); z-index: 170;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 15px; background: #2f3136; padding: 10px 20px;
+            border-radius: 30px; border: 1px solid #202225; z-index: 170;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
         .call-btn {
             width: 45px; height: 45px; border-radius: 50%; border: none; font-size: 1.2rem;
             cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s;
-            background: rgba(255,255,255,0.1); color: white;
+            background: #40444b; color: white;
         }
+        .call-btn:hover { background: #4f545c; }
         .call-btn.active { background: white; color: black; }
-        .call-btn.danger { background: var(--neon-secondary); color: white; width: 60px; border-radius: 30px; }
+        .call-btn.danger { background: var(--danger); color: white; width: 60px; border-radius: 30px; }
+        .call-btn.danger:hover { background: #d83c3e; }
 
         /* === MOBILE RESPONSIVENESS === */
         @media (max-width: 768px) {
             .mobile-toggle { display: block; }
-            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
             .sidebar.open { transform: translateX(0); }
-            .floating-dock { bottom: 15px; width: calc(100% - 20px); }
-            .local-video-area { width: 100px; height: 150px; bottom: 120px; }
+            .call-controls { width: 90%; gap: 10px; padding: 10px; justify-content: center; }
+            .local-video-area { width: 120px; height: 160px; bottom: 90px; right: 10px; }
+            .msg-image-attachment { max-width: 100%; }
         }
     </style>
 </head>
@@ -187,20 +188,21 @@
 
     <div id="login-screen" class="modal-overlay">
         <div class="modal-box">
-            <h2 style="margin-bottom: 20px; color: var(--neon-accent);">IdlyCall<span style="color: white;">.</span></h2>
+            <img src="IC.png" alt="IdlyCall Logo" class="app-logo">
+            <h2 style="margin-bottom: 20px; color: white;">Welcome Back</h2>
             <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
-            <label for="login-file" style="display: block; color: var(--neon-accent); cursor: pointer; margin-bottom: 15px;">📷 Upload Avatar</label>
+            <label for="login-file" style="display: block; color: var(--accent); cursor: pointer; margin-bottom: 15px;">📷 Upload Avatar</label>
             <input type="file" id="login-file" accept="image/*" style="display:none;" onchange="processImage(event, 'login-preview')">
             <input type="text" id="usernameInput" placeholder="Enter Username" autocomplete="off">
-            <button onclick="manualLogin()">Connect to IdlyCall</button>
+            <button onclick="manualLogin()">Connect</button>
         </div>
     </div>
 
     <div id="settings-screen" class="modal-overlay" style="display:none;">
         <div class="modal-box">
-            <h2 style="margin-bottom: 20px;">Settings</h2>
+            <h2 style="margin-bottom: 20px;">User Settings</h2>
             <img id="settings-preview" class="avatar-preview" src="">
-            <label for="settings-file" style="display: block; color: var(--neon-accent); cursor: pointer; margin-bottom: 15px;">📷 Change Avatar</label>
+            <label for="settings-file" style="display: block; color: var(--accent); cursor: pointer; margin-bottom: 15px;">📷 Change Avatar</label>
             <input type="file" id="settings-file" accept="image/*" style="display:none;" onchange="processImage(event, 'settings-preview')">
             <input type="text" id="settingsNameInput" placeholder="New Username" autocomplete="off">
             <button onclick="saveSettings()">Save Changes</button>
@@ -209,12 +211,12 @@
     </div>
 
     <div id="incoming-call-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-box" style="border-color: var(--neon-secondary);">
+        <div class="modal-box">
             <img id="incoming-avatar" class="avatar-preview pulse-avatar" src="">
-            <h3 id="incoming-caller-name" style="margin-bottom: 5px;">Caller</h3>
-            <p style="color: var(--text-dim); margin-bottom: 20px;">is calling you on IdlyCall...</p>
+            <h3 id="incoming-caller-name" style="margin-bottom: 5px; color: white;">Caller</h3>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">is calling you...</p>
             <div style="display: flex; gap: 10px;">
-                <button onclick="acceptCall()">Accept</button>
+                <button style="background: var(--online);" onclick="acceptCall()">Accept</button>
                 <button class="danger" onclick="rejectCall()">Decline</button>
             </div>
         </div>
@@ -223,8 +225,8 @@
     <div id="app-container">
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <span style="font-weight: bold; letter-spacing: 1px;">IDLYCALL</span>
-                <button style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size: 1.2rem;" onclick="openSettings()">⚙️</button>
+                <img src="IC.png" alt="IdlyCall" style="height: 30px; object-fit: contain;">
+                <button style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size: 1.2rem;" onclick="openSettings()" title="Settings">⚙️</button>
             </div>
             <div class="user-list" id="user-list-container">
                 </div>
@@ -234,23 +236,30 @@
             <header>
                 <div class="header-left">
                     <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
-                    <div class="chat-title" id="chatHeaderTitle">Public Channel</div>
+                    <span style="color:var(--text-muted); margin-right:5px; font-size:1.4rem;">@</span>
+                    <div class="chat-title" id="chatHeaderTitle">Public Server</div>
                 </div>
-                <div id="call-buttons-container" style="display: none;">
-                    <button style="background:none; border:none; color:var(--neon-accent); font-size: 1.4rem; cursor:pointer;" onclick="startCall(true)">🎥</button>
+                <div class="call-buttons" id="call-buttons-container" style="display: none;">
+                    <button onclick="startCall(false)" title="Voice Call">📞</button>
+                    <button onclick="startCall(true)" title="Video Call">🎥</button>
                 </div>
             </header>
 
             <div id="chat-stream"></div>
 
-            <div class="floating-dock">
-                <label for="imageAttachInput" class="dock-btn" style="cursor: pointer;">＋</label>
-                <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
-                <input type="text" id="msg-input" placeholder="Transmit message..." autocomplete="off">
-                <button class="dock-btn primary" onclick="sendMyMessage()">➤</button>
+            <div class="input-wrapper">
+                <div class="input-box">
+                    <label for="imageAttachInput" class="action-btn" style="background:#4f545c; color:#202225; border-radius:50%; width:28px; height:28px; font-weight:bold;">＋</label>
+                    <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
+                    <input type="text" id="msg-input" placeholder="Message..." autocomplete="off">
+                    <button class="action-btn send-btn" onclick="sendMyMessage()">➤</button>
+                </div>
             </div>
 
             <div id="call-interface">
+                <div class="call-top-bar">
+                    <div class="call-status" id="call-status">Connecting...</div>
+                </div>
                 <div class="remote-video-area">
                     <video id="remoteVideo" autoplay playsinline></video>
                 </div>
@@ -259,9 +268,10 @@
                 </div>
                 <div class="call-controls">
                     <button class="call-btn" onclick="flipCamera()" title="Flip Camera">🔄</button>
-                    <button class="call-btn active" id="toggleVideoBtn" onclick="toggleVideo()">📷</button>
-                    <button class="call-btn active" id="toggleAudioBtn" onclick="toggleAudio()">🎤</button>
-                    <button class="call-btn danger" onclick="endCallBtnClicked()">☎️</button>
+                    <button class="call-btn active" id="toggleVideoBtn" onclick="toggleVideo()" title="Camera">📷</button>
+                    <button class="call-btn active" id="toggleAudioBtn" onclick="toggleAudio()" title="Microphone">🎤</button>
+                    <button class="call-btn" id="shareScreenBtn" onclick="toggleScreenShare()" title="Share Screen">🖥️</button>
+                    <button class="call-btn danger" onclick="endCallBtnClicked()" title="Disconnect">☎️</button>
                 </div>
             </div>
         </div>
@@ -367,7 +377,7 @@
                     }
                     if ((currentChat === "Public" && data.receiver === "Public") || 
                         (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) {
-                        drawMessage(data.message, data.sender === myUsername, data.sender, data.profile_pic);
+                        drawMessage(data.message, data.sender, data.profile_pic, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
                     } else if (data.sender !== myUsername) {
                         const trackTarget = data.receiver === "Public" ? "Public" : data.sender;
                         unreadCounts[trackTarget] = (unreadCounts[trackTarget] || 0) + 1;
@@ -380,7 +390,7 @@
                 else if (data.type === "call_end") { forceEndCall(); }
                 else if (data.type === "history") {
                     document.getElementById('chat-stream').innerHTML = ""; 
-                    data.data.forEach(msg => drawMessage(msg.message, msg.sender === myUsername, msg.sender, msg.profile_pic));
+                    data.data.forEach(msg => drawMessage(msg.message, msg.sender, msg.profile_pic, msg.timestamp || ""));
                 }
                 else if (data.type === "user_list") { 
                     data.data.forEach(u => userProfiles[u.username] = {name: u.username, pic: u.profile_pic, status: u.status});
@@ -394,8 +404,8 @@
             const container = document.getElementById('user-list-container');
             let pubBadge = unreadCounts["Public"] ? `<span class="unread-badge">${unreadCounts["Public"]}</span>` : "";
             let html = `<div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')">
-                            <span style="font-size: 1.5rem; margin-right: 10px;">🌐</span>
-                            <span style="font-weight:bold;">Public Channel</span>${pubBadge}
+                            <img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png" style="border-radius:0;">
+                            <span style="font-weight:bold;">Public Server</span>${pubBadge}
                         </div>`;
             users.forEach(user => {
                 if (user.username === myUsername) return;
@@ -413,30 +423,35 @@
             currentChat = target;
             unreadCounts[target] = 0;
             document.getElementById("chatHeaderTitle").innerText = target;
-            document.getElementById("msg-input").placeholder = `Transmit to ${target}...`;
-            document.getElementById("call-buttons-container").style.display = target === "Public" ? "none" : "block";
+            document.getElementById("msg-input").placeholder = `Message @${target}...`;
+            document.getElementById("call-buttons-container").style.display = target === "Public" ? "none" : "flex";
             document.getElementById('chat-stream').innerHTML = "";
             document.getElementById('sidebar').classList.remove('open');
             ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
             updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status})));
         }
 
-        function drawMessage(text, isMine, senderName, picUrl) {
+        function drawMessage(text, senderName, picUrl, time) {
             const stream = document.getElementById('chat-stream');
             const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${isMine ? 'msg-mine' : 'msg-theirs'}`;
+            msgDiv.className = `message`;
             
-            let headerHtml = '';
-            if (!isMine) {
-                let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-                headerHtml = `<div class="msg-header"><img src="${safePic}"><div class="msg-sender">${senderName}</div></div>`;
-            }
+            let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
             
             let contentHtml = text.startsWith("data:image/") 
                 ? `<img src="${text}" class="msg-image-attachment">` 
-                : `<div class="msg-bubble">${text}</div>`;
+                : `<div class="msg-content">${text}</div>`;
                 
-            msgDiv.innerHTML = `${headerHtml}${contentHtml}`;
+            msgDiv.innerHTML = `
+                <img src="${safePic}" class="msg-avatar">
+                <div>
+                    <div class="msg-header">
+                        <span class="msg-sender">${senderName}</span>
+                        <span class="msg-time">${time}</span>
+                    </div>
+                    ${contentHtml}
+                </div>
+            `;
             stream.appendChild(msgDiv);
             stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
         }
@@ -466,9 +481,11 @@
         }
 
         // === HD WEBRTC CALL ENGINE ===
-        let peerConnection, localStream, activeCallUser = null, incomingOfferData = null, iceCandidateQueue = [];
-        let isVideoOn = true, isAudioOn = true, currentFacingMode = "user";
+        let peerConnection, localStream, screenStream, activeCallUser = null, incomingOfferData = null, iceCandidateQueue = [];
+        let isVideoOn = true, isAudioOn = true, isSharingScreen = false, currentFacingMode = "user";
         const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+        
+        function updateCallStatus(msg) { document.getElementById("call-status").innerText = msg; }
 
         async function initMedia(videoReq) {
             try {
@@ -487,6 +504,7 @@
             peerConnection.ontrack = e => { 
                 document.getElementById("remoteVideo").srcObject = e.streams[0]; 
                 dialSound.pause(); ringSound.pause();
+                updateCallStatus("Connected");
             };
             peerConnection.onicecandidate = e => { if (e.candidate) ws.send(JSON.stringify({ type: "ice_candidate", target: activeCallUser, candidate: e.candidate })); };
         }
@@ -494,6 +512,7 @@
         async function startCall(videoReq) {
             activeCallUser = currentChat;
             document.getElementById("call-interface").style.display = "flex";
+            updateCallStatus("Ringing...");
             dialSound.play().catch(e=>{});
             if (!await initMedia(videoReq)) { dialSound.pause(); return forceEndCall(); }
             createPeerConnection();
@@ -505,7 +524,7 @@
         function handleIncomingCall(data) {
             incomingOfferData = data;
             document.getElementById("incoming-caller-name").innerText = data.sender;
-            document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "";
+            document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "IC.png";
             document.getElementById("incoming-call-modal").style.display = "flex";
             ringSound.play().catch(e=>{});
             notifyUser(`Incoming call from ${data.sender}`, "IdlyCall Ringing");
@@ -515,6 +534,7 @@
             ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none";
             if (currentChat !== incomingOfferData.sender) switchChat(incomingOfferData.sender);
             document.getElementById("call-interface").style.display = "flex";
+            updateCallStatus("Connecting...");
             activeCallUser = incomingOfferData.sender;
             if (!await initMedia(incomingOfferData.video)) return forceEndCall();
             createPeerConnection();
@@ -557,7 +577,7 @@
         }
 
         async function flipCamera() {
-            if (!localStream) return;
+            if (!localStream || isSharingScreen) return;
             currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
             const oldT = localStream.getVideoTracks()[0]; if(oldT) oldT.stop();
             try {
@@ -565,8 +585,35 @@
                 const newT = newS.getVideoTracks()[0];
                 localStream.removeTrack(oldT); localStream.addTrack(newT);
                 document.getElementById("localVideo").srcObject = localStream;
-                if(peerConnection) { const sender = peerConnection.getSenders().find(s=>s.track.kind==="video"); if(sender) sender.replaceTrack(newT); }
+                if(peerConnection) { const sender = peerConnection.getSenders().find(s=>s.track && s.track.kind==="video"); if(sender) sender.replaceTrack(newT); }
             } catch(e) { currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; }
+        }
+
+        async function toggleScreenShare() {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) { alert("Mobile browsers do not support screen sharing."); return; }
+            if (!peerConnection) return;
+            
+            try {
+                if (!isSharingScreen) {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const screenTrack = screenStream.getVideoTracks()[0];
+                    const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender) sender.replaceTrack(screenTrack);
+                    document.getElementById('localVideo').srcObject = screenStream;
+                    isSharingScreen = true; document.getElementById("shareScreenBtn").classList.add("active");
+                    screenTrack.onended = stopScreenShare;
+                } else { stopScreenShare(); }
+            } catch (e) {}
+        }
+
+        function stopScreenShare() {
+            if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+            const cameraTrack = localStream.getVideoTracks()[0];
+            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender && cameraTrack) sender.replaceTrack(cameraTrack); 
+            document.getElementById('localVideo').srcObject = localStream;
+            isSharingScreen = false; document.getElementById("shareScreenBtn").classList.remove("active");
         }
 
         function endCallBtnClicked() { if (activeCallUser) ws.send(JSON.stringify({ type: "call_end", target: activeCallUser })); forceEndCall(); }
@@ -575,7 +622,9 @@
             dialSound.pause(); ringSound.pause();
             if (peerConnection) { peerConnection.close(); peerConnection = null; }
             if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-            iceCandidateQueue = []; activeCallUser = null; incomingOfferData = null;
+            if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
+            iceCandidateQueue = []; activeCallUser = null; incomingOfferData = null; isSharingScreen = false;
+            document.getElementById("shareScreenBtn").classList.remove("active");
             document.getElementById("call-interface").style.display = "none";
             document.getElementById("incoming-call-modal").style.display = "none";
         }
