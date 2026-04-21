@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nova Chat - Next Gen UI</title>
+    <title>Nova Chat - Connected</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
         /* === CORE VARIABLES === */
@@ -15,9 +15,9 @@
             --neon-secondary: #ff0055;
             --text-primary: #ffffff;
             --text-dim: #888899;
+            --sidebar-width: 260px;
         }
 
-        /* === RESET & FOUNDATION === */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         body {
@@ -27,263 +27,317 @@
                 radial-gradient(circle at 85% 30%, rgba(255, 0, 85, 0.05), transparent 25%);
             color: var(--text-primary);
             height: 100vh;
-            display: flex;
-            justify-content: center;
             overflow: hidden;
-        }
-
-        /* === THE MAIN VESSEL === */
-        /* This container maxes out on PC but fills the screen on mobile */
-        #nova-app {
-            width: 100%;
-            max-width: 1200px;
-            height: 100vh;
             display: flex;
-            flex-direction: column;
-            position: relative;
         }
 
-        /* === HEADER === */
-        header {
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
+        /* === MODALS (Login & Settings) === */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
         }
+        .modal-box {
+            background: rgba(20, 20, 25, 0.9); border: 1px solid var(--neon-accent);
+            padding: 30px; border-radius: 20px; width: 90%; max-width: 350px; text-align: center;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+        }
+        .modal-box input {
+            width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px; border: none;
+            background: rgba(255,255,255,0.1); color: white; outline: none; font-size: 1rem;
+        }
+        .modal-box button {
+            width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: bold;
+            background: var(--neon-accent); color: #000; font-size: 1rem; cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); transition: 0.2s; margin-bottom: 10px;
+        }
+        .modal-box button:hover { transform: scale(1.05); }
+        .modal-box button.cancel { background: transparent; color: var(--text-dim); box-shadow: none; border: 1px solid var(--glass-border); }
 
-        .chat-title {
-            font-size: clamp(1.2rem, 4vw, 1.8rem);
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-        }
+        .avatar-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 2px solid var(--neon-accent); }
 
-        .status-pill {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            backdrop-filter: blur(10px);
+        /* === LAYOUT === */
+        #app-container { display: none; width: 100%; height: 100%; }
+
+        /* === SIDEBAR (DMs & Users) === */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(15, 15, 18, 0.5);
+            border-right: 1px solid var(--glass-border);
+            display: flex; flex-direction: column;
+            backdrop-filter: blur(10px); z-index: 20; transition: transform 0.3s ease;
         }
+        .sidebar-header {
+            padding: 20px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .user-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .user-list::-webkit-scrollbar { display: none; }
         
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--neon-accent);
-            border-radius: 50%;
-            box-shadow: 0 0 10px var(--neon-accent);
+        .user-item {
+            display: flex; align-items: center; padding: 10px; border-radius: 12px;
+            cursor: pointer; transition: 0.2s; margin-bottom: 5px;
         }
+        .user-item:hover, .user-item.active { background: rgba(255,255,255,0.1); }
+        .user-item img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
+        .online { background: var(--neon-accent); box-shadow: 0 0 8px var(--neon-accent); }
+        .offline { background: var(--text-dim); }
 
-        /* === CHAT STREAM (The actual messages) === */
+        /* === MAIN CHAT AREA === */
+        .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; }
+        
+        header {
+            padding: 20px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.03); z-index: 10;
+        }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        .chat-title { font-size: 1.5rem; font-weight: 700; text-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
+
         #chat-stream {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            padding-bottom: 120px; /* Space for the floating dock */
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            scroll-behavior: smooth;
+            flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 120px;
+            display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
         }
-
-        /* Hide ugly scrollbars but keep scrolling */
         #chat-stream::-webkit-scrollbar { display: none; }
-        #chat-stream { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* === MESSAGE BUBBLES === */
-        .message {
-            display: flex;
-            flex-direction: column;
-            max-width: 85%;
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            transform-origin: bottom;
-        }
-
+        /* Message Bubbles */
+        .message { display: flex; flex-direction: column; max-width: 85%; animation: slideUp 0.3s ease forwards; }
         .msg-theirs { align-self: flex-start; }
         .msg-mine { align-self: flex-end; align-items: flex-end; }
-
-        .msg-sender {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            margin-bottom: 6px;
-            margin-left: 4px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+        
+        .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-left: 4px; }
+        .msg-header img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+        .msg-sender { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
 
         .msg-bubble {
-            padding: 14px 20px;
-            font-size: clamp(0.95rem, 2.5vw, 1.05rem);
-            line-height: 1.5;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            padding: 12px 18px; font-size: 1rem; line-height: 1.4; backdrop-filter: blur(10px);
         }
-
         .msg-theirs .msg-bubble {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
             border-radius: 20px 20px 20px 4px;
         }
-
         .msg-mine .msg-bubble {
             background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(0, 150, 255, 0.05));
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            border-radius: 20px 20px 4px 20px;
-            box-shadow: 0 5px 25px rgba(0, 240, 255, 0.1);
+            border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 20px 20px 4px 20px;
         }
+        @keyframes slideUp { 0% { opacity: 0; transform: translateY(15px); } 100% { opacity: 1; transform: translateY(0); } }
 
-        /* Animation for new messages */
-        @keyframes slideUp {
-            0% { opacity: 0; transform: translateY(30px) scale(0.95); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        /* === FLOATING DOCK (Input Area) === */
+        /* Floating Dock Input */
         .floating-dock {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 40px);
-            max-width: 800px;
-            background: rgba(15, 15, 18, 0.8);
-            border: 1px solid var(--glass-border);
-            border-radius: 40px;
-            padding: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            z-index: 100;
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 40px); max-width: 800px; background: rgba(15, 15, 18, 0.85);
+            border: 1px solid var(--glass-border); border-radius: 30px; padding: 8px 15px;
+            display: flex; align-items: center; gap: 10px; backdrop-filter: blur(20px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4); z-index: 100;
         }
-
-        .dock-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .dock-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
-        
-        .dock-btn.primary {
-            background: var(--neon-accent);
-            color: #000;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
-        }
-        .dock-btn.primary:hover { box-shadow: 0 0 25px rgba(0, 240, 255, 0.6); }
-
         #msg-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            font-size: 1rem;
-            padding: 10px 15px;
-            outline: none;
+            flex: 1; background: transparent; border: none; color: var(--text-primary);
+            font-size: 1rem; padding: 10px; outline: none;
         }
-        #msg-input::placeholder { color: var(--text-dim); }
+        .dock-btn {
+            width: 40px; height: 40px; border-radius: 50%; background: transparent; border: none;
+            color: var(--text-primary); font-size: 1.2rem; cursor: pointer; transition: 0.2s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .dock-btn.primary { background: var(--neon-accent); color: #000; box-shadow: 0 0 10px rgba(0, 240, 255, 0.4); }
 
-        /* === RESPONSIVE TWEAKS === */
+        /* === MOBILE RESPONSIVENESS === */
         @media (max-width: 768px) {
+            .mobile-toggle { display: block; }
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
             .floating-dock { bottom: 15px; width: calc(100% - 20px); }
-            .msg-bubble { padding: 12px 16px; }
-            header { padding: 15px; }
         }
     </style>
 </head>
 <body>
 
-    <div id="nova-app">
-        <header>
-            <div class="chat-title">Nova<span style="color: var(--neon-accent);">.</span></div>
-            <div class="status-pill">
-                <div class="status-dot"></div>
-                Secure Connection
-            </div>
-        </header>
+    <div id="login-screen" class="modal-overlay">
+        <div class="modal-box">
+            <h2 style="margin-bottom: 20px; color: var(--neon-accent);">Nova<span style="color: white;">.</span></h2>
+            <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
+            <label for="login-file" style="display: block; color: var(--neon-accent); cursor: pointer; margin-bottom: 15px; font-size: 0.9rem;">📷 Upload Avatar</label>
+            <input type="file" id="login-file" accept="image/*" style="display:none;" onchange="processImage(event, 'login-preview')">
+            <input type="text" id="usernameInput" placeholder="Enter Username" autocomplete="off">
+            <button onclick="manualLogin()">Initialize</button>
+        </div>
+    </div>
 
-        <div id="chat-stream">
-            </div>
+    <div id="settings-screen" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <h2 style="margin-bottom: 20px;">Profile Settings</h2>
+            <img id="settings-preview" class="avatar-preview" src="">
+            <label for="settings-file" style="display: block; color: var(--neon-accent); cursor: pointer; margin-bottom: 15px; font-size: 0.9rem;">📷 Change Avatar</label>
+            <input type="file" id="settings-file" accept="image/*" style="display:none;" onchange="processImage(event, 'settings-preview')">
+            <input type="text" id="settingsNameInput" placeholder="New Username" autocomplete="off">
+            <button onclick="saveSettings()">Save Changes</button>
+            <button class="cancel" onclick="document.getElementById('settings-screen').style.display='none'">Cancel</button>
+        </div>
+    </div>
 
-        <div class="floating-dock">
-            <button class="dock-btn" title="Attach Menu">＋</button>
-            <button class="dock-btn" title="Start Call" style="color: var(--neon-secondary);">📞</button>
-            
-            <input type="text" id="msg-input" placeholder="Transmit message..." autocomplete="off">
-            
-            <button class="dock-btn primary" id="send-btn" onclick="sendMyMessage()">➤</button>
+    <div id="app-container">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span style="font-weight: bold; letter-spacing: 1px;">DIRECTORIES</span>
+                <button style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size: 1.2rem;" onclick="openSettings()">⚙️</button>
+            </div>
+            <div class="user-list" id="user-list-container">
+                </div>
+        </div>
+
+        <div class="chat-area" onclick="document.getElementById('sidebar').classList.remove('open')">
+            <header>
+                <div class="header-left">
+                    <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                    <div class="chat-title" id="chatHeaderTitle">Public Channel</div>
+                </div>
+                <button style="background:none; border:none; color:var(--neon-accent); font-size: 1.2rem; cursor:pointer;" onclick="alert('Calls coming in Phase 2!')">📞</button>
+            </header>
+
+            <div id="chat-stream"></div>
+
+            <div class="floating-dock">
+                <input type="text" id="msg-input" placeholder="Transmit message..." autocomplete="off">
+                <button class="dock-btn primary" onclick="sendMyMessage()">➤</button>
+            </div>
         </div>
     </div>
 
     <script>
-        /* === FAST LIGHTWEIGHT LOGIC === */
-        const stream = document.getElementById('chat-stream');
-        const input = document.getElementById('msg-input');
+        // === STATE ===
+        let ws;
+        let myUsername = localStorage.getItem("chat_username");
+        let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+        let currentChat = "Public";
+        let userProfiles = {};
 
-        // Auto-scroll to bottom mathematically
-        function scrollToBottom() {
-            stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
+        function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+        window.onload = () => {
+            if (myUsername && localStorage.getItem("chat_pic")) {
+                document.getElementById("usernameInput").value = myUsername;
+                startApp();
+            }
+        };
+
+        // === PROFILE & LOGIN ===
+        function processImage(e, targetId) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById(targetId).src = event.target.result;
+                if(targetId === 'login-preview') myPicBase64 = event.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
-        // The exact function to draw a message onto the screen instantly
-        function drawMessage(text, isMine, senderName = "System") {
-            if (!text.trim()) return;
+        function manualLogin() {
+            myUsername = document.getElementById("usernameInput").value.trim();
+            if (!myUsername) return alert("Username required!");
+            localStorage.setItem("chat_username", myUsername);
+            localStorage.setItem("chat_pic", myPicBase64);
+            startApp();
+        }
 
+        function openSettings() {
+            document.getElementById("settingsNameInput").value = myUsername;
+            document.getElementById("settings-preview").src = myPicBase64;
+            document.getElementById("settings-screen").style.display = "flex";
+        }
+
+        function saveSettings() {
+            const newName = document.getElementById("settingsNameInput").value.trim();
+            if(newName) myUsername = newName;
+            myPicBase64 = document.getElementById("settings-preview").src;
+            localStorage.setItem("chat_username", myUsername);
+            localStorage.setItem("chat_pic", myPicBase64);
+            if(ws) ws.send(JSON.stringify({ type: "update_settings", pic: myPicBase64, new_name: myUsername }));
+            window.location.reload();
+        }
+
+        // === WEBSOCKET CONNECTION ===
+        function startApp() {
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("app-container").style.display = "flex";
+
+            const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+            ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
+            ws.onopen = () => { ws.send(JSON.stringify({ pic: myPicBase64 })); };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === "chat") {
+                    if ((currentChat === "Public" && data.receiver === "Public") || 
+                        (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) {
+                        drawMessage(data.message, data.sender === myUsername, data.sender, data.profile_pic);
+                    }
+                }
+                else if (data.type === "history") {
+                    document.getElementById('chat-stream').innerHTML = ""; 
+                    data.data.forEach(msg => drawMessage(msg.message, msg.sender === myUsername, msg.sender, msg.profile_pic));
+                }
+                else if (data.type === "user_list") { 
+                    data.data.forEach(u => userProfiles[u.username] = {pic: u.profile_pic, status: u.status});
+                    updateSidebar(data.data); 
+                }
+            };
+        }
+
+        // === UI LOGIC ===
+        function updateSidebar(users) {
+            const container = document.getElementById('user-list-container');
+            let html = `<div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')">
+                            <span style="font-size: 1.5rem; margin-right: 10px;">🌐</span>
+                            <span style="font-weight:bold;">Public Channel</span>
+                        </div>`;
+            users.forEach(user => {
+                if (user.username === myUsername) return;
+                html += `<div class="user-item ${currentChat === user.username ? 'active' : ''}" onclick="switchChat('${user.username}')">
+                            <img src="${user.profile_pic}">
+                            <span>${user.username}</span>
+                            <div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div>
+                         </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function switchChat(target) {
+            currentChat = target;
+            document.getElementById("chatHeaderTitle").innerText = target;
+            document.getElementById("msg-input").placeholder = `Transmit to ${target}...`;
+            document.getElementById('chat-stream').innerHTML = "";
+            document.getElementById('sidebar').classList.remove('open');
+            ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+            updateSidebar(Object.keys(userProfiles).map(k => ({username: k, profile_pic: userProfiles[k].pic, status: userProfiles[k].status})));
+        }
+
+        function drawMessage(text, isMine, senderName, picUrl) {
+            const stream = document.getElementById('chat-stream');
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${isMine ? 'msg-mine' : 'msg-theirs'}`;
             
-            let senderHtml = isMine ? '' : `<div class="msg-sender">${senderName}</div>`;
+            let headerHtml = '';
+            if (!isMine) {
+                let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+                headerHtml = `<div class="msg-header"><img src="${safePic}"><div class="msg-sender">${senderName}</div></div>`;
+            }
             
-            msgDiv.innerHTML = `
-                ${senderHtml}
-                <div class="msg-bubble">${text}</div>
-            `;
-            
+            msgDiv.innerHTML = `${headerHtml}<div class="msg-bubble">${text}</div>`;
             stream.appendChild(msgDiv);
-            scrollToBottom();
+            stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
         }
 
-        // Triggered when you click the send button
         function sendMyMessage() {
-            const val = input.value;
-            if (val) {
-                drawMessage(val, true);
-                input.value = '';
-                input.focus();
-                
-                // Simulate a fast, fake reply 1 second later to show off the UI
-                setTimeout(() => {
-                    drawMessage("Received your transmission. The UI feels incredibly smooth.", false, "Nexus Node");
-                }, 1000);
+            const input = document.getElementById("msg-input");
+            const val = input.value.trim();
+            if (ws && val) { 
+                ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: val })); 
+                input.value = ''; 
             }
         }
 
-        // Allow pressing Enter to send
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMyMessage();
-        });
-
-        // Initialize with some dummy data to show the design
-        window.onload = () => {
-            setTimeout(() => drawMessage("Connection established. Welcome to the new architecture.", false, "Nexus Node"), 300);
-            setTimeout(() => drawMessage("This uses CSS Clamp for fluid typography and GPU-accelerated transforms.", false, "Nexus Node"), 1200);
-        };
+        document.getElementById("msg-input").addEventListener("keypress", (e) => { if (e.key === "Enter") sendMyMessage(); });
     </script>
 </body>
 </html>
