@@ -1,62 +1,143 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Live Chat</title>
+    <title>Live Chat Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { font-family: Arial, sans-serif; background: #ece5dd; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .chat-container { width: 100%; max-width: 500px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; }
-        .header { background: #075e54; color: white; padding: 15px; text-align: center; }
-        #messages { height: 400px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #e5ddd5; }
-        .msg { padding: 10px 15px; border-radius: 20px; background: white; width: fit-content; max-width: 80%; word-wrap: break-word; }
-        .input-area { display: flex; padding: 15px; background: #f0f0f0; }
-        input[type="text"] { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
-        button { background: #128C7E; color: white; border: none; padding: 10px 20px; border-radius: 20px; margin-left: 10px; cursor: pointer; }
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        body { font-family: Arial, sans-serif; margin: 0; display: flex; height: 100vh; background: #1e1e24; color: white; }
+        
+        /* Layout Grid */
+        #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
+        #app-container { display: none; width: 100%; display: flex; }
+        
+        /* Sidebar (Users) */
+        .sidebar { width: 250px; background: #2b2b36; padding: 20px; overflow-y: auto; border-right: 1px solid #444; }
+        .user-item { display: flex; align-items: center; margin-bottom: 15px; }
+        .user-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #555; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
+        .online { background: #43b581; }
+        .offline { background: #747f8d; }
+
+        /* Chat Area */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #36393f; }
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Message Bubbles */
+        .msg-container { display: flex; align-items: flex-start; }
+        .msg-container img { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+        .msg-content { background: #40444b; padding: 10px 15px; border-radius: 8px; max-width: 70%; }
+        .msg-header { font-size: 12px; color: #a3a6aa; margin-bottom: 5px; }
+        .msg-header span { font-weight: bold; color: white; margin-right: 10px; font-size: 14px; }
+
+        /* Inputs */
+        .input-box { display: flex; padding: 20px; background: #40444b; }
+        input[type="text"] { flex: 1; padding: 12px; border-radius: 5px; border: none; background: #202225; color: white; outline: none; }
+        button { background: #5865F2; color: white; border: none; padding: 12px 20px; border-radius: 5px; margin-left: 10px; cursor: pointer; font-weight: bold; }
+        
+        /* Login Inputs */
+        .login-box { background: #36393f; padding: 40px; border-radius: 10px; text-align: center; }
+        .login-box input { width: 80%; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div class="header">
-        <h2 style="margin: 0;">Live Chat</h2>
+<div id="login-screen">
+    <div class="login-box">
+        <h2>Welcome to Chat</h2>
+        <input type="text" id="usernameInput" placeholder="Choose a Username" autocomplete="off"/><br>
+        <input type="text" id="picInput" placeholder="Paste an Image URL (Optional)" autocomplete="off"/><br>
+        <button onclick="startApp()">Enter Chat</button>
     </div>
-    
-    <div id="messages"></div>
-    
-    <div class="input-area" id="setup-area">
-        <input type="text" id="usernameInput" placeholder="Enter your name..." autocomplete="off"/>
-        <button onclick="connect()">Join Chat</button>
-    </div>
+</div>
 
-    <div class="input-area" id="chat-area" style="display: none;">
-        <input type="text" id="messageText" placeholder="Type a message..." autocomplete="off"/>
-        <button onclick="sendMessage()">Send</button>
+<div id="app-container" style="display: none;">
+    <div class="sidebar">
+        <h3>Users</h3>
+        <div id="user-list"></div>
+    </div>
+    
+    <div class="chat-area">
+        <div id="messages"></div>
+        <div class="input-box">
+            <input type="text" id="messageText" placeholder="Message Public Chat..." autocomplete="off"/>
+            <button onclick="sendMessage()">Send</button>
+        </div>
     </div>
 </div>
 
 <script>
     let ws;
+    let myUsername = localStorage.getItem("chat_username");
+    let myPic = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
 
-    function connect() {
-        const username = document.getElementById("usernameInput").value;
-        if (!username) return alert("Please enter a name first!");
+    // Auto-login if we remember the user
+    if (myUsername) {
+        document.getElementById("usernameInput").value = myUsername;
+        document.getElementById("picInput").value = myPic;
+        startApp();
+    }
 
-        // Connect to the WebSocket (dynamically uses wss:// for cloud or ws:// for local)
+    function startApp() {
+        myUsername = document.getElementById("usernameInput").value;
+        let inputPic = document.getElementById("picInput").value;
+        if (inputPic) myPic = inputPic;
+
+        if (!myUsername) return alert("Username required!");
+
+        // Save to browser memory
+        localStorage.setItem("chat_username", myUsername);
+        localStorage.setItem("chat_pic", myPic);
+
+        // Hide login, show app
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("app-container").style.display = "flex";
+
+        // Connect to server (passing profile pic in the URL query)
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        ws = new WebSocket(`${protocol}://${window.location.host}/ws/${username}`);
+        ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}?pic=${encodeURIComponent(myPic)}`);
         
         ws.onmessage = function(event) {
-            const messages = document.getElementById('messages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'msg';
-            messageDiv.textContent = event.data;
-            messages.appendChild(messageDiv);
-            messages.scrollTop = messages.scrollHeight; // Auto-scroll to bottom
+            const data = JSON.parse(event.data);
+            
+            if (data.type === "chat") {
+                appendMessage(data.sender, data.profile_pic, data.message, data.timestamp);
+            } 
+            else if (data.type === "history") {
+                data.data.forEach(msg => appendMessage(msg.sender, msg.profile_pic, msg.message, msg.timestamp));
+            }
+            else if (data.type === "user_list") {
+                updateUserSidebar(data.data);
+            }
         };
+    }
 
-        // Switch UI from "Join" to "Chat"
-        document.getElementById("setup-area").style.display = "none";
-        document.getElementById("chat-area").style.display = "flex";
+    function appendMessage(sender, pic, text, time) {
+        const messages = document.getElementById('messages');
+        messages.innerHTML += `
+            <div class="msg-container">
+                <img src="${pic}">
+                <div class="msg-content">
+                    <div class="msg-header"><span>${sender}</span> ${time}</div>
+                    <div>${text}</div>
+                </div>
+            </div>
+        `;
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function updateUserSidebar(users) {
+        const sidebar = document.getElementById('user-list');
+        sidebar.innerHTML = "";
+        users.forEach(user => {
+            const statusClass = user.status === "Online" ? "online" : "offline";
+            sidebar.innerHTML += `
+                <div class="user-item" style="opacity: ${user.status === 'Offline' ? '0.5' : '1'};">
+                    <img src="${user.profile_pic}">
+                    <span>${user.username}</span>
+                    <div class="status-dot ${statusClass}"></div>
+                </div>
+            `;
+        });
     }
 
     function sendMessage() {
@@ -67,10 +148,10 @@
         }
     }
 
-    // Allow pressing "Enter" to send
     document.getElementById("messageText").addEventListener("keypress", function(event) {
         if (event.key === "Enter") sendMessage();
     });
 </script>
+
 </body>
 </html>
