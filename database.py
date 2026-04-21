@@ -25,6 +25,13 @@ def update_user(username, profile_pic, status):
                    (username, profile_pic, status))
     conn.commit()
     conn.close()
+# Mark a user offline without changing their profile picture
+def update_status_only(username, status):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET status = ? WHERE username = ?", (status, username))
+    conn.commit()
+    conn.close()
 
 # Get a list of all users
 def get_all_users():

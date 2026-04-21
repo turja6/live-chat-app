@@ -1,66 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Live Chat Platform</title>
+    <title>Chat Platform</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; display: flex; height: 100vh; background: #1e1e24; color: white; }
+        /* Modern Discord Dark Theme Variables */
+        :root { --bg-dark: #202225; --bg-mid: #2f3136; --bg-light: #36393f; --text-main: #dcddde; --text-muted: #8e9297; --accent: #5865F2; --online: #3ba55d; --offline: #747f8d; }
+        
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); color: var(--text-main); overflow: hidden; }
+        
+        /* Login Screen */
+        #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100vh; background: var(--bg-mid); z-index: 100; position: absolute; }
+        .login-box { background: var(--bg-light); padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.2); width: 90%; max-width: 350px; }
+        .login-box input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 4px; border: none; background: var(--bg-dark); color: white; box-sizing: border-box; outline: none; }
+        .file-upload { background: var(--bg-dark); padding: 15px; border-radius: 4px; margin-bottom: 15px; border: 1px dashed var(--text-muted); cursor: pointer; }
+        #preview-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: none; margin: 10px auto; }
         
         /* Layout Grid */
-        #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
-        #app-container { display: none; width: 100%; display: flex; }
+        #app-container { display: none; width: 100%; height: 100%; position: relative; }
         
+        /* Mobile Navbar */
+        .mobile-nav { display: none; background: var(--bg-dark); padding: 15px; border-bottom: 1px solid #202225; align-items: center; justify-content: space-between; }
+        .menu-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+
         /* Sidebar (Users) */
-        .sidebar { width: 250px; background: #2b2b36; padding: 20px; overflow-y: auto; border-right: 1px solid #444; }
-        .user-item { display: flex; align-items: center; margin-bottom: 15px; }
-        .user-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #555; }
+        .sidebar { width: 260px; background: var(--bg-mid); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; transition: 0.3s; }
+        .category-header { font-size: 12px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin: 20px 0 10px 0; }
+        .user-item { display: flex; align-items: center; margin-bottom: 10px; padding: 5px; border-radius: 4px; }
+        .user-item:hover { background: #393c43; }
+        .user-item img { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
-        .online { background: #43b581; }
-        .offline { background: #747f8d; }
+        .online { background: var(--online); }
+        .offline { background: var(--offline); }
 
         /* Chat Area */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #36393f; }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-light); height: 100%; }
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
         
         /* Message Bubbles */
         .msg-container { display: flex; align-items: flex-start; }
-        .msg-container img { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
-        .msg-content { background: #40444b; padding: 10px 15px; border-radius: 8px; max-width: 70%; }
-        .msg-header { font-size: 12px; color: #a3a6aa; margin-bottom: 5px; }
-        .msg-header span { font-weight: bold; color: white; margin-right: 10px; font-size: 14px; }
+        .msg-container img { width: 45px; height: 45px; border-radius: 50%; margin-right: 15px; object-fit: cover; margin-top: 2px; }
+        .msg-header { margin-bottom: 4px; }
+        .msg-header .name { font-weight: bold; color: white; font-size: 15px; margin-right: 8px; }
+        .msg-header .time { font-size: 12px; color: var(--text-muted); }
+        .msg-text { color: var(--text-main); font-size: 15px; line-height: 1.4; word-wrap: break-word; }
 
-        /* Inputs */
-        .input-box { display: flex; padding: 20px; background: #40444b; }
-        input[type="text"] { flex: 1; padding: 12px; border-radius: 5px; border: none; background: #202225; color: white; outline: none; }
-        button { background: #5865F2; color: white; border: none; padding: 12px 20px; border-radius: 5px; margin-left: 10px; cursor: pointer; font-weight: bold; }
-        
-        /* Login Inputs */
-        .login-box { background: #36393f; padding: 40px; border-radius: 10px; text-align: center; }
-        .login-box input { width: 80%; margin-bottom: 15px; }
+        /* Input Area */
+        .input-box { padding: 20px; background: var(--bg-light); display: flex; }
+        .input-box input { flex: 1; padding: 15px; border-radius: 8px; border: none; background: #40444b; color: white; font-size: 15px; outline: none; }
+        button { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 15px; }
+        button:hover { background: #4752c4; }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .mobile-nav { display: flex; }
+            .sidebar { position: absolute; left: -300px; top: 60px; bottom: 0; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
+            .sidebar.open { left: 0; }
+        }
     </style>
 </head>
 <body>
 
 <div id="login-screen">
     <div class="login-box">
-        <h2>Welcome to Chat</h2>
-        <input type="text" id="usernameInput" placeholder="Choose a Username" autocomplete="off"/><br>
-        <input type="text" id="picInput" placeholder="Paste an Image URL (Optional)" autocomplete="off"/><br>
-        <button onclick="startApp()">Enter Chat</button>
+        <h2 style="margin-top:0;">Join the Server</h2>
+        <img id="preview-img" src="">
+        <input type="text" id="usernameInput" placeholder="Username" autocomplete="off"/>
+        
+        <div class="file-upload">
+            <label for="fileInput" style="cursor: pointer; display: block;">📷 Upload Profile Picture</label>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <button onclick="startApp()" style="width: 100%;">Enter Chat</button>
     </div>
 </div>
 
-<div id="app-container" style="display: none;">
-    <div class="sidebar">
-        <h3>Users</h3>
-        <div id="user-list"></div>
+<div id="app-container">
+    
+    <div class="mobile-nav">
+        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+        <h3 style="margin:0;"># general</h3>
+        <div style="width: 24px;"></div> </div>
+
+    <div class="sidebar" id="sidebar">
+        <div id="online-users"></div>
+        <div id="offline-users"></div>
     </div>
     
-    <div class="chat-area">
+    <div class="chat-area" onclick="closeSidebar()">
         <div id="messages"></div>
         <div class="input-box">
-            <input type="text" id="messageText" placeholder="Message Public Chat..." autocomplete="off"/>
-            <button onclick="sendMessage()">Send</button>
+            <input type="text" id="messageText" placeholder="Message #general..." autocomplete="off"/>
+            <button onclick="sendMessage()" style="margin-left: 10px;">Send</button>
         </div>
     </div>
 </div>
@@ -68,33 +100,56 @@
 <script>
     let ws;
     let myUsername = localStorage.getItem("chat_username");
-    let myPic = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+    let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
 
-    // Auto-login if we remember the user
+    // Auto-fill login if returning user
     if (myUsername) {
         document.getElementById("usernameInput").value = myUsername;
-        document.getElementById("picInput").value = myPic;
-        startApp();
+        document.getElementById("preview-img").src = myPicBase64;
+        document.getElementById("preview-img").style.display = "block";
     }
+
+    // Compress & Convert Image to Base64 instantly
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 100; // Resize image so it doesn't crash the server
+                canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 100, 100);
+                myPicBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                
+                document.getElementById("preview-img").src = myPicBase64;
+                document.getElementById("preview-img").style.display = "block";
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    });
 
     function startApp() {
         myUsername = document.getElementById("usernameInput").value;
-        let inputPic = document.getElementById("picInput").value;
-        if (inputPic) myPic = inputPic;
-
         if (!myUsername) return alert("Username required!");
 
-        // Save to browser memory
         localStorage.setItem("chat_username", myUsername);
-        localStorage.setItem("chat_pic", myPic);
+        localStorage.setItem("chat_pic", myPicBase64);
 
-        // Hide login, show app
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("app-container").style.display = "flex";
 
-        // Connect to server (passing profile pic in the URL query)
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}?pic=${encodeURIComponent(myPic)}`);
+        ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
+        
+        // Wait for connection to open, then send profile picture
+        ws.onopen = function() {
+            ws.send(JSON.stringify({ pic: myPicBase64 }));
+        };
         
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
@@ -103,6 +158,7 @@
                 appendMessage(data.sender, data.profile_pic, data.message, data.timestamp);
             } 
             else if (data.type === "history") {
+                document.getElementById('messages').innerHTML = ""; // clear loading
                 data.data.forEach(msg => appendMessage(msg.sender, msg.profile_pic, msg.message, msg.timestamp));
             }
             else if (data.type === "user_list") {
@@ -116,9 +172,9 @@
         messages.innerHTML += `
             <div class="msg-container">
                 <img src="${pic}">
-                <div class="msg-content">
-                    <div class="msg-header"><span>${sender}</span> ${time}</div>
-                    <div>${text}</div>
+                <div>
+                    <div class="msg-header"><span class="name">${sender}</span><span class="time">${time}</span></div>
+                    <div class="msg-text">${text}</div>
                 </div>
             </div>
         `;
@@ -126,18 +182,26 @@
     }
 
     function updateUserSidebar(users) {
-        const sidebar = document.getElementById('user-list');
-        sidebar.innerHTML = "";
+        const onlineDiv = document.getElementById('online-users');
+        const offlineDiv = document.getElementById('offline-users');
+        
+        let onlineHtml = `<div class="category-header">Online</div>`;
+        let offlineHtml = `<div class="category-header">Offline</div>`;
+
         users.forEach(user => {
-            const statusClass = user.status === "Online" ? "online" : "offline";
-            sidebar.innerHTML += `
+            const item = `
                 <div class="user-item" style="opacity: ${user.status === 'Offline' ? '0.5' : '1'};">
                     <img src="${user.profile_pic}">
                     <span>${user.username}</span>
-                    <div class="status-dot ${statusClass}"></div>
+                    <div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div>
                 </div>
             `;
+            if(user.status === "Online") onlineHtml += item;
+            else offlineHtml += item;
         });
+
+        onlineDiv.innerHTML = onlineHtml;
+        offlineDiv.innerHTML = offlineHtml;
     }
 
     function sendMessage() {
@@ -151,6 +215,10 @@
     document.getElementById("messageText").addEventListener("keypress", function(event) {
         if (event.key === "Enter") sendMessage();
     });
+
+    // Mobile Sidebar Toggle Logic
+    function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
+    function closeSidebar() { document.getElementById("sidebar").classList.remove("open"); }
 </script>
 
 </body>
