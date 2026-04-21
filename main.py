@@ -42,22 +42,23 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket, username)
     
     try:
-        # Wait for profile setup
+        # Wait for user profile setup
         setup_data = await websocket.receive_text()
         setup_json = json.loads(setup_data)
         pic = setup_json.get("pic", "")
 
         database.update_user(username, pic, "Online")
         
-        # Send Public history by default
+        # Send Public history by default upon login
         history = database.get_history(username, "Public")
         await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
         
+        # Broadcast updated user list
         users = database.get_all_users()
         await manager.broadcast({"type": "user_list", "data": users})
         
         while True:
-            # Handle incoming complex JSON data
+            # Handle incoming messages from the frontend
             data_str = await websocket.receive_text()
             data = json.loads(data_str)
             
@@ -75,10 +76,9 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 if receiver == "Public":
                     await manager.broadcast(payload)
                 else:
-                    # Private Message Logic
                     await manager.send_personal_message(payload, receiver)
                     if username != receiver:
-                        await manager.send_personal_message(payload, username) # Send copy to self
+                        await manager.send_personal_message(payload, username)
                         
             elif data["type"] == "get_history":
                 target = data["target"]

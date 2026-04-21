@@ -9,7 +9,6 @@ def init_db():
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS users
                       (username TEXT PRIMARY KEY, profile_pic TEXT, status TEXT)''')
-    # Added "receiver" column to track private messages
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages
                       (id INTEGER PRIMARY KEY AUTOINCREMENT, 
                        sender TEXT, receiver TEXT, profile_pic TEXT, message TEXT, timestamp TEXT)''')
@@ -42,6 +41,7 @@ def get_all_users():
 def save_message(sender, receiver, profile_pic, message):
     conn = get_db()
     cursor = conn.cursor()
+    # 12-hour AM/PM format to match WhatsApp
     timestamp = datetime.now().strftime("%I:%M %p")
     cursor.execute("INSERT INTO messages (sender, receiver, profile_pic, message, timestamp) VALUES (?, ?, ?, ?, ?)",
                    (sender, receiver, profile_pic, message, timestamp))
@@ -54,7 +54,6 @@ def get_history(user1, user2="Public"):
     if user2 == "Public":
         cursor.execute("SELECT sender, profile_pic, message, timestamp FROM messages WHERE receiver = 'Public' ORDER BY id DESC LIMIT 50")
     else:
-        # Get private messages between user1 and user2
         cursor.execute('''SELECT sender, profile_pic, message, timestamp FROM messages 
                           WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) 
                           ORDER BY id DESC LIMIT 50''', (user1, user2, user2, user1))

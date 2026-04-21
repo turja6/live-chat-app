@@ -1,108 +1,158 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Chat Platform</title>
+    <title>WhatsApp Web Clone</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        :root { --bg-dark: #202225; --bg-mid: #2f3136; --bg-light: #36393f; --text-main: #dcddde; --text-muted: #8e9297; --accent: #5865F2; --online: #3ba55d; --offline: #747f8d; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); color: var(--text-main); overflow: hidden; }
-        
-        /* Modals (Login & Settings) */
-        .modal-overlay { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100vh; background: rgba(0,0,0,0.8); z-index: 100; position: absolute; top:0; left:0; }
-        .modal-box { background: var(--bg-light); padding: 40px; border-radius: 8px; text-align: center; width: 90%; max-width: 350px; }
-        .modal-box input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 4px; border: none; background: var(--bg-dark); color: white; box-sizing: border-box; outline: none; }
-        .file-upload { background: var(--bg-dark); padding: 15px; border-radius: 4px; margin-bottom: 15px; border: 1px dashed var(--text-muted); cursor: pointer; }
-        .preview-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: none; margin: 10px auto; }
-        button { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
-
-        #app-container { display: none; width: 100%; height: 100%; position: relative; }
-        
-        /* Mobile Header */
-        .mobile-nav { display: flex; background: var(--bg-mid); padding: 15px; border-bottom: 1px solid #202225; align-items: center; justify-content: space-between; }
-        .menu-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; width: auto; padding: 0; }
-        
-        /* Sidebar */
-        .sidebar { width: 260px; background: var(--bg-mid); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; transition: transform 0.3s ease; }
-        .category-header { font-size: 12px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin: 20px 0 10px 0; }
-        .user-item { display: flex; align-items: center; margin-bottom: 5px; padding: 10px; border-radius: 4px; cursor: pointer; }
-        .user-item:hover, .user-item.active { background: #393c43; }
-        .user-item img { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
-        .online { background: var(--online); } .offline { background: var(--offline); }
-
-        /* Settings Button */
-        .settings-btn { margin-top: auto; background: #4f545c; padding: 10px; border-radius: 4px; text-align: center; cursor: pointer; font-weight: bold; }
-
-        /* Chat Area */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-light); height: 100%; position: relative; }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-        .msg-container { display: flex; align-items: flex-start; }
-        .msg-container img { width: 45px; height: 45px; border-radius: 50%; margin-right: 15px; object-fit: cover; margin-top: 2px; }
-        .msg-header .name { font-weight: bold; color: white; font-size: 15px; margin-right: 8px; }
-        .msg-header .time { font-size: 12px; color: var(--text-muted); }
-        .msg-text { color: var(--text-main); font-size: 15px; line-height: 1.4; word-wrap: break-word; }
-
-        /* Input Area */
-        .input-box { padding: 15px; background: var(--bg-light); display: flex; }
-        .input-box input { flex: 1; padding: 15px; border-radius: 8px; border: none; background: #40444b; color: white; font-size: 15px; outline: none; }
-        .input-box button { width: auto; margin-left: 10px; }
-
-        /* Perfect Mobile Fixes */
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.5); transform: translateX(-100%); width: 240px; }
-            .sidebar.open { transform: translateX(0); }
-            #chatHeaderTitle { font-size: 18px; }
+        /* WhatsApp Web Color Palette */
+        :root { 
+            --wa-bg-app: #d1d7db; 
+            --wa-bg-sidebar: #ffffff; 
+            --wa-bg-chat: #efeae2; 
+            --wa-header: #f0f2f5; 
+            --wa-msg-in: #ffffff; 
+            --wa-msg-out: #d9fdd3; 
+            --wa-text-main: #111b21; 
+            --wa-text-muted: #667781; 
+            --wa-green: #00a884; 
+            --wa-border: #e9edef;
+            --wa-blue-tick: #53bdeb;
         }
-        @media (min-width: 769px) { .mobile-nav .menu-btn { display: none; } }
+        
+        body { font-family: 'Segoe UI', Helvetica Neue, Helvetica, Arial, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: var(--wa-bg-app); }
+        
+        /* Modals */
+        .modal-overlay { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100vh; background: var(--wa-bg-app); z-index: 100; position: absolute; top:0; left:0; }
+        .modal-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 90%; max-width: 350px; box-shadow: 0 17px 50px 0 rgba(11,20,26,.19); }
+        .modal-box input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 4px; border: 1px solid var(--wa-border); box-sizing: border-box; outline: none; }
+        .preview-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; display: none; margin: 10px auto 20px auto; }
+        button { background: var(--wa-green); color: white; border: none; padding: 12px 20px; border-radius: 24px; cursor: pointer; font-weight: bold; width: 100%; font-size: 15px; }
+
+        /* App Container (Two-Panel Layout) */
+        #app-container { display: none; width: 100%; max-width: 1600px; height: 100%; display: flex; background: var(--wa-bg-sidebar); box-shadow: 0 0px 0px rgba(0,0,0,0.1); position: relative; }
+        @media (min-width: 1440px) { #app-container { height: 95vh; top: 2.5vh; } } /* Classic web app floating look */
+
+        /* Header Styles */
+        .panel-header { background: var(--wa-header); height: 60px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--wa-border); box-sizing: border-box; }
+        .panel-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; cursor: pointer; }
+        
+        /* Left Sidebar (Chat List) */
+        .sidebar { width: 30%; min-width: 300px; background: var(--wa-bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid var(--wa-border); transition: transform 0.3s ease; }
+        .search-bar-container { padding: 8px 12px; border-bottom: 1px solid var(--wa-border); background: white; }
+        .search-bar { background: var(--wa-header); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; }
+        .search-bar input { border: none; background: transparent; width: 100%; outline: none; font-size: 14px; margin-left: 10px; }
+        
+        #user-list-container { flex: 1; overflow-y: auto; }
+        .user-item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid var(--wa-border); cursor: pointer; background: white; transition: background 0.2s; }
+        .user-item:hover, .user-item.active { background: var(--wa-header); }
+        .user-item img { width: 48px; height: 48px; border-radius: 50%; margin-right: 15px; object-fit: cover; }
+        .user-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .user-row-top { display: flex; justify-content: space-between; margin-bottom: 3px; }
+        .user-name { font-size: 17px; color: var(--wa-text-main); }
+        .user-status { font-size: 12px; color: var(--wa-text-muted); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .online { background: var(--wa-green); } .offline { background: var(--wa-text-muted); }
+
+        /* Main Chat Window */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--wa-bg-chat); position: relative; }
+        .chat-area::before { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); opacity: 0.06; z-index: 0; pointer-events: none; }
+        
+        .chat-header-info { margin-left: 15px; display: flex; flex-direction: column; }
+        .chat-header-name { font-size: 16px; color: var(--wa-text-main); }
+        .chat-header-status { font-size: 13px; color: var(--wa-text-muted); }
+
+        /* Message Bubbles */
+        #messages { flex: 1; padding: 20px 5%; overflow-y: auto; display: flex; flex-direction: column; z-index: 1; }
+        .msg-row { display: flex; width: 100%; margin-bottom: 8px; }
+        .msg-row.sent { justify-content: flex-end; }
+        .msg-row.received { justify-content: flex-start; }
+        
+        .msg-bubble { max-width: 65%; padding: 6px 7px 8px 9px; border-radius: 7.5px; position: relative; font-size: 14.2px; line-height: 19px; color: var(--wa-text-main); box-shadow: 0 1px 0.5px rgba(11,20,26,.13); }
+        .msg-row.sent .msg-bubble { background: var(--wa-wa-msg-out, #d9fdd3); border-top-right-radius: 0; }
+        .msg-row.received .msg-bubble { background: var(--wa-msg-in); border-top-left-radius: 0; }
+        
+        .msg-sender-name { font-size: 12.5px; font-weight: bold; color: #35cd96; margin-bottom: 2px; cursor: pointer; }
+        .msg-text { word-wrap: break-word; }
+        .msg-meta { display: inline-flex; align-items: center; float: right; margin: 10px 0 -5px 15px; }
+        .msg-time { font-size: 11px; color: var(--wa-text-muted); }
+        .msg-ticks { color: var(--wa-blue-tick); font-size: 12px; margin-left: 4px; letter-spacing: -2px; font-weight: bold; } /* Fake blue ticks */
+
+        /* Input Area (Bottom Bar) */
+        .input-box { background: var(--wa-header); padding: 10px 16px; display: flex; align-items: center; z-index: 1; gap: 15px; }
+        .input-icon { font-size: 24px; cursor: pointer; color: #54656f; }
+        .input-box input { flex: 1; padding: 9px 12px; border-radius: 8px; border: none; background: white; font-size: 15px; outline: none; }
+
+        /* Mobile Adjustments */
+        .back-btn { display: none; font-size: 20px; margin-right: 15px; cursor: pointer; color: #54656f; background: none; border: none; width: auto; padding: 0; }
+        @media (max-width: 768px) {
+            #app-container { flex-direction: column; }
+            .sidebar { width: 100%; height: 100%; position: absolute; z-index: 10; }
+            .sidebar.hidden { display: none; }
+            .chat-area { width: 100%; height: 100%; }
+            .back-btn { display: block; }
+        }
     </style>
 </head>
 <body>
 
 <div id="login-screen" class="modal-overlay">
     <div class="modal-box">
-        <h2 style="margin-top:0;">Join Chat</h2>
+        <h2 style="color: var(--wa-green); margin-top:0;">WhatsApp Web</h2>
+        <p style="color: var(--wa-text-muted); font-size: 14px;">Enter your name and photo to connect.</p>
         <img id="login-preview" class="preview-img" src="">
-        <input type="text" id="usernameInput" placeholder="Username" autocomplete="off"/>
-        <div class="file-upload">
-            <label for="loginFileInput" style="cursor: pointer; display: block;">📷 Upload Avatar</label>
-            <input type="file" id="loginFileInput" accept="image/*" style="display: none;" onchange="processImage(event, 'login-preview', true)">
+        <input type="text" id="usernameInput" placeholder="Your Name" autocomplete="off"/>
+        <div style="margin-bottom: 15px;">
+            <label for="loginFileInput" style="cursor: pointer; color: var(--wa-green); font-weight: bold;">📷 Select Profile Photo</label>
+            <input type="file" id="loginFileInput" accept="image/*" style="display: none;" onchange="processImage(event)">
         </div>
-        <button onclick="startApp()">Enter</button>
-    </div>
-</div>
-
-<div id="settings-screen" class="modal-overlay" style="display: none;">
-    <div class="modal-box">
-        <h2 style="margin-top:0;">Settings</h2>
-        <img id="settings-preview" class="preview-img" src="">
-        <div class="file-upload">
-            <label for="settingsFileInput" style="cursor: pointer; display: block;">📷 Change Avatar</label>
-            <input type="file" id="settingsFileInput" accept="image/*" style="display: none;" onchange="processImage(event, 'settings-preview', false)">
-        </div>
-        <button onclick="saveSettings()">Save & Close</button>
+        <button onclick="startApp()">Connect</button>
     </div>
 </div>
 
 <div id="app-container">
+    
     <div class="sidebar" id="sidebar">
-        <div class="user-item active" onclick="switchChat('Public')" id="nav-Public">
-            <img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png">
-            <span style="font-weight:bold;">Public Chat</span>
+        <div class="panel-header">
+            <img id="my-profile-pic" src="" title="Settings">
+            <div style="margin-left: auto; display: flex; gap: 20px; color: #54656f; font-size: 20px;">
+                <span style="cursor: pointer;">💬</span>
+                <span style="cursor: pointer;">⋮</span>
+            </div>
         </div>
-        <div id="user-list-container"></div>
-        <div class="settings-btn" onclick="openSettings()">⚙️ Settings</div>
+        
+        <div class="search-bar-container">
+            <div class="search-bar">
+                <span>🔍</span>
+                <input type="text" id="searchInput" placeholder="Search or start new chat" onkeyup="filterChats()">
+            </div>
+        </div>
+
+        <div id="user-list-container">
+            </div>
     </div>
     
-    <div class="chat-area" onclick="closeSidebar()">
-        <div class="mobile-nav">
-            <button class="menu-btn" onclick="event.stopPropagation(); toggleSidebar()">☰</button>
-            <h3 id="chatHeaderTitle" style="margin:0;">Public Chat</h3>
-            <div style="width: 24px;"></div>
+    <div class="chat-area">
+        <div class="panel-header">
+            <button class="back-btn" onclick="showSidebar()">←</button>
+            <img id="chatHeaderPic" src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png">
+            <div class="chat-header-info">
+                <span class="chat-header-name" id="chatHeaderTitle">Public Group</span>
+                <span class="chat-header-status" id="chatHeaderStatus">click here for contact info</span>
+            </div>
+            <div style="margin-left: auto; display: flex; gap: 20px; color: #54656f; font-size: 20px;">
+                <span style="cursor: pointer;">🔍</span>
+                <span style="cursor: pointer;">⋮</span>
+            </div>
         </div>
-        <div id="messages"></div>
+        
+        <div id="messages">
+            </div>
+        
         <div class="input-box">
-            <input type="text" id="messageText" placeholder="Message Public Chat..." autocomplete="off"/>
-            <button onclick="sendMessage()">Send</button>
+            <span class="input-icon">😊</span>
+            <span class="input-icon">📎</span>
+            <input type="text" id="messageText" placeholder="Type a message" autocomplete="off"/>
+            <span class="input-icon" id="micBtn" style="cursor: pointer;">🎤</span>
         </div>
     </div>
 </div>
@@ -111,18 +161,17 @@
     let ws;
     let myUsername = localStorage.getItem("chat_username");
     let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-    let currentChat = "Public"; // Keeps track of who you are talking to
+    let currentChat = "Public"; 
+    let currentChatPic = "https://cdn-icons-png.flaticon.com/512/1256/1256650.png";
 
-    // Initialize Login UI
     if (myUsername) {
         document.getElementById("usernameInput").value = myUsername;
         document.getElementById("login-preview").src = myPicBase64;
         document.getElementById("login-preview").style.display = "block";
     }
 
-    // Image Compressor Logic
-    let tempPicBase64 = myPicBase64;
-    function processImage(e, previewElementId, isLogin) {
+    // Image Compressor
+    function processImage(e) {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -130,16 +179,12 @@
             const img = new Image();
             img.onload = function() {
                 const canvas = document.createElement('canvas');
-                canvas.width = 100; canvas.height = 100;
+                canvas.width = 150; canvas.height = 150;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, 100, 100);
-                const compressed = canvas.toDataURL('image/jpeg', 0.8);
-                
-                document.getElementById(previewElementId).src = compressed;
-                document.getElementById(previewElementId).style.display = "block";
-                
-                if(isLogin) myPicBase64 = compressed;
-                else tempPicBase64 = compressed;
+                ctx.drawImage(img, 0, 0, 150, 150);
+                myPicBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                document.getElementById("login-preview").src = myPicBase64;
+                document.getElementById("login-preview").style.display = "block";
             }
             img.src = event.target.result;
         }
@@ -148,13 +193,14 @@
 
     function startApp() {
         myUsername = document.getElementById("usernameInput").value;
-        if (!myUsername) return alert("Username required!");
+        if (!myUsername) return alert("Please enter your name");
 
         localStorage.setItem("chat_username", myUsername);
         localStorage.setItem("chat_pic", myPicBase64);
 
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("app-container").style.display = "flex";
+        document.getElementById("my-profile-pic").src = myPicBase64;
 
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
         ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
@@ -165,15 +211,14 @@
             const data = JSON.parse(event.data);
             
             if (data.type === "chat") {
-                // Only show message if it belongs to the room we are currently looking at
                 if ((currentChat === "Public" && data.receiver === "Public") ||
                     (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) {
-                    appendMessage(data.sender, data.profile_pic, data.message, data.timestamp);
+                    appendMessage(data.sender, data.message, data.timestamp);
                 }
             } 
             else if (data.type === "history") {
                 document.getElementById('messages').innerHTML = ""; 
-                data.data.forEach(msg => appendMessage(msg.sender, msg.profile_pic, msg.message, msg.timestamp));
+                data.data.forEach(msg => appendMessage(msg.sender, msg.message, msg.timestamp));
             }
             else if (data.type === "user_list") {
                 updateUserSidebar(data.data);
@@ -181,88 +226,132 @@
         };
     }
 
-    function switchChat(targetUser) {
-        currentChat = targetUser;
-        document.getElementById("chatHeaderTitle").innerText = targetUser === "Public" ? "Public Chat" : `Chat with ${targetUser}`;
-        document.getElementById("messageText").placeholder = `Message ${targetUser}...`;
-        
-        // Highlight active chat in sidebar
-        document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
-        const activeNav = document.getElementById(`nav-${targetUser}`);
-        if(activeNav) activeNav.classList.add('active');
-
-        // Ask server for history of this specific chat
-        document.getElementById('messages').innerHTML = ""; 
-        ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
-        
-        closeSidebar();
-    }
-
-    function updateUserSidebar(users) {
-        const container = document.getElementById('user-list-container');
-        let html = `<div class="category-header">Direct Messages</div>`;
-
-        users.forEach(user => {
-            if (user.username === myUsername) return; // Hide yourself from the list
-            html += `
-                <div class="user-item" id="nav-${user.username}" style="opacity: ${user.status === 'Offline' ? '0.5' : '1'};" onclick="switchChat('${user.username}')">
-                    <img src="${user.profile_pic}">
-                    <span>${user.username}</span>
-                    <div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
-        
-        // Re-apply active class if needed
-        const activeNav = document.getElementById(`nav-${currentChat}`);
-        if(activeNav) activeNav.classList.add('active');
-    }
-
-    function appendMessage(sender, pic, text, time) {
+    // UX: Sender gets right bubble (green), Receiver gets left bubble (white)
+    function appendMessage(sender, text, time) {
         const messages = document.getElementById('messages');
+        const isMe = sender === myUsername;
+        const rowClass = isMe ? 'sent' : 'received';
+        
+        // UX: Blue Ticks (✓✓) only show on messages you sent
+        const ticks = isMe ? `<span class="msg-ticks">✓✓</span>` : '';
+        
+        // UX: Show sender name in group chats, hide in private chats
+        const showName = (currentChat === "Public" && !isMe) ? `<div class="msg-sender-name" onclick="switchChat('${sender}', '')">${sender}</div>` : '';
+
         messages.innerHTML += `
-            <div class="msg-container">
-                <img src="${pic}">
-                <div>
-                    <div class="msg-header"><span class="name">${sender}</span><span class="time">${time}</span></div>
-                    <div class="msg-text">${text}</div>
+            <div class="msg-row ${rowClass}">
+                <div class="msg-bubble">
+                    ${showName}
+                    <span class="msg-text">${text}</span>
+                    <div class="msg-meta">
+                        <span class="msg-time">${time}</span>
+                        ${ticks}
+                    </div>
                 </div>
             </div>
         `;
         messages.scrollTop = messages.scrollHeight;
     }
 
-    function sendMessage() {
-        const input = document.getElementById("messageText");
-        if (ws && input.value) {
-            // Send as JSON so server knows WHO it's for
-            ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: input.value }));
-            input.value = '';
+    function switchChat(targetUser, targetPic, targetStatus) {
+        currentChat = targetUser;
+        currentChatPic = targetPic || "https://cdn-icons-png.flaticon.com/512/1256/1256650.png";
+        
+        // Update Main UI Header
+        document.getElementById("chatHeaderTitle").innerText = targetUser === "Public" ? "Public Group" : targetUser;
+        document.getElementById("chatHeaderPic").src = currentChatPic;
+        document.getElementById("chatHeaderStatus").innerText = targetUser === "Public" ? "click here for group info" : (targetStatus || "Online");
+        
+        // Highlight active sidebar item
+        document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
+        const activeNav = document.getElementById(`nav-${targetUser}`);
+        if(activeNav) activeNav.classList.add('active');
+
+        // Fetch History
+        document.getElementById('messages').innerHTML = ""; 
+        ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+        
+        // Mobile UX: Hide sidebar when chat is clicked
+        if (window.innerWidth <= 768) {
+            document.getElementById("sidebar").classList.add("hidden");
         }
     }
 
-    document.getElementById("messageText").addEventListener("keypress", function(event) {
-        if (event.key === "Enter") sendMessage();
+    function updateUserSidebar(users) {
+        const container = document.getElementById('user-list-container');
+        
+        // Always pin Public Group to the top
+        let html = `
+            <div class="user-item ${currentChat === 'Public' ? 'active' : ''}" id="nav-Public" onclick="switchChat('Public', 'https://cdn-icons-png.flaticon.com/512/1256/1256650.png', 'Everyone')">
+                <img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png">
+                <div class="user-info">
+                    <div class="user-row-top">
+                        <span class="user-name">Public Group</span>
+                    </div>
+                    <span class="user-status">Community Chat</span>
+                </div>
+            </div>
+        `;
+
+        users.forEach(user => {
+            if (user.username === myUsername) return; 
+            
+            html += `
+                <div class="user-item filterable-user ${currentChat === user.username ? 'active' : ''}" id="nav-${user.username}" onclick="switchChat('${user.username}', '${user.profile_pic}', '${user.status}')">
+                    <img src="${user.profile_pic}">
+                    <div class="user-info">
+                        <div class="user-row-top">
+                            <span class="user-name">${user.username}</span>
+                            <div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div>
+                        </div>
+                        <span class="user-status">${user.status}</span>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    // UX: Client-side Search function
+    function filterChats() {
+        const input = document.getElementById("searchInput").value.toLowerCase();
+        const users = document.getElementsByClassName("filterable-user");
+        for (let i = 0; i < users.length; i++) {
+            const name = users[i].querySelector(".user-name").innerText.toLowerCase();
+            users[i].style.display = name.includes(input) ? "flex" : "none";
+        }
+    }
+
+    // Keyboard Shortcuts & Input Logic
+    const messageInput = document.getElementById("messageText");
+    const micBtn = document.getElementById("micBtn");
+
+    // Change Mic icon to Send icon when typing (like WhatsApp)
+    messageInput.addEventListener("input", function() {
+        micBtn.innerText = this.value.trim() !== "" ? "➤" : "🎤";
     });
 
-    // Settings Logic
-    function openSettings() {
-        document.getElementById("settings-preview").src = myPicBase64;
-        document.getElementById("settings-preview").style.display = "block";
-        document.getElementById("settings-screen").style.display = "flex";
-        closeSidebar();
-    }
-    
-    function saveSettings() {
-        myPicBase64 = tempPicBase64;
-        localStorage.setItem("chat_pic", myPicBase64);
-        document.getElementById("settings-screen").style.display = "none";
-        ws.send(JSON.stringify({ type: "update_settings", pic: myPicBase64 })); // Tell server
+    function sendMessage() {
+        const input = messageInput;
+        if (ws && input.value.trim() !== "") {
+            ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: input.value }));
+            input.value = '';
+            micBtn.innerText = "🎤"; // Reset to mic
+        }
     }
 
-    function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
-    function closeSidebar() { document.getElementById("sidebar").classList.remove("open"); }
+    messageInput.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") sendMessage();
+    });
+    
+    micBtn.addEventListener("click", function() {
+        if (this.innerText === "➤") sendMessage();
+    });
+
+    // Mobile Navigation UX
+    function showSidebar() {
+        document.getElementById("sidebar").classList.remove("hidden");
+    }
 </script>
 </body>
 </html>
