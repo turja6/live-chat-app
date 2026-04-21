@@ -2,28 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Discord Ultimate Web</title>
+    <title>Discord Ultimate - Full Stack</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* === CORE DISCORD THEME === */
+        /* === CORE THEME & LAYOUT === */
         :root { --bg-dark: #202225; --bg-mid: #2f3136; --bg-light: #36393f; --text-main: #dcddde; --text-muted: #8e9297; --accent: #5865F2; --input-bg: #40444b; --online: #3ba55d; --hover: #393c43; --danger: #ed4245; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-dark); color: var(--text-main); overflow: hidden; user-select: none; }
-        
-        /* === LAYOUT === */
         #app-container { display: none; width: 100%; height: 100%; display: flex; position: relative; }
         .mobile-nav-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; margin-right: 15px; }
 
-        /* === SIDEBAR & USER LIST === */
+        /* === SIDEBAR === */
         .sidebar { width: 260px; background: var(--bg-mid); display: flex; flex-direction: column; border-right: 1px solid #202225; transition: transform 0.3s ease; z-index: 20; }
-        .sidebar-header { height: 60px; border-bottom: 1px solid #202225; display: flex; align-items: center; padding: 0 20px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.2); justify-content: space-between; }
+        .sidebar-header { height: 60px; border-bottom: 1px solid #202225; display: flex; align-items: center; padding: 0 20px; font-weight: bold; justify-content: space-between; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         .settings-icon { cursor: pointer; color: var(--text-muted); font-size: 18px; transition: 0.2s; }
         .settings-icon:hover { color: white; transform: rotate(90deg); }
         #user-list-container { flex: 1; overflow-y: auto; padding: 10px; }
-        .user-item { display: flex; align-items: center; padding: 8px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 2px; }
+        .user-item { display: flex; align-items: center; padding: 8px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 2px; position: relative; }
         .user-item:hover, .user-item.active { background: var(--hover); color: white; }
         .user-item img { width: 32px; height: 32px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
         .online { background: var(--online); } .offline { background: #747f8d; }
+        
+        /* Unread Badge */
+        .unread-badge { background: var(--danger); color: white; font-size: 10px; font-weight: bold; border-radius: 50%; padding: 2px 6px; margin-left: 8px; display: none; }
 
         /* === MAIN CHAT AREA === */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-light); height: 100%; position: relative; min-width: 0; }
@@ -32,6 +33,77 @@
         .call-buttons { display: flex; gap: 15px; }
         .call-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; transition: 0.2s; }
         .call-btn:hover { color: white; transform: scale(1.1); }
+
+        /* === MESSAGES === */
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; user-select: text; }
+        .msg-container { display: flex; align-items: flex-start; position: relative; transition: 0.1s; border-radius: 4px; padding: 4px 20px; margin: 0 -20px; }
+        .msg-container:hover { background: #32353b; }
+        .msg-container img.avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; object-fit: cover; cursor: pointer; margin-top: 4px; }
+        .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .msg-header .name { font-weight: bold; color: white; font-size: 15px; cursor: pointer; }
+        .msg-header .name:hover { text-decoration: underline; }
+        .msg-header .time { font-size: 12px; color: var(--text-muted); }
+        .msg-text { color: var(--text-main); font-size: 15px; line-height: 1.4; word-wrap: break-word; }
+        
+        /* Rich Text & Media */
+        .msg-text b { font-weight: 800; color: white; }
+        .msg-text i { font-style: italic; }
+        .msg-text u { text-decoration: underline; }
+        .msg-text del { text-decoration: line-through; color: var(--text-muted); }
+        .msg-image-attachment { max-width: 350px; max-height: 350px; border-radius: 8px; margin-top: 8px; cursor: zoom-in; object-fit: cover; }
+        .msg-audio-attachment { margin-top: 8px; height: 40px; outline: none; }
+        
+        /* Link Previews (Embeds) */
+        .discord-embed { background: var(--bg-mid); border-left: 4px solid var(--accent); border-radius: 4px; padding: 12px; margin-top: 8px; max-width: 400px; display: flex; flex-direction: column; gap: 8px; }
+        .embed-title { color: var(--accent); font-weight: bold; font-size: 14px; cursor: pointer; text-decoration: none; }
+        .embed-title:hover { text-decoration: underline; }
+        .embed-desc { font-size: 13px; color: var(--text-main); line-height: 1.3; }
+        .embed-img { max-width: 100%; border-radius: 4px; object-fit: cover; margin-top: 4px; }
+        
+        /* Quoting/Replying */
+        .reply-bar { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-bottom: 4px; cursor: pointer; }
+        .reply-bar::before { content: "↳"; margin-right: 4px; font-size: 14px; }
+        .reply-bar:hover { color: white; }
+
+        /* Reactions */
+        .reaction-picker { display: none; position: absolute; right: 20px; top: -15px; background: var(--bg-mid); border: 1px solid #202225; border-radius: 8px; padding: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 10; gap: 5px; }
+        .msg-container:hover .reaction-picker { display: flex; }
+        .reaction-btn { background: none; border: none; font-size: 18px; cursor: pointer; border-radius: 4px; padding: 4px; transition: 0.2s; }
+        .reaction-btn:hover { background: var(--bg-light); transform: scale(1.2); }
+        .reaction-badges { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+        .badge { background: #2f3136; border: 1px solid #202225; border-radius: 6px; padding: 2px 6px; font-size: 12px; font-weight: bold; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }
+        .badge:hover { background: #393c43; border-color: var(--text-muted); color: white; }
+
+        /* === INPUT AREA === */
+        .input-wrapper { padding: 0 20px 20px 20px; position: relative; }
+        #typing-indicator { position: absolute; top: -20px; left: 20px; font-size: 12px; color: var(--text-muted); font-weight: bold; display: none; }
+        
+        /* Active Reply/Edit Banner */
+        #active-mode-banner { background: var(--bg-mid); border-radius: 8px 8px 0 0; padding: 8px 15px; font-size: 12px; font-weight: bold; color: var(--text-muted); display: none; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bg-dark); }
+        .cancel-mode-btn { cursor: pointer; color: var(--text-main); }
+        .cancel-mode-btn:hover { color: var(--danger); }
+
+        .input-box { display: flex; align-items: center; background: var(--input-bg); border-radius: 8px; padding: 10px 15px; }
+        .action-btn { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; margin-right: 10px; transition: 0.2s; padding: 0; display: flex; align-items: center; justify-content: center; }
+        .action-btn:hover { color: white; transform: scale(1.1); }
+        .input-box input { flex: 1; border: none; background: transparent; color: white; font-size: 15px; outline: none; }
+        
+        /* Voice Notes */
+        .record-btn { color: var(--text-muted); font-size: 20px; background: none; border: none; cursor: pointer; transition: 0.2s; margin-left: 10px; }
+        .record-btn:hover { color: white; }
+        .record-btn.recording { color: var(--danger); animation: pulse 1s infinite; }
+
+        /* Emoji Modal */
+        .emoji-picker-modal { display: none; position: absolute; bottom: 70px; left: 20px; background: var(--bg-mid); border-radius: 8px; padding: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); width: 280px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; z-index: 50; border: 1px solid #202225; }
+        .emoji-item { cursor: pointer; font-size: 24px; text-align: center; padding: 5px; border-radius: 4px; transition: 0.1s; }
+        .emoji-item:hover { background: var(--bg-light); transform: scale(1.2); }
+
+        /* === CUSTOM RIGHT CLICK MENU === */
+        #context-menu { display: none; position: absolute; background: #18191c; width: 220px; border-radius: 4px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000; padding: 8px 0; border: 1px solid #202225; }
+        .context-item { padding: 10px 15px; color: var(--text-main); font-size: 14px; cursor: pointer; display: flex; justify-content: space-between; }
+        .context-item:hover { background: var(--accent); color: white; }
+        .context-item.danger { color: var(--danger); }
+        .context-item.danger:hover { background: var(--danger); color: white; }
 
         /* === WEBRTC CALL INTERFACE === */
         #call-interface { display: none; flex-direction: column; background: #000; width: 100%; height: 50%; min-height: 300px; position: relative; z-index: 5; border-bottom: 1px solid #202225; }
@@ -44,82 +116,29 @@
         .control-btn.active { background: white; color: var(--bg-dark); } 
         .control-btn.danger { background: var(--danger); color: white; border-radius: 8px; width: 60px; }
 
-        /* === MESSAGES & REACTIONS === */
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; user-select: text; }
-        .msg-container { display: flex; align-items: flex-start; position: relative; transition: 0.1s; }
-        .msg-container:hover { background: #32353b; margin: 0 -20px; padding: 0 20px; border-radius: 4px; }
-        .msg-container img.avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; object-fit: cover; cursor: pointer; }
-        .msg-header .name { font-weight: bold; color: white; font-size: 15px; margin-right: 8px; cursor: pointer; }
-        .msg-header .name:hover { text-decoration: underline; }
-        .msg-header .time { font-size: 12px; color: var(--text-muted); }
-        
-        /* Rich Text Elements */
-        .msg-text { color: var(--text-main); font-size: 15px; line-height: 1.4; margin-top: 4px; word-wrap: break-word; }
-        .msg-text b { font-weight: 800; color: white; }
-        .msg-text i { font-style: italic; }
-        .msg-text u { text-decoration: underline; }
-        .msg-text del { text-decoration: line-through; color: var(--text-muted); }
-        
-        /* High Res Images */
-        .msg-image-attachment { max-width: 350px; max-height: 350px; border-radius: 8px; margin-top: 8px; cursor: zoom-in; object-fit: cover; transition: 0.2s; }
-        .msg-image-attachment:hover { filter: brightness(1.1); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-
-        /* Reaction System */
-        .reaction-picker { display: none; position: absolute; right: 20px; top: -15px; background: var(--bg-mid); border: 1px solid #202225; border-radius: 8px; padding: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 10; gap: 5px; }
-        .msg-container:hover .reaction-picker { display: flex; }
-        .reaction-btn { background: none; border: none; font-size: 18px; cursor: pointer; border-radius: 4px; padding: 4px; transition: 0.2s; }
-        .reaction-btn:hover { background: var(--bg-light); transform: scale(1.2); }
-        .reaction-badges { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
-        .badge { background: #2f3136; border: 1px solid #202225; border-radius: 6px; padding: 2px 6px; font-size: 12px; font-weight: bold; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.1s; user-select: none; }
-        .badge:hover { background: #393c43; border-color: var(--text-muted); color: white; }
-
-        /* === INPUT AREA & EMOJI MODAL === */
-        .input-wrapper { padding: 0 20px 20px 20px; position: relative; }
-        .input-box { display: flex; align-items: center; background: var(--input-bg); border-radius: 8px; padding: 10px 15px; }
-        .action-btn { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; margin-right: 10px; transition: 0.2s; padding: 0; display: flex; align-items: center; justify-content: center; }
-        .action-btn:hover { color: white; transform: scale(1.1); }
-        .input-box input { flex: 1; border: none; background: transparent; color: white; font-size: 15px; outline: none; }
-        
-        .emoji-picker-modal { display: none; position: absolute; bottom: 70px; left: 20px; background: var(--bg-mid); border-radius: 8px; padding: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); width: 280px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; z-index: 50; border: 1px solid #202225; }
-        .emoji-item { cursor: pointer; font-size: 24px; text-align: center; padding: 5px; border-radius: 4px; transition: 0.1s; }
-        .emoji-item:hover { background: var(--bg-light); transform: scale(1.2); }
-
-        /* === CUSTOM CONTEXT MENU (RIGHT CLICK) === */
-        #context-menu { display: none; position: absolute; background: #18191c; width: 220px; border-radius: 4px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000; padding: 8px 0; border: 1px solid #202225; }
-        .context-item { padding: 10px 15px; color: var(--text-main); font-size: 14px; cursor: pointer; display: flex; justify-content: space-between; }
-        .context-item:hover { background: var(--accent); color: white; }
-        .context-item.danger { color: var(--danger); }
-        .context-item.danger:hover { background: var(--danger); color: white; }
-
-        /* === FULLSCREEN IMAGE VIEWER === */
+        /* === MODALS & VIEWER === */
         #image-viewer { display: none; position: fixed; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(5px); }
-        #viewer-img { max-width: 90vw; max-height: 80vh; transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1); cursor: grab; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-        #viewer-img:active { cursor: grabbing; }
+        #viewer-img { max-width: 90vw; max-height: 80vh; transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1); cursor: grab; }
         .viewer-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; }
-        .viewer-btn { background: var(--bg-mid); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
+        .viewer-btn { background: var(--bg-mid); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .viewer-btn:hover { background: var(--accent); }
 
-        /* === PROFILE CARD POPOUT === */
         #profile-card { display: none; position: absolute; background: var(--bg-dark); border-radius: 8px; width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 100; overflow: hidden; border: 1px solid #2f3136; }
         .card-banner { height: 60px; background: var(--accent); }
         .card-avatar { width: 80px; height: 80px; border-radius: 50%; border: 6px solid var(--bg-dark); margin: -40px 0 0 20px; object-fit: cover; background: var(--bg-dark); }
         .card-info { padding: 15px 20px; }
         .card-name { font-size: 20px; font-weight: bold; color: white; margin-bottom: 15px; }
         .card-btn { background: var(--accent); color: white; border: none; width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .card-btn:hover { background: #4752c4; }
 
-        /* === MODALS (LOGIN / SETTINGS / INCOMING CALL) === */
-        .modal-overlay { display: none; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100vh; background: rgba(0,0,0,0.85); z-index: 500; position: absolute; top:0; left:0; backdrop-filter: blur(3px); }
+        .modal-overlay { display: none; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100vh; background: rgba(0,0,0,0.85); z-index: 500; position: absolute; top:0; left:0; }
         .modal-box { background: var(--bg-light); padding: 30px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .modal-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 4px; border: none; background: var(--bg-dark); color: white; box-sizing: border-box; outline: none; font-size: 15px; }
+        .modal-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 4px; border: none; background: var(--bg-dark); color: white; outline: none; font-size: 15px; }
         .modal-box button { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.2s; }
-        .modal-box button:hover { background: #4752c4; }
         
         .incoming-call-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-dark); padding: 30px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 101; display: none; text-align: center; width: 300px; border-top: 5px solid var(--accent); }
         .pulse-avatar { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; object-fit: cover; animation: pulse 1.5s infinite; border: 3px solid var(--accent); }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(88, 101, 242, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(88, 101, 242, 0); } 100% { box-shadow: 0 0 0 0 rgba(88, 101, 242, 0); } }
 
-        /* === MOBILE RESPONSIVENESS === */
         @media (max-width: 768px) {
             .mobile-nav-btn { display: block; }
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); width: 280px; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
@@ -128,8 +147,6 @@
             #call-interface { height: 60vh; }
             .call-controls { width: 90%; bottom: 10px; padding: 5px; gap: 10px; }
             .msg-image-attachment { max-width: 100%; }
-            .emoji-picker-modal { width: 90%; left: 5%; grid-template-columns: repeat(8, 1fr); bottom: 60px; }
-            .viewer-controls { top: auto; bottom: 20px; right: auto; left: 50%; transform: translateX(-50%); width: 90%; justify-content: space-around; }
         }
     </style>
 </head>
@@ -171,15 +188,15 @@
 </div>
 
 <div id="context-menu">
-    <div class="context-item" onclick="insertFormat('**', '**')">Bold Text <span>Ctrl+B</span></div>
-    <div class="context-item" onclick="insertFormat('*', '*')">Italic Text <span>Ctrl+I</span></div>
+    <div class="context-item" onclick="prepareReply()">💬 Reply to Message</div>
+    <div class="context-item" onclick="prepareEdit()" id="ctx-edit">✏️ Edit Message</div>
+    <div class="context-item danger" onclick="deleteMessage()" id="ctx-delete">🗑️ Delete Message</div>
+    <div style="height: 1px; background: #2f3136; margin: 4px 0;"></div>
+    <div class="context-item" onclick="insertFormat('**', '**')">Bold <span>Ctrl+B</span></div>
+    <div class="context-item" onclick="insertFormat('*', '*')">Italic <span>Ctrl+I</span></div>
     <div class="context-item" onclick="insertFormat('__', '__')">Underline <span>Ctrl+U</span></div>
-    <div class="context-item" onclick="insertFormat('~~', '~~')">Strikethrough <span></span></div>
-    <div style="height: 1px; background: #2f3136; margin: 4px 0;"></div>
-    <div class="context-item" onclick="insertFormat('&c#ed4245 ', ' &r')">Red Color <span></span></div>
-    <div class="context-item" onclick="insertFormat('&c#3ba55d ', ' &r')">Green Color <span></span></div>
-    <div style="height: 1px; background: #2f3136; margin: 4px 0;"></div>
-    <div class="context-item danger" onclick="closeContextMenu()">Close Menu</div>
+    <div class="context-item" onclick="insertFormat('~~', '~~')">Strikethrough</div>
+    <div class="context-item" onclick="insertFormat('&c#ed4245 ', ' &r')">Red Color Text</div>
 </div>
 
 <div id="profile-card">
@@ -202,7 +219,6 @@
 </div>
 
 <div id="app-container">
-    
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <span style="font-size: 16px;">Direct Messages</span>
@@ -212,7 +228,6 @@
     </div>
     
     <div class="chat-area" onclick="closeAllPopups()">
-        
         <div class="chat-header">
             <div class="chat-header-info">
                 <button class="mobile-nav-btn" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
@@ -220,8 +235,8 @@
                 <span id="chatHeaderTitle" style="font-size: 18px;">Public</span>
             </div>
             <div class="call-buttons" id="call-buttons-container" style="display: none;">
-                <button class="call-btn" onclick="startCall(false)" title="Start Voice Call">📞</button>
-                <button class="call-btn" onclick="startCall(true)" title="Start Video Call">🎥</button>
+                <button class="call-btn" onclick="startCall(false)" title="Voice Call">📞</button>
+                <button class="call-btn" onclick="startCall(true)" title="Video Call">🎥</button>
             </div>
         </div>
         
@@ -232,17 +247,23 @@
                 <video id="remoteVideo" autoplay playsinline></video>
             </div>
             <div class="call-controls">
-                <button class="control-btn" id="flipCameraBtn" onclick="flipCamera()" title="Flip Camera (Mobile)">🔄</button>
-                <button class="control-btn active" id="toggleVideoBtn" onclick="toggleVideo()" title="Toggle Camera">📷</button>
-                <button class="control-btn active" id="toggleAudioBtn" onclick="toggleAudio()" title="Toggle Microphone">🎤</button>
-                <button class="control-btn" id="shareScreenBtn" onclick="toggleScreenShare()" title="Share Screen (PC)">🖥️</button>
-                <button class="control-btn danger" onclick="endCall()" title="Disconnect">☎️</button>
+                <button class="control-btn" onclick="flipCamera()" title="Flip Camera">🔄</button>
+                <button class="control-btn active" id="toggleVideoBtn" onclick="toggleVideo()">📷</button>
+                <button class="control-btn active" id="toggleAudioBtn" onclick="toggleAudio()">🎤</button>
+                <button class="control-btn" id="shareScreenBtn" onclick="toggleScreenShare()">🖥️</button>
+                <button class="control-btn danger" onclick="endCall()">☎️</button>
             </div>
         </div>
 
         <div id="messages"></div>
         
         <div class="input-wrapper">
+            <div id="active-mode-banner">
+                <span id="active-mode-text">Replying to...</span>
+                <span class="cancel-mode-btn" onclick="cancelActionMode()">✖</span>
+            </div>
+
+            <div id="typing-indicator">Someone is typing...</div>
             
             <div id="emoji-picker-menu" class="emoji-picker-modal">
                 <span class="emoji-item" onclick="insertEmoji('😀')">😀</span><span class="emoji-item" onclick="insertEmoji('😂')">😂</span>
@@ -257,12 +278,13 @@
             </div>
 
             <div class="input-box">
-                <label for="imageAttachInput" class="action-btn" title="Upload Image" style="background:#4f545c; color:var(--bg-dark); border-radius:50%; width:28px; height:28px;">+</label>
+                <label for="imageAttachInput" class="action-btn" style="background:#4f545c; color:var(--bg-dark); border-radius:50%; width:28px; height:28px; margin-right:15px;">+</label>
                 <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
                 
-                <input type="text" id="messageText" placeholder="Message..." autocomplete="off"/>
+                <input type="text" id="messageText" placeholder="Message..." autocomplete="off" oninput="handleTyping()"/>
                 
-                <button class="action-btn" onclick="toggleEmojiPicker(); event.stopPropagation()" title="Emojis" style="margin: 0 0 0 10px;">😀</button>
+                <button class="action-btn" onclick="toggleEmojiPicker(); event.stopPropagation()" style="margin: 0 5px;">😀</button>
+                <button class="record-btn" id="voiceBtn" onmousedown="startVoiceNote()" onmouseup="stopVoiceNote()" onmouseleave="stopVoiceNote()" ontouchstart="startVoiceNote()" ontouchend="stopVoiceNote()" title="Hold to record voice note">🎙️</button>
             </div>
         </div>
     </div>
@@ -270,7 +292,7 @@
 
 <script>
     /* =========================================
-       1. INITIALIZATION & LOCAL STORAGE
+       1. STATE & INITIALIZATION
     ========================================= */
     let ws;
     let myUsername = localStorage.getItem("chat_username");
@@ -278,15 +300,21 @@
     let tempPicBase64 = myPicBase64;
     let currentChat = "Public";
     let userProfiles = {}; 
+    let unreadCounts = {};
 
-    // Generate unique ID for messages (crucial for reactions)
+    // Editing & Replying State
+    let contextMenuTargetId = null;
+    let contextMenuTargetText = null;
+    let contextMenuTargetSender = null;
+    let isEditingMsgId = null;
+    let isReplyingToId = null;
+
     function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 
-    // Auto-login logic
     window.onload = () => {
         if (myUsername && localStorage.getItem("chat_pic")) {
             document.getElementById("usernameInput").value = myUsername;
-            startApp(); // Bypass login screen
+            startApp();
         }
     };
 
@@ -298,9 +326,6 @@
         startApp();
     }
 
-    /* =========================================
-       2. IMAGE COMPRESSION ENGINE (1080p Max)
-    ========================================= */
     function processImage(e, targetImgId, isLogin) {
         const file = e.target.files[0];
         if (!file) return;
@@ -310,16 +335,13 @@
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 let width = img.width; let height = img.height;
-                // High Quality Scaling constraint
                 if (width > 1080) { height *= 1080 / width; width = 1080; }
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                const b64 = canvas.toDataURL('image/jpeg', 0.85); // 85% JPEG quality
-                
+                const b64 = canvas.toDataURL('image/jpeg', 0.85);
                 document.getElementById(targetImgId).src = b64;
-                if (isLogin) myPicBase64 = b64;
-                else tempPicBase64 = b64;
+                if (isLogin) myPicBase64 = b64; else tempPicBase64 = b64;
             }
             img.src = event.target.result;
         }
@@ -327,7 +349,7 @@
     }
 
     /* =========================================
-       3. WEBSOCKET SERVER CONNECTION
+       2. WEBSOCKET CONNECTION
     ========================================= */
     function startApp() {
         document.getElementById("login-screen").style.display = "none";
@@ -335,27 +357,42 @@
 
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
         ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
-        
-        ws.onopen = function() { 
-            ws.send(JSON.stringify({ pic: myPicBase64 })); 
-        };
+        ws.onopen = function() { ws.send(JSON.stringify({ pic: myPicBase64 })); };
         
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
             
+            // Standard Chat
             if (data.type === "chat") {
-                // Ensure we only render messages meant for the current screen
-                if ((currentChat === "Public" && data.receiver === "Public") || 
-                    (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) {
-                    appendMessage(data.msg_id, data.sender, data.profile_pic, data.message, data.timestamp, data.reactions || {});
+                if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) {
+                    appendMessage(data);
+                } else if (data.sender !== myUsername) {
+                    // Missed message notification logic
+                    const trackTarget = data.receiver === "Public" ? "Public" : data.sender;
+                    unreadCounts[trackTarget] = (unreadCounts[trackTarget] || 0) + 1;
+                    updateUserSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status}))); // force re-render sidebar
                 }
             }
+            // Real-Time Events
+            else if (data.type === "edit_message") {
+                const msgEl = document.getElementById(`msg-text-${data.msg_id}`);
+                if (msgEl) msgEl.innerHTML = parseFormattedText(data.new_text) + ` <span style="font-size:10px; color:var(--text-muted);">(edited)</span>`;
+            }
+            else if (data.type === "delete_message") {
+                const el = document.getElementById(`msg-${data.msg_id}`);
+                if (el) el.remove();
+            }
+            else if (data.type === "typing") { handleIncomingTyping(data.sender); }
             else if (data.type === "reaction") { updateReactionUI(data.msg_id, data.emoji); }
             else if (data.type === "history") {
                 document.getElementById('messages').innerHTML = ""; 
-                data.data.forEach(msg => appendMessage(msg.msg_id, msg.sender, msg.profile_pic, msg.message, msg.timestamp, msg.reactions));
+                data.data.forEach(msg => appendMessage(msg));
             }
-            else if (data.type === "user_list") { updateUserSidebar(data.data); }
+            else if (data.type === "user_list") { 
+                // Build profile cache internally
+                data.data.forEach(u => userProfiles[u.username] = {name: u.username, pic: u.profile_pic, status: u.status});
+                updateUserSidebar(data.data); 
+            }
             else if (data.type === "call_offer") { handleIncomingCall(data); }
             else if (data.type === "call_answer") { handleAnswer(data.sdp); }
             else if (data.type === "ice_candidate") { handleIceCandidate(data.candidate); }
@@ -363,57 +400,80 @@
     }
 
     /* =========================================
-       4. RICH TEXT PARSER (Markdown + Colors)
+       3. RICH TEXT & LINK PREVIEW PARSER
     ========================================= */
     function parseFormattedText(text) {
-        // Prevent XSS attacks by escaping raw HTML tags first
         let html = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        
-        // Parse basic Markdown
-        html = html.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>"); // Bold
-        html = html.replace(/\*(.*?)\*/g, "<i>$1</i>");     // Italic
-        html = html.replace(/__(.*?)__/g, "<u>$1</u>");     // Underline
-        html = html.replace(/~~(.*?)~~/g, "<del>$1</del>"); // Strike
-        
-        // Parse Custom Color Syntax: &c#ff0000 Red Text &r
-        // Matches Hex, rgb(), or standard CSS color names
+        html = html.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>"); 
+        html = html.replace(/\*(.*?)\*/g, "<i>$1</i>");     
+        html = html.replace(/__(.*?)__/g, "<u>$1</u>");     
+        html = html.replace(/~~(.*?)~~/g, "<del>$1</del>"); 
         html = html.replace(/&c(#(?:[0-9a-fA-F]{3}){1,2}|rgb\([^)]+\)|[a-zA-Z]+)\b(.*?)(?:&r|$)/g, "<span style='color: $1'>$2</span>");
         
+        // Auto-link URLs
+        html = html.replace(/(https?:\/\/[^\s]+)/g, "<a href='$1' target='_blank' style='color:var(--accent); text-decoration:none;'>$1</a>");
         return html;
     }
 
     /* =========================================
-       5. CHAT RENDERING & REACTIONS
+       4. MESSAGE RENDERING
     ========================================= */
-    function appendMessage(msg_id, sender, pic, text, time, reactions = {}) {
+    function appendMessage(msgObj) {
         const messages = document.getElementById('messages');
-        let contentHtml = "";
+        const { msg_id, sender, profile_pic, message, timestamp, reactions, preview, reply_to } = msgObj;
         
-        // Check if message is a Base64 image attachment
-        if (text.startsWith("data:image/")) { 
-            contentHtml = `<img src="${text}" class="msg-image-attachment" onclick="openImageViewer('${text}', event)">`; 
-        } else {
-            contentHtml = `<div class="msg-text">${parseFormattedText(text)}</div>`;
+        let contentHtml = "";
+        let embedHtml = "";
+        let replyHtml = "";
+
+        // Check if message is replying to someone
+        if (reply_to) {
+            replyHtml = `<div class="reply-bar" onclick="document.getElementById('msg-${reply_to}').scrollIntoView({behavior: 'smooth'})">Replying to a previous message...</div>`;
         }
 
-        // Render existing reactions from database
+        // Check Media Types
+        if (message.startsWith("data:image/")) { 
+            contentHtml = `<img src="${message}" class="msg-image-attachment" onclick="openImageViewer('${message}', event)">`; 
+        } 
+        else if (message.startsWith("data:audio/")) {
+            contentHtml = `<audio controls class="msg-audio-attachment" src="${message}"></audio>`;
+        }
+        else {
+            contentHtml = `<div class="msg-text" id="msg-text-${msg_id}" data-raw="${message}">${parseFormattedText(message)}</div>`;
+        }
+
+        // Check for Link Previews
+        if (preview && preview.title) {
+            let imgBlock = preview.image ? `<img src="${preview.image}" class="embed-img">` : '';
+            embedHtml = `
+                <div class="discord-embed">
+                    <a href="${preview.url}" target="_blank" class="embed-title">${preview.title}</a>
+                    <div class="embed-desc">${preview.description.substring(0, 100)}...</div>
+                    ${imgBlock}
+                </div>`;
+        }
+
+        // Render Reactions
         let reactionHtml = "";
-        for (const [emoji, count] of Object.entries(reactions)) {
-            reactionHtml += `<div class="badge" onclick="sendReaction('${msg_id}', '${emoji}')">${emoji} ${count}</div>`;
+        if (reactions) {
+            for (const [emoji, count] of Object.entries(reactions)) {
+                reactionHtml += `<div class="badge" onclick="sendReaction('${msg_id}', '${emoji}')">${emoji} ${count}</div>`;
+            }
         }
 
         messages.innerHTML += `
-            <div class="msg-container" id="msg-${msg_id}">
+            <div class="msg-container" id="msg-${msg_id}" data-sender="${sender}" oncontextmenu="openContextMenu(event, '${msg_id}', '${sender}')">
                 <div class="reaction-picker">
                     <button class="reaction-btn" onclick="sendReaction('${msg_id}', '👍')">👍</button>
                     <button class="reaction-btn" onclick="sendReaction('${msg_id}', '❤️')">❤️</button>
                     <button class="reaction-btn" onclick="sendReaction('${msg_id}', '😂')">😂</button>
-                    <button class="reaction-btn" onclick="sendReaction('${msg_id}', '😲')">😲</button>
                 </div>
-                <img src="${pic}" class="avatar" onclick="openProfileCard(event, '${sender}', '${pic}')">
+                <img src="${profile_pic}" class="avatar" onclick="openProfileCard(event, '${sender}', '${profile_pic}')">
                 <div>
-                    <div class="msg-header"><span class="name" onclick="openProfileCard(event, '${sender}', '${pic}')">${sender}</span><span class="time">${time}</span></div>
+                    ${replyHtml}
+                    <div class="msg-header"><span class="name" onclick="openProfileCard(event, '${sender}', '${profile_pic}')">${sender}</span><span class="time">${timestamp}</span></div>
                     ${contentHtml}
+                    ${embedHtml}
                     <div class="reaction-badges" id="reactions-${msg_id}">${reactionHtml}</div>
                 </div>
             </div>
@@ -422,14 +482,12 @@
     }
 
     function sendReaction(msg_id, emoji) {
-        if (!ws) return;
-        ws.send(JSON.stringify({ type: "reaction", msg_id: msg_id, emoji: emoji, receiver: currentChat }));
+        if (ws) ws.send(JSON.stringify({ type: "reaction", msg_id: msg_id, emoji: emoji, receiver: currentChat }));
     }
 
     function updateReactionUI(msg_id, emoji) {
         const container = document.getElementById(`reactions-${msg_id}`);
-        if (!container) return; // Message not currently on screen
-        
+        if (!container) return; 
         let found = false;
         const badges = container.getElementsByClassName('badge');
         for (let badge of badges) {
@@ -439,20 +497,36 @@
                 found = true; break;
             }
         }
-        if (!found) {
-            container.innerHTML += `<div class="badge" onclick="sendReaction('${msg_id}', '${emoji}')">${emoji} 1</div>`;
-        }
+        if (!found) container.innerHTML += `<div class="badge" onclick="sendReaction('${msg_id}', '${emoji}')">${emoji} 1</div>`;
     }
 
     /* =========================================
-       6. SENDING MESSAGES & IMAGES
+       5. INPUTS: TYPING, SENDING, & VOICE NOTES
     ========================================= */
+    let typingTimer;
+    function handleTyping() {
+        if (ws) ws.send(JSON.stringify({ type: "typing", receiver: currentChat }));
+    }
+    
+    function handleIncomingTyping(sender) {
+        const ind = document.getElementById("typing-indicator");
+        ind.innerText = `${sender} is typing...`;
+        ind.style.display = "block";
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => ind.style.display = "none", 3000);
+    }
+
     function sendMessage() {
         const input = document.getElementById("messageText");
         const val = input.value.trim();
         if (ws && val) { 
-            ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: val })); 
+            if (isEditingMsgId) {
+                ws.send(JSON.stringify({ type: "edit_message", msg_id: isEditingMsgId, new_text: val, receiver: currentChat }));
+            } else {
+                ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: val, reply_to: isReplyingToId })); 
+            }
             input.value = ''; 
+            cancelActionMode();
         }
         document.getElementById("emoji-picker-menu").style.display = "none";
     }
@@ -467,11 +541,12 @@
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 let width = img.width; let height = img.height;
-                if (width > 1200) { height *= 1200 / width; width = 1200; } // Good quality for chat
+                if (width > 1200) { height *= 1200 / width; width = 1200; }
                 canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: canvas.toDataURL('image/jpeg', 0.8) }));
+                ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: canvas.toDataURL('image/jpeg', 0.8), reply_to: isReplyingToId }));
+                cancelActionMode();
             }
             img.src = event.target.result;
         }
@@ -479,39 +554,132 @@
         e.target.value = '';
     }
 
+    // Voice Notes Logic (MediaRecorder)
+    let mediaRecorder;
+    let audioChunks = [];
+    async function startVoiceNote() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.start();
+            document.getElementById("voiceBtn").classList.add("recording");
+            
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    const base64AudioMessage = reader.result;
+                    ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: base64AudioMessage }));
+                }
+                audioChunks = [];
+                stream.getTracks().forEach(t => t.stop());
+            };
+        } catch (e) { alert("Microphone access denied."); }
+    }
+    function stopVoiceNote() {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            document.getElementById("voiceBtn").classList.remove("recording");
+        }
+    }
+
     /* =========================================
-       7. UI INTERACTIONS (SIDEBAR, PROFILES, MODALS)
+       6. CONTEXT MENU & EDITING
+    ========================================= */
+    const contextMenu = document.getElementById("context-menu");
+    function openContextMenu(e, msg_id, sender) {
+        e.preventDefault();
+        contextMenuTargetId = msg_id;
+        contextMenuTargetSender = sender;
+        
+        // Hide edit/delete if it's not our message
+        document.getElementById("ctx-edit").style.display = sender === myUsername ? "flex" : "none";
+        document.getElementById("ctx-delete").style.display = sender === myUsername ? "flex" : "none";
+
+        contextMenu.style.display = "block";
+        let x = e.pageX; let y = e.pageY;
+        if (x + 220 > window.innerWidth) x = window.innerWidth - 220;
+        if (y + 300 > window.innerHeight) y = window.innerHeight - 300;
+        contextMenu.style.left = x + "px"; contextMenu.style.top = y + "px";
+    }
+    document.addEventListener("click", closeAllPopups);
+    
+    function deleteMessage() {
+        if (ws && contextMenuTargetId) {
+            ws.send(JSON.stringify({ type: "delete_message", msg_id: contextMenuTargetId, receiver: currentChat }));
+        }
+    }
+
+    function prepareEdit() {
+        const textDiv = document.getElementById(`msg-text-${contextMenuTargetId}`);
+        if (!textDiv) return;
+        isEditingMsgId = contextMenuTargetId;
+        const input = document.getElementById("messageText");
+        input.value = textDiv.getAttribute("data-raw"); // get unformatted markdown
+        input.focus();
+        
+        document.getElementById("active-mode-text").innerText = "Editing Message...";
+        document.getElementById("active-mode-banner").style.display = "flex";
+    }
+
+    function prepareReply() {
+        isReplyingToId = contextMenuTargetId;
+        document.getElementById("messageText").focus();
+        document.getElementById("active-mode-text").innerText = `Replying to ${contextMenuTargetSender}`;
+        document.getElementById("active-mode-banner").style.display = "flex";
+    }
+
+    function cancelActionMode() {
+        isEditingMsgId = null;
+        isReplyingToId = null;
+        document.getElementById("active-mode-banner").style.display = "none";
+        document.getElementById("messageText").value = "";
+    }
+
+    function insertFormat(openTag, closeTag) {
+        const input = document.getElementById("messageText");
+        input.value = input.value + openTag + "text" + closeTag;
+        input.focus();
+        closeAllPopups();
+    }
+
+    /* =========================================
+       7. UI, PROFILES & SIDEBAR
     ========================================= */
     function updateUserSidebar(users) {
         const container = document.getElementById('user-list-container');
-        let html = `<div class="user-item ${currentChat === 'Public' ? 'active' : ''}" id="nav-Public" onclick="switchChat('Public')"><img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png"><span style="font-weight:bold;">Public Server</span></div>`;
         
+        // Render Public Server
+        let pubBadge = unreadCounts["Public"] ? `<span class="unread-badge">${unreadCounts["Public"]}</span>` : "";
+        let html = `<div class="user-item ${currentChat === 'Public' ? 'active' : ''}" id="nav-Public" onclick="switchChat('Public')"><img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png"><span style="font-weight:bold;">Public Server</span>${pubBadge}</div>`;
+        
+        // Render Users
         users.forEach(user => {
-            userProfiles[user.username] = user.profile_pic; // Save for popouts
             if (user.username === myUsername) return; 
-            html += `<div class="user-item ${currentChat === user.username ? 'active' : ''}" id="nav-${user.username}" style="opacity: ${user.status === 'Offline' ? '0.5' : '1'};" onclick="switchChat('${user.username}')"><img src="${user.profile_pic}"><span>${user.username}</span><div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div></div>`;
+            let badge = unreadCounts[user.username] ? `<span class="unread-badge">${unreadCounts[user.username]}</span>` : "";
+            html += `<div class="user-item ${currentChat === user.username ? 'active' : ''}" id="nav-${user.username}" style="opacity: ${user.status === 'Offline' ? '0.5' : '1'};" onclick="switchChat('${user.username}')"><img src="${user.profile_pic}"><span>${user.username}</span>${badge}<div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div></div>`;
         });
         container.innerHTML = html;
     }
 
     function switchChat(targetUser) {
         currentChat = targetUser;
+        unreadCounts[targetUser] = 0; // Clear unread badge
+        
         document.getElementById("chatHeaderTitle").innerText = targetUser;
         document.getElementById("messageText").placeholder = `Message @${targetUser}`;
-        
-        // Show/Hide Call Buttons
         document.getElementById("call-buttons-container").style.display = targetUser === "Public" ? "none" : "flex";
 
-        // Highlight Sidebar
         document.querySelectorAll('.user-item').forEach(el => el.classList.remove('active'));
         const activeNav = document.getElementById(`nav-${targetUser}`);
         if(activeNav) activeNav.classList.add('active');
 
-        // Request History
         document.getElementById('messages').innerHTML = ""; 
         ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
-        
         closeAllPopups();
+        cancelActionMode();
     }
 
     function openProfileCard(e, name, pic) {
@@ -522,7 +690,6 @@
         document.getElementById("card-msg-btn").onclick = () => switchChat(name);
         
         card.style.display = "block";
-        // Calculate safe position so it doesn't clip off screen
         card.style.left = Math.min(e.pageX + 10, window.innerWidth - 310) + "px";
         card.style.top = Math.max(20, Math.min(e.pageY - 50, window.innerHeight - 250)) + "px";
     }
@@ -536,16 +703,10 @@
     
     function saveSettings() {
         const newName = document.getElementById("settingsNameInput").value.trim();
-        if(newName) {
-            myUsername = newName;
-            localStorage.setItem("chat_username", myUsername);
-        }
-        myPicBase64 = tempPicBase64;
-        localStorage.setItem("chat_pic", myPicBase64);
-        
+        if(newName) { myUsername = newName; localStorage.setItem("chat_username", myUsername); }
+        myPicBase64 = tempPicBase64; localStorage.setItem("chat_pic", myPicBase64);
         ws.send(JSON.stringify({ type: "update_settings", pic: myPicBase64, new_name: myUsername }));
-        closeSettings();
-        window.location.reload(); // Hard refresh to apply states globally
+        closeSettings(); window.location.reload(); 
     }
 
     function toggleEmojiPicker() {
@@ -553,81 +714,39 @@
         picker.style.display = picker.style.display === "grid" ? "none" : "grid";
     }
     function insertEmoji(emoji) {
-        const input = document.getElementById("messageText");
-        input.value += emoji;
-        input.focus();
+        document.getElementById("messageText").value += emoji;
+        document.getElementById("messageText").focus();
     }
 
     function closeAllPopups() {
         document.getElementById("profile-card").style.display = "none";
         document.getElementById("emoji-picker-menu").style.display = "none";
         document.getElementById('sidebar').classList.remove('open');
-        closeContextMenu();
+        contextMenu.style.display = "none";
     }
 
-    /* =========================================
-       8. FULLSCREEN IMAGE VIEWER
-    ========================================= */
+    // Image Lightbox
     let currentZoom = 1;
     function openImageViewer(src, e) {
-        e.stopPropagation();
-        currentZoom = 1;
+        e.stopPropagation(); currentZoom = 1;
         document.getElementById("viewer-img").src = src;
         document.getElementById("viewer-img").style.transform = `scale(1)`;
         document.getElementById("image-viewer").style.display = "flex";
     }
     function closeImageViewer() { document.getElementById("image-viewer").style.display = "none"; }
-    
     function zoomImage(amount) {
-        currentZoom += amount;
-        if(currentZoom < 0.5) currentZoom = 0.5;
-        if(currentZoom > 5) currentZoom = 5;
+        currentZoom = Math.max(0.5, Math.min(5, currentZoom + amount));
         document.getElementById("viewer-img").style.transform = `scale(${currentZoom})`;
     }
-    
     function downloadImage() {
-        const src = document.getElementById("viewer-img").src;
-        const link = document.createElement("a");
-        link.href = src; link.download = `Discord_Img_${Date.now()}.jpg`;
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        const link = document.createElement("a"); link.href = document.getElementById("viewer-img").src;
+        link.download = `Discord_Img_${Date.now()}.jpg`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
-    
-    // Mouse wheel zoom support
-    document.getElementById("viewer-img").addEventListener("wheel", function(e) {
-        e.preventDefault(); zoomImage(e.deltaY < 0 ? 0.15 : -0.15);
-    });
+    document.getElementById("viewer-img").addEventListener("wheel", e => { e.preventDefault(); zoomImage(e.deltaY < 0 ? 0.15 : -0.15); });
+
 
     /* =========================================
-       9. CUSTOM CONTEXT MENU (RIGHT CLICK)
-    ========================================= */
-    const contextMenu = document.getElementById("context-menu");
-    document.addEventListener("contextmenu", function(e) {
-        // Don't override right-click if they are typing in an input box
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; 
-        e.preventDefault();
-        contextMenu.style.display = "block";
-        
-        // Keep menu inside screen bounds
-        let x = e.pageX; let y = e.pageY;
-        if (x + 220 > window.innerWidth) x = window.innerWidth - 220;
-        if (y + 150 > window.innerHeight) y = window.innerHeight - 150;
-        
-        contextMenu.style.left = x + "px";
-        contextMenu.style.top = y + "px";
-    });
-    
-    document.addEventListener("click", closeAllPopups);
-    function closeContextMenu() { contextMenu.style.display = "none"; }
-
-    function insertFormat(openTag, closeTag) {
-        const input = document.getElementById("messageText");
-        input.value = input.value + openTag + "text" + closeTag;
-        input.focus();
-        closeContextMenu();
-    }
-
-    /* =========================================
-       10. ADVANCED WEBRTC CALLING ENGINE
+       8. WEBRTC ENGINE (Calls & Screen Share)
     ========================================= */
     let peerConnection;
     let localStream;
@@ -635,62 +754,42 @@
     let activeCallUser = null;
     let incomingOfferData = null;
     let iceCandidateQueue = [];
-    
-    let isVideoOn = true;
-    let isAudioOn = true;
-    let isSharingScreen = false;
-    let currentFacingMode = "user"; // "user" = front camera, "environment" = back camera
+    let isVideoOn = true; let isAudioOn = true; let isSharingScreen = false;
+    let currentFacingMode = "user"; 
 
-    // Free Google STUN Servers to bypass home NAT/Routers
     const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-
     function updateCallStatus(msg) { document.getElementById("call-status").innerText = msg; }
 
     async function initMedia(videoRequested) {
         try {
-            // Ask for specific camera direction (front by default)
-            const videoConstraints = videoRequested ? { facingMode: currentFacingMode } : false;
-            localStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true });
+            localStream = await navigator.mediaDevices.getUserMedia({ video: videoRequested ? { facingMode: currentFacingMode } : false, audio: true });
             document.getElementById("localVideo").srcObject = localStream;
-            
             isVideoOn = videoRequested; isAudioOn = true;
             document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn);
             document.getElementById("toggleAudioBtn").classList.toggle("active", isAudioOn);
             return true;
         } catch (error) {
-            console.error("Media Error:", error);
-            alert("Hardware access denied. Ensure you are testing on HTTPS and allowed browser permissions.");
-            return false;
+            alert("Hardware access denied. Ensure HTTPS and permissions."); return false;
         }
     }
 
     function createPeerConnection() {
         peerConnection = new RTCPeerConnection(rtcConfig);
-        
-        // Feed local hardware to the connection
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        // Display remote video when it arrives
         peerConnection.ontrack = event => {
             document.getElementById("remoteVideo").srcObject = event.streams[0];
             updateCallStatus("Connected");
         };
-
-        // Send routing data to server
         peerConnection.onicecandidate = event => {
             if (event.candidate) ws.send(JSON.stringify({ type: "ice_candidate", target: activeCallUser, candidate: event.candidate }));
         };
-
-        // Monitor connection drop
         peerConnection.onconnectionstatechange = () => {
             if (["disconnected", "failed"].includes(peerConnection.connectionState)) {
-                updateCallStatus("Connection Lost");
-                setTimeout(endCall, 2000);
+                updateCallStatus("Connection Lost"); setTimeout(endCall, 2000);
             }
         };
     }
 
-    // --- Media Controls ---
     function toggleAudio() {
         if (!localStream) return;
         isAudioOn = !isAudioOn;
@@ -701,101 +800,65 @@
     async function toggleVideo() {
         if (!localStream) return;
         if (!isVideoOn) {
-            // If started as audio-only, we must request camera access now
             try {
                 const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
                 const videoTrack = newStream.getVideoTracks()[0];
-                localStream.addTrack(videoTrack);
-                peerConnection.addTrack(videoTrack, localStream);
+                localStream.addTrack(videoTrack); peerConnection.addTrack(videoTrack, localStream);
                 isVideoOn = true;
             } catch (e) { return; }
         } else {
-            // Simply disable the track to freeze the frame/turn it black
             const videoTrack = localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                videoTrack.enabled = !videoTrack.enabled;
-                isVideoOn = videoTrack.enabled;
-            }
+            if (videoTrack) { videoTrack.enabled = !videoTrack.enabled; isVideoOn = videoTrack.enabled; }
         }
         document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn);
     }
 
-    // CAMERA FLIP LOGIC (Mobile Feature)
     async function flipCamera() {
         if (!localStream || !isVideoOn || isSharingScreen) return;
-        
-        // Toggle the target mode
         currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
-        
-        // Stop the old camera
         const oldVideoTrack = localStream.getVideoTracks()[0];
         if (oldVideoTrack) oldVideoTrack.stop();
-
         try {
-            // Request the new camera
             const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: currentFacingMode } } });
             const newVideoTrack = newStream.getVideoTracks()[0];
-            
-            // Swap tracks locally
-            localStream.removeTrack(oldVideoTrack);
-            localStream.addTrack(newVideoTrack);
+            localStream.removeTrack(oldVideoTrack); localStream.addTrack(newVideoTrack);
             document.getElementById("localVideo").srcObject = localStream;
-
-            // Swap tracks on the live peer connection without dropping the call
             if (peerConnection) {
                 const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
                 if (sender) sender.replaceTrack(newVideoTrack);
             }
-        } catch (e) {
-            alert("Camera flip failed. Your device might not support this mode.");
-            currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; // Revert
-        }
+        } catch (e) { currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; }
     }
 
-    // SCREEN SHARING LOGIC (PC Feature)
     async function toggleScreenShare() {
         if (!peerConnection) return;
         try {
             if (!isSharingScreen) {
-                // Request Screen
                 screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const screenTrack = screenStream.getVideoTracks()[0];
-                
-                // Swap the live video sender track
                 const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
                 if (sender) sender.replaceTrack(screenTrack);
-                
                 document.getElementById('localVideo').srcObject = screenStream;
-                isSharingScreen = true;
-                document.getElementById("shareScreenBtn").classList.add("active");
-                
-                // Listen for user hitting "Stop Sharing" on the browser popup
-                screenTrack.onended = () => { stopScreenShare(); };
-            } else { 
-                stopScreenShare(); 
-            }
-        } catch (e) { console.error("Screen share aborted"); }
+                isSharingScreen = true; document.getElementById("shareScreenBtn").classList.add("active");
+                screenTrack.onended = stopScreenShare;
+            } else { stopScreenShare(); }
+        } catch (e) { }
     }
 
     function stopScreenShare() {
         if (screenStream) screenStream.getTracks().forEach(t => t.stop());
         const cameraTrack = localStream.getVideoTracks()[0];
         const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
-        if (sender && cameraTrack) sender.replaceTrack(cameraTrack); // Revert to camera
-        
+        if (sender && cameraTrack) sender.replaceTrack(cameraTrack); 
         document.getElementById('localVideo').srcObject = localStream;
-        isSharingScreen = false;
-        document.getElementById("shareScreenBtn").classList.remove("active");
+        isSharingScreen = false; document.getElementById("shareScreenBtn").classList.remove("active");
     }
 
-    // --- Call State Handling ---
     async function startCall(videoRequested) {
         activeCallUser = currentChat;
         document.getElementById("call-interface").style.display = "flex";
         updateCallStatus("Ringing...");
-
         if (!await initMedia(videoRequested)) return endCall();
-
         createPeerConnection();
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
@@ -805,67 +868,61 @@
     function handleIncomingCall(data) {
         incomingOfferData = data;
         document.getElementById("incoming-caller-name").innerText = data.sender;
-        document.getElementById("incoming-avatar").src = userProfiles[data.sender] || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+        document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
         document.getElementById("incoming-call-modal").style.display = "block";
     }
 
     async function acceptCall() {
         document.getElementById("incoming-call-modal").style.display = "none";
-        
-        // Auto-switch UI to the caller
         if (currentChat !== incomingOfferData.sender) switchChat(incomingOfferData.sender);
-        
         document.getElementById("call-interface").style.display = "flex";
         updateCallStatus("Connecting...");
-        
         activeCallUser = incomingOfferData.sender;
         if (!await initMedia(incomingOfferData.video)) return endCall();
-
         createPeerConnection();
         await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOfferData.sdp));
-        
-        processIceQueue(); // Flush any connection data that arrived while ringing
-
+        while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{});
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         ws.send(JSON.stringify({ type: "call_answer", target: activeCallUser, sdp: answer }));
     }
 
-    function rejectCall() { 
-        document.getElementById("incoming-call-modal").style.display = "none"; 
-        incomingOfferData = null; 
-    }
+    function rejectCall() { document.getElementById("incoming-call-modal").style.display = "none"; incomingOfferData = null; }
 
     async function handleAnswer(sdp) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
-        processIceQueue();
+        while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{});
     }
 
-    // The Queue prevents the "ICE Race Condition" bug
     async function handleIceCandidate(candidate) {
         const rtcCandidate = new RTCIceCandidate(candidate);
         if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
             try { await peerConnection.addIceCandidate(rtcCandidate); } catch (e) {}
-        } else { 
-            iceCandidateQueue.push(rtcCandidate); 
-        }
-    }
-
-    function processIceQueue() {
-        while (iceCandidateQueue.length > 0) { 
-            peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{}); 
-        }
+        } else { iceCandidateQueue.push(rtcCandidate); }
     }
 
     function endCall() {
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
         if (screenStream) { screenStream.getTracks().forEach(track => track.stop()); screenStream = null; }
-        iceCandidateQueue = []; 
-        document.getElementById("call-interface").style.display = "none";
-        activeCallUser = null;
+        iceCandidateQueue = []; document.getElementById("call-interface").style.display = "none"; activeCallUser = null;
     }
+      // Register the Service Worker for Push Notifications and Offline Mode
+        if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').then(function(registration) {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      
+      // Ask user for permission to send notifications
+        if (Notification.permission !== "granted") {
+          Notification.requestPermission();
+      }
+      
+    }, function(err) {
+      console.log('ServiceWorker registration failed: ', err);
+    });
+  });
+}
 </script>
-
 </body>
 </html>
