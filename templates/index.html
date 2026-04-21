@@ -226,31 +226,37 @@
         };
     }
 
-    // UX: Sender gets right bubble (green), Receiver gets left bubble (white)
+    // UPDATED: Smarter rendering for images and official SVG ticks
     function appendMessage(sender, text, time) {
-        const messages = document.getElementById('messages');
-        const isMe = sender === myUsername;
-        const rowClass = isMe ? 'sent' : 'received';
-        
-        // UX: Blue Ticks (✓✓) only show on messages you sent
-        const ticks = isMe ? `<span class="msg-ticks">✓✓</span>` : '';
-        
-        // UX: Show sender name in group chats, hide in private chats
-        const showName = (currentChat === "Public" && !isMe) ? `<div class="msg-sender-name" onclick="switchChat('${sender}', '')">${sender}</div>` : '';
+     const messages = document.getElementById('messages');
+     const isMe = sender === myUsername;
+     const rowClass = isMe ? 'sent' : 'received';
+    
+    // Official WhatsApp Blue Double Tick SVG
+    const blueTicks = `<svg viewBox="0 0 16 15" width="16" height="15" fill="#53bdeb" style="margin-left: 4px; margin-bottom: -3px;"><path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.32.32 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/></svg>`;
+    
+    const ticks = isMe ? blueTicks : '';
+    const showName = (currentChat === "Public" && !isMe) ? `<div class="msg-sender-name">${sender}</div>` : '';
 
-        messages.innerHTML += `
-            <div class="msg-row ${rowClass}">
-                <div class="msg-bubble">
-                    ${showName}
-                    <span class="msg-text">${text}</span>
-                    <div class="msg-meta">
-                        <span class="msg-time">${time}</span>
-                        ${ticks}
-                    </div>
+    // Check if the text is actually a Base64 image
+    let contentHtml = `<span class="msg-text">${text}</span>`;
+    if (text.startsWith("data:image/")) {
+        contentHtml = `<img src="${text}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px; display: block;">`;
+    }
+
+    messages.innerHTML += `
+        <div class="msg-row ${rowClass}">
+            <div class="msg-bubble">
+                ${showName}
+                ${contentHtml}
+                <div class="msg-meta">
+                    <span class="msg-time">${time}</span>
+                    ${ticks}
                 </div>
             </div>
-        `;
-        messages.scrollTop = messages.scrollHeight;
+        </div>
+    `;
+    messages.scrollTop = messages.scrollHeight;
     }
 
     function switchChat(targetUser, targetPic, targetStatus) {
@@ -275,6 +281,36 @@
         if (window.innerWidth <= 768) {
             document.getElementById("sidebar").classList.add("hidden");
         }
+    }
+        // NEW: Handle sending image attachments
+    function sendImageAttachment(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+    
+        const reader = new FileReader();
+        reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+            // Compress the image before sending so it doesn't break the WebSocket
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 350; // Safe width for chat bubbles
+            const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to Base64 text string
+            const base64Image = canvas.toDataURL('image/jpeg', 0.6);
+            
+            // Send to server
+            ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: base64Image }));
+        }
+        img.src = event.target.result;
+    }
+    reader.readAsDataURL(file);
+    e.target.value = ''; // Reset the input
     }
 
     function updateUserSidebar(users) {
