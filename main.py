@@ -27,6 +27,10 @@ class ConnectionManager:
         for connection in list(self.active_connections.values()):
             await connection.send_text(json.dumps(message))
 
+    async def send_personal_message(self, message: dict, username: str):
+        if username in self.active_connections:
+            await self.active_connections[username].send_text(json.dumps(message))
+
 manager = ConnectionManager()
 
 @app.get("/")
@@ -38,30 +42,55 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket, username)
     
     try:
-        # 1. Wait for the user to send their profile picture via JSON
+        # Wait for profile setup
         setup_data = await websocket.receive_text()
         setup_json = json.loads(setup_data)
         pic = setup_json.get("pic", "")
 
-        # 2. Log them in and send history
         database.update_user(username, pic, "Online")
-        history = database.get_history()
-        await websocket.send_text(json.dumps({"type": "history", "data": history}))
         
-        # 3. Update everyone's sidebar
+        # Send Public history by default
+        history = database.get_history(username, "Public")
+        await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
+        
         users = database.get_all_users()
         await manager.broadcast({"type": "user_list", "data": users})
         
         while True:
-            # 4. Handle normal chat messages
-            data = await websocket.receive_text()
-            timestamp = datetime.now().strftime("%I:%M %p") # 12-hour AM/PM format
-            database.save_message(username, pic, data)
-            await manager.broadcast({
-                "type": "chat", "sender": username, "profile_pic": pic, 
-                "message": data, "timestamp": timestamp
-            })
+            # Handle incoming complex JSON data
+            data_str = await websocket.receive_text()
+            data = json.loads(data_str)
             
+            if data["type"] == "chat":
+                receiver = data["receiver"]
+                msg_text = data["message"]
+                
+                database.save_message(username, receiver, pic, msg_text)
+                
+                payload = {
+                    "type": "chat", "sender": username, "receiver": receiver, 
+                    "profile_pic": pic, "message": msg_text, "timestamp": datetime.now().strftime("%I:%M %p")
+                }
+                
+                if receiver == "Public":
+                    await manager.broadcast(payload)
+                else:
+                    # Private Message Logic
+                    await manager.send_personal_message(payload, receiver)
+                    if username != receiver:
+                        await manager.send_personal_message(payload, username) # Send copy to self
+                        
+            elif data["type"] == "get_history":
+                target = data["target"]
+                history = database.get_history(username, target)
+                await manager.send_personal_message({"type": "history", "target": target, "data": history}, username)
+            
+            elif data["type"] == "update_settings":
+                pic = data["pic"]
+                database.update_user(username, pic, "Online")
+                users = database.get_all_users()
+                await manager.broadcast({"type": "user_list", "data": users})
+
     except WebSocketDisconnect:
         manager.disconnect(username)
         database.update_status_only(username, "Offline")
