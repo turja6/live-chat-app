@@ -58,16 +58,16 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             data_str = await websocket.receive_text()
             data = json.loads(data_str)
             
-            # 1. Handle Standard Chat Messages
             if data["type"] == "chat":
+                msg_id = data["msg_id"]
                 receiver = data["receiver"]
                 msg_text = data["message"]
                 
-                database.save_message(username, receiver, pic, msg_text)
+                database.save_message(msg_id, username, receiver, pic, msg_text)
                 
                 payload = {
-                    "type": "chat", "sender": username, "receiver": receiver, 
-                    "profile_pic": pic, "message": msg_text, "timestamp": datetime.now().strftime("%I:%M %p")
+                    "type": "chat", "msg_id": msg_id, "sender": username, "receiver": receiver, 
+                    "profile_pic": pic, "message": msg_text, "timestamp": datetime.now().strftime("%I:%M %p"), "reactions": {}
                 }
                 
                 if receiver == "Public":
@@ -76,18 +76,32 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     await manager.send_personal_message(payload, receiver)
                     if username != receiver:
                         await manager.send_personal_message(payload, username)
-            
-            # 2. Handle History Requests
+                        
+            # NEW: Reaction Handler
+            elif data["type"] == "reaction":
+                msg_id = data["msg_id"]
+                emoji = data["emoji"]
+                receiver = data["receiver"]
+                
+                database.add_reaction(msg_id, emoji)
+                
+                payload = {"type": "reaction", "msg_id": msg_id, "emoji": emoji, "receiver": receiver}
+                
+                if receiver == "Public":
+                    await manager.broadcast(payload)
+                else:
+                    await manager.send_personal_message(payload, receiver)
+                    if username != receiver:
+                        await manager.send_personal_message(payload, username)
+                        
             elif data["type"] == "get_history":
                 target = data["target"]
                 history = database.get_history(username, target)
                 await manager.send_personal_message({"type": "history", "target": target, "data": history}, username)
             
-            # 3. Handle WebRTC Call Signaling (The Telephone Operator)
             elif data["type"] in ["call_offer", "call_answer", "ice_candidate"]:
-                # Simply route the connection data to the target user
                 target_user = data["target"]
-                data["sender"] = username # Let the receiver know who the signal is from
+                data["sender"] = username 
                 await manager.send_personal_message(data, target_user)
 
     except WebSocketDisconnect:

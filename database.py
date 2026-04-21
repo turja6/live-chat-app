@@ -1,4 +1,5 @@
 import sqlite3
+import json
 from datetime import datetime
 
 def get_db():
@@ -9,9 +10,9 @@ def init_db():
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS users
                       (username TEXT PRIMARY KEY, profile_pic TEXT, status TEXT)''')
+    # ADDED: msg_id and reactions columns
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages
-                      (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                       sender TEXT, receiver TEXT, profile_pic TEXT, message TEXT, timestamp TEXT)''')
+                      (msg_id TEXT PRIMARY KEY, sender TEXT, receiver TEXT, profile_pic TEXT, message TEXT, timestamp TEXT, reactions TEXT)''')
     conn.commit()
     conn.close()
 
@@ -38,25 +39,37 @@ def get_all_users():
     conn.close()
     return users
 
-def save_message(sender, receiver, profile_pic, message):
+def save_message(msg_id, sender, receiver, profile_pic, message):
     conn = get_db()
     cursor = conn.cursor()
-    # 12-hour AM/PM format to match WhatsApp
     timestamp = datetime.now().strftime("%I:%M %p")
-    cursor.execute("INSERT INTO messages (sender, receiver, profile_pic, message, timestamp) VALUES (?, ?, ?, ?, ?)",
-                   (sender, receiver, profile_pic, message, timestamp))
+    reactions = "{}" # Empty JSON string for new messages
+    cursor.execute("INSERT INTO messages (msg_id, sender, receiver, profile_pic, message, timestamp, reactions) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                   (msg_id, sender, receiver, profile_pic, message, timestamp, reactions))
     conn.commit()
+    conn.close()
+
+def add_reaction(msg_id, emoji):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT reactions FROM messages WHERE msg_id = ?", (msg_id,))
+    row = cursor.fetchone()
+    if row:
+        reactions = json.loads(row[0])
+        reactions[emoji] = reactions.get(emoji, 0) + 1
+        cursor.execute("UPDATE messages SET reactions = ? WHERE msg_id = ?", (json.dumps(reactions), msg_id))
+        conn.commit()
     conn.close()
 
 def get_history(user1, user2="Public"):
     conn = get_db()
     cursor = conn.cursor()
     if user2 == "Public":
-        cursor.execute("SELECT sender, profile_pic, message, timestamp FROM messages WHERE receiver = 'Public' ORDER BY id DESC LIMIT 50")
+        cursor.execute("SELECT msg_id, sender, profile_pic, message, timestamp, reactions FROM messages WHERE receiver = 'Public' ORDER BY rowid DESC LIMIT 50")
     else:
-        cursor.execute('''SELECT sender, profile_pic, message, timestamp FROM messages 
+        cursor.execute('''SELECT msg_id, sender, profile_pic, message, timestamp, reactions FROM messages 
                           WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) 
-                          ORDER BY id DESC LIMIT 50''', (user1, user2, user2, user1))
+                          ORDER BY rowid DESC LIMIT 50''', (user1, user2, user2, user1))
     rows = cursor.fetchall()
     conn.close()
-    return [{"sender": row[0], "profile_pic": row[1], "message": row[2], "timestamp": row[3]} for row in reversed(rows)]
+    return [{"msg_id": row[0], "sender": row[1], "profile_pic": row[2], "message": row[3], "timestamp": row[4], "reactions": json.loads(row[5])} for row in reversed(rows)]

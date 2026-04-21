@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Discord Clone - Ultimate Calling</title>
+    <title>Discord Clone - Ultimate</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         :root { --bg-dark: #202225; --bg-mid: #2f3136; --bg-light: #36393f; --text-main: #dcddde; --text-muted: #8e9297; --accent: #5865F2; --input-bg: #40444b; --online: #3ba55d; --hover: #393c43; --danger: #ed4245; }
@@ -9,8 +9,11 @@
         
         #app-container { display: none; width: 100%; height: 100%; position: relative; display: flex; }
         
+        /* Mobile Hamburger Menu */
+        .mobile-nav-btn { display: none; background: none; border: none; color: white; font-size: 24px; cursor: pointer; margin-right: 15px; }
+
         /* Sidebar */
-        .sidebar { width: 260px; background: var(--bg-mid); display: flex; flex-direction: column; border-right: 1px solid #202225; }
+        .sidebar { width: 260px; background: var(--bg-mid); display: flex; flex-direction: column; border-right: 1px solid #202225; transition: transform 0.3s ease; z-index: 20; }
         .sidebar-header { height: 60px; border-bottom: 1px solid #202225; display: flex; align-items: center; padding: 0 20px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         #user-list-container { flex: 1; overflow-y: auto; padding: 10px; }
         .user-item { display: flex; align-items: center; padding: 8px 10px; border-radius: 4px; cursor: pointer; margin-bottom: 2px; }
@@ -20,41 +23,48 @@
         .online { background: var(--online); } .offline { background: #747f8d; }
 
         /* Main Chat Area */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-light); height: 100%; position: relative; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-light); height: 100%; position: relative; min-width: 0; }
         .chat-header { height: 60px; border-bottom: 1px solid #202225; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.2); justify-content: space-between; z-index: 10; }
         .chat-header-info { display: flex; align-items: center; font-weight: bold; font-size: 16px; }
         .call-buttons { display: flex; gap: 15px; }
         .call-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
         .call-btn:hover { color: var(--text-main); }
 
-        /* DISCORD EMBEDDED CALL UI */
+        /* Call UI */
         #call-interface { display: none; flex-direction: column; background: #000; width: 100%; height: 50%; min-height: 300px; position: relative; z-index: 5; border-bottom: 1px solid #202225; }
         #call-status { position: absolute; top: 15px; left: 20px; font-size: 14px; color: var(--online); font-weight: bold; z-index: 52; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; }
-        
         .video-grid { display: flex; flex: 1; gap: 10px; padding: 20px; justify-content: center; align-items: center; }
         video { background: #202225; border-radius: 8px; object-fit: cover; flex: 1; height: 100%; max-height: 100%; aspect-ratio: 16/9; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        
-        .call-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 51; background: var(--bg-dark); padding: 10px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .call-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 51; background: var(--bg-dark); padding: 10px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); flex-wrap: wrap; justify-content: center; }
         .control-btn { background: var(--bg-light); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
-        .control-btn:hover { background: #4f545c; }
-        .control-btn.active { background: white; color: var(--bg-dark); } /* Active means hardware is ON */
+        .control-btn.active { background: white; color: var(--bg-dark); } 
         .control-btn.danger { background: var(--danger); color: white; border-radius: 8px; width: 60px; }
-        .control-btn.danger:hover { background: #d83c3e; }
 
-        /* Messages */
+        /* Message Area & Reactions */
         #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-        .msg-container { display: flex; align-items: flex-start; }
+        .msg-container { display: flex; align-items: flex-start; position: relative; }
+        .msg-container:hover { background: #32353b; margin: 0 -20px; padding: 0 20px; border-radius: 4px; } /* Hover highlight */
         .msg-container img.avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; object-fit: cover; }
         .msg-header .name { font-weight: bold; color: white; font-size: 15px; margin-right: 8px; }
         .msg-header .time { font-size: 12px; color: var(--text-muted); }
         .msg-text { color: var(--text-main); font-size: 15px; line-height: 1.4; margin-top: 4px; }
-        .msg-image-attachment { max-width: 300px; border-radius: 8px; margin-top: 8px; }
+        .msg-image-attachment { max-width: 300px; max-height: 300px; border-radius: 8px; margin-top: 8px; object-fit: cover; }
+        
+        /* Reaction Picker */
+        .reaction-picker { display: none; position: absolute; right: 20px; top: -15px; background: var(--bg-mid); border: 1px solid #202225; border-radius: 8px; padding: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 10; gap: 5px; }
+        .msg-container:hover .reaction-picker { display: flex; }
+        .reaction-btn { background: none; border: none; font-size: 18px; cursor: pointer; border-radius: 4px; padding: 4px; }
+        .reaction-btn:hover { background: var(--bg-light); transform: scale(1.2); }
+        
+        /* Reaction Badges below text */
+        .reaction-badges { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+        .badge { background: #2f3136; border: 1px solid #202225; border-radius: 6px; padding: 2px 6px; font-size: 12px; font-weight: bold; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .badge:hover { background: #393c43; border-color: var(--text-muted); }
 
-        /* Input Area */
+        /* Inputs */
         .input-wrapper { padding: 0 20px 20px 20px; }
         .input-box { display: flex; align-items: center; background: var(--input-bg); border-radius: 8px; padding: 10px 15px; }
         .attach-btn { background: #4f545c; color: var(--bg-dark); border: none; font-size: 24px; cursor: pointer; margin-right: 15px; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; }
-        .attach-btn:hover { background: var(--text-main); }
         .input-box input[type="text"] { flex: 1; border: none; background: transparent; color: var(--text-main); font-size: 15px; outline: none; }
         
         /* Modals */
@@ -63,14 +73,17 @@
         .login-box input { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 3px; border: 1px solid #202225; background: var(--bg-dark); color: white; box-sizing: border-box; outline: none; }
         .login-box button { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 3px; cursor: pointer; width: 100%; font-weight: bold; }
         
-        /* Discord-style Incoming Call Ring */
         .incoming-call-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-dark); padding: 30px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 101; display: none; text-align: center; width: 300px; border-top: 5px solid var(--accent); }
-        .pulse-avatar { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; object-fit: cover; animation: pulse 1.5s infinite; border: 3px solid var(--accent); }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(88, 101, 242, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(88, 101, 242, 0); } 100% { box-shadow: 0 0 0 0 rgba(88, 101, 242, 0); } }
 
+        /* PERFECT MOBILE RESPONSIVENESS */
         @media (max-width: 768px) {
+            .mobile-nav-btn { display: block; }
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); width: 260px; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+            .sidebar.open { transform: translateX(0); }
             .video-grid { flex-direction: column; }
-            #call-interface { height: 60%; }
+            #call-interface { height: 60vh; }
+            .call-controls { width: 90%; bottom: 10px; padding: 5px; gap: 10px; }
+            .msg-image-attachment { max-width: 100%; }
         }
     </style>
 </head>
@@ -88,7 +101,6 @@
 </div>
 
 <div id="incoming-call-modal" class="incoming-call-modal">
-    <img id="incoming-avatar" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" class="pulse-avatar">
     <h3 style="margin: 0 0 5px 0; color: white;" id="incoming-caller-name">Caller</h3>
     <p style="color: var(--text-muted); margin-top: 0; margin-bottom: 20px;">is starting a video call</p>
     <div style="display: flex; gap: 15px; justify-content: center;">
@@ -98,20 +110,21 @@
 </div>
 
 <div id="app-container">
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">Direct Messages</div>
         <div id="user-list-container"></div>
     </div>
     
-    <div class="chat-area">
+    <div class="chat-area" onclick="closeSidebar()">
         <div class="chat-header">
             <div class="chat-header-info">
+                <button class="mobile-nav-btn" onclick="event.stopPropagation(); toggleSidebar()">☰</button>
                 <span style="color:var(--text-muted); margin-right:8px; font-size:20px;">@</span>
                 <span id="chatHeaderTitle">Public</span>
             </div>
             <div class="call-buttons" id="call-buttons-container" style="display: none;">
-                <button class="call-btn" onclick="startCall(false)" title="Start Voice Call">📞</button>
-                <button class="call-btn" onclick="startCall(true)" title="Start Video Call">🎥</button>
+                <button class="call-btn" onclick="startCall(false)" title="Voice Call">📞</button>
+                <button class="call-btn" onclick="startCall(true)" title="Video Call">🎥</button>
             </div>
         </div>
         
@@ -122,8 +135,9 @@
                 <video id="remoteVideo" autoplay playsinline></video>
             </div>
             <div class="call-controls">
-                <button class="control-btn active" id="toggleVideoBtn" onclick="toggleVideo()" title="Turn on Camera">📷</button>
-                <button class="control-btn active" id="toggleAudioBtn" onclick="toggleAudio()" title="Turn on Microphone">🎤</button>
+                <button class="control-btn" id="flipCameraBtn" onclick="flipCamera()" title="Flip Camera">🔄</button>
+                <button class="control-btn active" id="toggleVideoBtn" onclick="toggleVideo()" title="Toggle Camera">📷</button>
+                <button class="control-btn active" id="toggleAudioBtn" onclick="toggleAudio()" title="Toggle Mic">🎤</button>
                 <button class="control-btn" id="shareScreenBtn" onclick="toggleScreenShare()" title="Share Screen">🖥️</button>
                 <button class="control-btn danger" onclick="endCall()" title="Disconnect">☎️</button>
             </div>
@@ -146,7 +160,9 @@
     let myUsername = localStorage.getItem("chat_username");
     let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
     let currentChat = "Public";
-    let userPics = {}; // Store pics for the incoming call modal
+
+    // Random ID generator for messages (needed for reactions)
+    function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 
     if (myUsername) { 
         document.getElementById("usernameInput").value = myUsername; 
@@ -195,12 +211,16 @@
             if (data.type === "chat") {
                 if ((currentChat === "Public" && data.receiver === "Public") ||
                     (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) {
-                    appendMessage(data.sender, data.profile_pic, data.message, data.timestamp);
+                    appendMessage(data.msg_id, data.sender, data.profile_pic, data.message, data.timestamp, data.reactions || {});
                 }
-            } 
+            }
+            // NEW: Receive Live Reactions
+            else if (data.type === "reaction") {
+                updateReactionUI(data.msg_id, data.emoji);
+            }
             else if (data.type === "history") {
                 document.getElementById('messages').innerHTML = ""; 
-                data.data.forEach(msg => appendMessage(msg.sender, msg.profile_pic, msg.message, msg.timestamp));
+                data.data.forEach(msg => appendMessage(msg.msg_id, msg.sender, msg.profile_pic, msg.message, msg.timestamp, msg.reactions));
             }
             else if (data.type === "user_list") { updateUserSidebar(data.data); }
             else if (data.type === "call_offer") { handleIncomingCall(data); }
@@ -209,7 +229,10 @@
         };
     }
 
-    /* --- CHAT UI LOGIC --- */
+    /* --- MOBILE & CHAT LOGIC --- */
+    function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
+    function closeSidebar() { document.getElementById("sidebar").classList.remove("open"); }
+
     function switchChat(targetUser) {
         currentChat = targetUser;
         document.getElementById("chatHeaderTitle").innerText = targetUser;
@@ -222,23 +245,63 @@
 
         document.getElementById('messages').innerHTML = ""; 
         ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+        closeSidebar();
     }
 
-    function appendMessage(sender, pic, text, time) {
+    function appendMessage(msg_id, sender, pic, text, time, reactions = {}) {
         const messages = document.getElementById('messages');
         let contentHtml = `<div class="msg-text">${text}</div>`;
         if (text.startsWith("data:image/")) { contentHtml = `<img src="${text}" class="msg-image-attachment">`; }
 
+        // Render existing reactions
+        let reactionHtml = "";
+        for (const [emoji, count] of Object.entries(reactions)) {
+            reactionHtml += `<div class="badge" onclick="sendReaction('${msg_id}', '${emoji}')">${emoji} ${count}</div>`;
+        }
+
         messages.innerHTML += `
-            <div class="msg-container">
+            <div class="msg-container" id="msg-${msg_id}">
+                <div class="reaction-picker">
+                    <button class="reaction-btn" onclick="sendReaction('${msg_id}', '👍')">👍</button>
+                    <button class="reaction-btn" onclick="sendReaction('${msg_id}', '❤️')">❤️</button>
+                    <button class="reaction-btn" onclick="sendReaction('${msg_id}', '😂')">😂</button>
+                    <button class="reaction-btn" onclick="sendReaction('${msg_id}', '😲')">😲</button>
+                </div>
                 <img src="${pic}" class="avatar">
                 <div>
                     <div class="msg-header"><span class="name">${sender}</span><span class="time">${time}</span></div>
                     ${contentHtml}
+                    <div class="reaction-badges" id="reactions-${msg_id}">${reactionHtml}</div>
                 </div>
             </div>
         `;
         messages.scrollTop = messages.scrollHeight;
+    }
+
+    // Reaction Logic
+    function sendReaction(msg_id, emoji) {
+        if (!ws) return;
+        ws.send(JSON.stringify({ type: "reaction", msg_id: msg_id, emoji: emoji, receiver: currentChat }));
+    }
+
+    function updateReactionUI(msg_id, emoji) {
+        const container = document.getElementById(`reactions-${msg_id}`);
+        if (!container) return; // Message not on screen
+        
+        // Check if badge exists
+        let found = false;
+        const badges = container.getElementsByClassName('badge');
+        for (let badge of badges) {
+            if (badge.innerText.includes(emoji)) {
+                let count = parseInt(badge.innerText.split(' ')[1]) + 1;
+                badge.innerText = `${emoji} ${count}`;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            container.innerHTML += `<div class="badge" onclick="sendReaction('${msg_id}', '${emoji}')">${emoji} 1</div>`;
+        }
     }
 
     function updateUserSidebar(users) {
@@ -246,7 +309,6 @@
         let html = `<div class="user-item ${currentChat === 'Public' ? 'active' : ''}" id="nav-Public" onclick="switchChat('Public')"><img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png"><span>Public Chat</span></div>`;
 
         users.forEach(user => {
-            userPics[user.username] = user.profile_pic; // Store for call overlay
             if (user.username === myUsername) return; 
             html += `<div class="user-item ${currentChat === user.username ? 'active' : ''}" id="nav-${user.username}" style="opacity: ${user.status === 'Offline' ? '0.5' : '1'};" onclick="switchChat('${user.username}')"><img src="${user.profile_pic}"><span>${user.username}</span><div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div></div>`;
         });
@@ -261,11 +323,11 @@
             const img = new Image();
             img.onload = function() {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 400; const scaleSize = MAX_WIDTH / img.width;
+                const MAX_WIDTH = 500; const scaleSize = MAX_WIDTH / img.width;
                 canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: canvas.toDataURL('image/jpeg', 0.8) }));
+                ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: canvas.toDataURL('image/jpeg', 0.8) }));
             }
             img.src = event.target.result;
         }
@@ -275,12 +337,15 @@
 
     function sendMessage() {
         const input = document.getElementById("messageText");
-        if (ws && input.value) { ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: input.value })); input.value = ''; }
+        if (ws && input.value) { 
+            ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: input.value })); 
+            input.value = ''; 
+        }
     }
     document.getElementById("messageText").addEventListener("keypress", function(e) { if (e.key === "Enter") sendMessage(); });
 
 
-    /* --- WEBRTC DISCORD-STYLE LOGIC --- */
+    /* --- WEBRTC CALLING + CAMERA FLIP --- */
     let peerConnection;
     let localStream;
     let screenStream;
@@ -291,6 +356,7 @@
     let isVideoOn = true;
     let isAudioOn = true;
     let isSharingScreen = false;
+    let currentFacingMode = "user"; // "user" = front, "environment" = back
 
     const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -298,19 +364,17 @@
 
     async function initMedia(videoRequested) {
         try {
-            // Discord usually starts audio-only if you clicked the phone, and video if you clicked the camera.
-            localStream = await navigator.mediaDevices.getUserMedia({ video: videoRequested, audio: true });
+            localStream = await navigator.mediaDevices.getUserMedia({ video: videoRequested ? { facingMode: currentFacingMode } : false, audio: true });
             document.getElementById("localVideo").srcObject = localStream;
             
             isVideoOn = videoRequested;
             isAudioOn = true;
             document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn);
             document.getElementById("toggleAudioBtn").classList.toggle("active", isAudioOn);
-            
             return true;
         } catch (error) {
             console.error("Media Error:", error);
-            alert("Could not access camera/mic. Please check browser permissions.");
+            alert("Hardware access blocked. Ensure you are on HTTPS.");
             return false;
         }
     }
@@ -321,25 +385,52 @@
 
         peerConnection.ontrack = event => {
             document.getElementById("remoteVideo").srcObject = event.streams[0];
-            updateCallStatus("Call Connected");
+            updateCallStatus("Connected");
         };
 
         peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                ws.send(JSON.stringify({ type: "ice_candidate", target: activeCallUser, candidate: event.candidate }));
-            }
+            if (event.candidate) ws.send(JSON.stringify({ type: "ice_candidate", target: activeCallUser, candidate: event.candidate }));
         };
 
         peerConnection.onconnectionstatechange = () => {
-            const state = peerConnection.connectionState;
-            if (state === "disconnected" || state === "failed") {
+            if (["disconnected", "failed"].includes(peerConnection.connectionState)) {
                 updateCallStatus("Connection Lost");
                 setTimeout(endCall, 2000);
             }
         };
     }
 
-    // New Discord-style Toggles
+    // NEW: Flip Camera Logic
+    async function flipCamera() {
+        if (!localStream || !isVideoOn || isSharingScreen) return;
+        
+        currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+        
+        // Stop current video track
+        const oldVideoTrack = localStream.getVideoTracks()[0];
+        if (oldVideoTrack) oldVideoTrack.stop();
+
+        try {
+            // Get new video stream from the other camera
+            const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: currentFacingMode } } });
+            const newVideoTrack = newStream.getVideoTracks()[0];
+            
+            localStream.removeTrack(oldVideoTrack);
+            localStream.addTrack(newVideoTrack);
+            document.getElementById("localVideo").srcObject = localStream;
+
+            // Send new video track through the live connection
+            if (peerConnection) {
+                const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
+                if (sender) sender.replaceTrack(newVideoTrack);
+            }
+        } catch (e) {
+            // Fallback if the phone doesn't have a back camera or fails
+            alert("Could not flip camera. Device might not support it.");
+            currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; // Revert
+        }
+    }
+
     function toggleAudio() {
         if (!localStream) return;
         isAudioOn = !isAudioOn;
@@ -349,17 +440,14 @@
 
     async function toggleVideo() {
         if (!localStream) return;
-        
         if (!isVideoOn) {
-            // Need to request video track if we started an audio-only call
             try {
-                const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
                 const videoTrack = newStream.getVideoTracks()[0];
                 localStream.addTrack(videoTrack);
-                const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
                 peerConnection.addTrack(videoTrack, localStream);
                 isVideoOn = true;
-            } catch (e) { alert("Could not turn on camera"); return; }
+            } catch (e) { return; }
         } else {
             const videoTrack = localStream.getVideoTracks()[0];
             if (videoTrack) {
@@ -370,36 +458,27 @@
         document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn);
     }
 
-    // NEW: SCREEN SHARING LOGIC
     async function toggleScreenShare() {
         if (!peerConnection) return;
-        
         try {
             if (!isSharingScreen) {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const screenTrack = screenStream.getVideoTracks()[0];
-                
                 const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
                 if (sender) sender.replaceTrack(screenTrack);
-                
                 document.getElementById('localVideo').srcObject = screenStream;
                 isSharingScreen = true;
                 document.getElementById("shareScreenBtn").classList.add("active");
-
-                // Stop sharing if user clicks "Stop Sharing" on the browser bar
                 screenTrack.onended = () => { stopScreenShare(); };
-            } else {
-                stopScreenShare();
-            }
-        } catch (e) { console.error("Screen sharing failed", e); }
+            } else { stopScreenShare(); }
+        } catch (e) { }
     }
 
     function stopScreenShare() {
-        if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); }
+        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
         const cameraTrack = localStream.getVideoTracks()[0];
         const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
         if (sender && cameraTrack) sender.replaceTrack(cameraTrack);
-        
         document.getElementById('localVideo').srcObject = localStream;
         isSharingScreen = false;
         document.getElementById("shareScreenBtn").classList.remove("active");
@@ -410,51 +489,39 @@
         document.getElementById("call-interface").style.display = "flex";
         updateCallStatus("Calling...");
 
-        const mediaSuccess = await initMedia(videoRequested);
-        if (!mediaSuccess) return endCall();
+        if (!await initMedia(videoRequested)) return endCall();
 
         createPeerConnection();
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        
         ws.send(JSON.stringify({ type: "call_offer", target: activeCallUser, sdp: offer, video: videoRequested }));
     }
 
     function handleIncomingCall(data) {
         incomingOfferData = data;
         document.getElementById("incoming-caller-name").innerText = data.sender;
-        document.getElementById("incoming-avatar").src = userPics[data.sender] || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
         document.getElementById("incoming-call-modal").style.display = "block";
     }
 
     async function acceptCall() {
         document.getElementById("incoming-call-modal").style.display = "none";
-        
-        // Auto-switch to the person who called you
         if (currentChat !== incomingOfferData.sender) switchChat(incomingOfferData.sender);
         
         document.getElementById("call-interface").style.display = "flex";
         updateCallStatus("Connecting...");
         
         activeCallUser = incomingOfferData.sender;
-        const mediaSuccess = await initMedia(incomingOfferData.video);
-        if (!mediaSuccess) return endCall();
+        if (!await initMedia(incomingOfferData.video)) return endCall();
 
         createPeerConnection();
         await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOfferData.sdp));
-        
         processIceQueue();
-
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        
         ws.send(JSON.stringify({ type: "call_answer", target: activeCallUser, sdp: answer }));
     }
 
-    function rejectCall() {
-        document.getElementById("incoming-call-modal").style.display = "none";
-        incomingOfferData = null;
-    }
+    function rejectCall() { document.getElementById("incoming-call-modal").style.display = "none"; incomingOfferData = null; }
 
     async function handleAnswer(sdp) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
@@ -464,17 +531,12 @@
     async function handleIceCandidate(candidate) {
         const rtcCandidate = new RTCIceCandidate(candidate);
         if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
-            try { await peerConnection.addIceCandidate(rtcCandidate); } catch (e) { console.error('ICE error', e); }
-        } else {
-            iceCandidateQueue.push(rtcCandidate);
-        }
+            try { await peerConnection.addIceCandidate(rtcCandidate); } catch (e) {}
+        } else { iceCandidateQueue.push(rtcCandidate); }
     }
 
     function processIceQueue() {
-        while (iceCandidateQueue.length > 0) {
-            const candidate = iceCandidateQueue.shift();
-            peerConnection.addIceCandidate(candidate).catch(e => console.error('ICE Queue error', e));
-        }
+        while (iceCandidateQueue.length > 0) { peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{}); }
     }
 
     function endCall() {
@@ -483,8 +545,6 @@
         if (screenStream) { screenStream.getTracks().forEach(track => track.stop()); screenStream = null; }
         iceCandidateQueue = []; 
         document.getElementById("call-interface").style.display = "none";
-        document.getElementById("remoteVideo").srcObject = null;
-        document.getElementById("localVideo").srcObject = null;
         activeCallUser = null;
     }
 </script>
