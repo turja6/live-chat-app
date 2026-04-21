@@ -44,7 +44,6 @@
         .login-box input { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 3px; border: 1px solid #202225; background: var(--bg-dark); color: white; box-sizing: border-box; outline: none; }
         .login-box button { background: var(--accent); color: white; border: none; padding: 10px; border-radius: 3px; cursor: pointer; width: 100%; font-weight: bold; }
         
-        /* Advanced Video Call Interface */
         #call-interface { display: none; position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 50; flex-direction: column; justify-content: center; align-items: center; }
         #call-status { position: absolute; top: 20px; font-size: 18px; color: var(--accent); font-weight: bold; z-index: 52; }
         .video-grid { display: flex; gap: 20px; width: 90%; max-width: 1000px; justify-content: center; margin-bottom: 30px; position: relative; }
@@ -54,7 +53,7 @@
         
         .call-controls { display: flex; gap: 15px; z-index: 51; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 15px; }
         .control-btn { background: #4f545c; color: white; border: none; width: 50px; height: 50px; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
-        .control-btn.active { background: #ed4245; } /* Red when muted/disabled */
+        .control-btn.active { background: #ed4245; } 
         .end-call-btn { background: #ed4245; color: white; padding: 0 30px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer; font-size: 16px; }
         
         .incoming-call-modal { position: absolute; top: 20px; right: 20px; background: var(--bg-mid); padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 101; display: none; text-align: center; border: 1px solid var(--accent); }
@@ -65,6 +64,11 @@
 <div id="login-screen" class="modal-overlay">
     <div class="login-box">
         <h2 style="margin-top:0;">Join the Server</h2>
+        
+        <img id="login-preview" src="" style="display:none; width:80px; height:80px; border-radius:50%; margin:0 auto 15px auto; object-fit:cover;">
+        <label for="loginFileInput" style="cursor: pointer; display: block; color: var(--accent); margin-bottom: 15px; font-weight: bold;">📷 Upload Avatar</label>
+        <input type="file" id="loginFileInput" accept="image/*" style="display: none;" onchange="processLoginImage(event)">
+
         <input type="text" id="usernameInput" placeholder="Username" autocomplete="off"/>
         <button onclick="startApp()">Connect</button>
     </div>
@@ -124,14 +128,43 @@
 <script>
     let ws;
     let myUsername = localStorage.getItem("chat_username");
+    let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
     let currentChat = "Public";
 
-    if (myUsername) { document.getElementById("usernameInput").value = myUsername; }
+    // Auto-fill login UI
+    if (myUsername) { 
+        document.getElementById("usernameInput").value = myUsername; 
+        document.getElementById("login-preview").src = myPicBase64;
+        document.getElementById("login-preview").style.display = "block";
+    }
+
+    // FIXED: Profile Picture Processing Logic
+    function processLoginImage(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 100; canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 100, 100);
+                myPicBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                document.getElementById("login-preview").src = myPicBase64;
+                document.getElementById("login-preview").style.display = "block";
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
 
     function startApp() {
         myUsername = document.getElementById("usernameInput").value;
         if (!myUsername) return alert("Username required!");
+        
         localStorage.setItem("chat_username", myUsername);
+        localStorage.setItem("chat_pic", myPicBase64);
 
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("app-container").style.display = "flex";
@@ -139,7 +172,8 @@
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
         ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
         
-        ws.onopen = function() { ws.send(JSON.stringify({ pic: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" })); };
+        // Tell the server what our picture is
+        ws.onopen = function() { ws.send(JSON.stringify({ pic: myPicBase64 })); };
         
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
@@ -231,13 +265,16 @@
     document.getElementById("messageText").addEventListener("keypress", function(e) { if (e.key === "Enter") sendMessage(); });
 
 
-    /* --- ADVANCED WEBRTC CALLING LOGIC --- */
+    /* --- ADVANCED WEBRTC CALLING LOGIC (FIXED RACE CONDITION) --- */
     let peerConnection;
     let localStream;
     let activeCallUser = null;
     let incomingOfferData = null;
     let isAudioMuted = false;
     let isVideoMuted = false;
+    
+    // FIXED: The Queue that catches data before the phone is picked up
+    let iceCandidateQueue = [];
 
     const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -250,26 +287,20 @@
             localStream = await navigator.mediaDevices.getUserMedia({ video: videoEnabled, audio: true });
             document.getElementById("localVideo").srcObject = localStream;
             
-            // Reset control buttons
             isAudioMuted = false; isVideoMuted = !videoEnabled;
             document.getElementById("muteAudioBtn").classList.remove("active");
             document.getElementById("muteVideoBtn").classList.toggle("active", !videoEnabled);
             
             return true;
         } catch (error) {
-            console.error("Camera/Mic Error:", error);
-            if (error.name === "NotAllowedError") {
-                alert("Browser blocked camera/microphone. Please allow permissions in your browser settings.");
-            } else {
-                alert("Could not access camera/mic. Are you on a secure (HTTPS) connection?");
-            }
+            console.error("Media Error:", error);
+            alert("Could not access camera/mic. Are you testing on HTTPS, and did you grant permissions?");
             return false;
         }
     }
 
     function createPeerConnection() {
         peerConnection = new RTCPeerConnection(rtcConfig);
-        
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
         peerConnection.ontrack = event => {
@@ -282,7 +313,6 @@
             }
         };
 
-        // Advanced Status Tracking
         peerConnection.onconnectionstatechange = () => {
             const state = peerConnection.connectionState;
             if (state === "connected") updateCallStatus("");
@@ -293,7 +323,6 @@
         };
     }
 
-    // Call Controls Logic
     function toggleAudio() {
         if (!localStream) return;
         isAudioMuted = !isAudioMuted;
@@ -343,6 +372,10 @@
 
         createPeerConnection();
         await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOfferData.sdp));
+        
+        // FIXED: Now that the phone is picked up, process any queued connection data
+        processIceQueue();
+
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         
@@ -356,16 +389,32 @@
 
     async function handleAnswer(sdp) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+        // FIXED: Process queue for the caller as well
+        processIceQueue();
     }
 
+    // FIXED: Safely queue connection data if the peer connection isn't ready yet
     async function handleIceCandidate(candidate) {
-        try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } 
-        catch (e) { console.error('Error adding received ice candidate', e); }
+        const rtcCandidate = new RTCIceCandidate(candidate);
+        if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+            try { await peerConnection.addIceCandidate(rtcCandidate); } catch (e) { console.error('ICE error', e); }
+        } else {
+            iceCandidateQueue.push(rtcCandidate);
+        }
+    }
+
+    // FIXED: Flush the queue once connected
+    function processIceQueue() {
+        while (iceCandidateQueue.length > 0) {
+            const candidate = iceCandidateQueue.shift();
+            peerConnection.addIceCandidate(candidate).catch(e => console.error('ICE Queue error', e));
+        }
     }
 
     function endCall() {
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+        iceCandidateQueue = []; // Clear queue on hangup
         document.getElementById("call-interface").style.display = "none";
         document.getElementById("remoteVideo").srcObject = null;
         document.getElementById("localVideo").srcObject = null;
