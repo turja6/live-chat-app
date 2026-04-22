@@ -3,55 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IdlyCall - Phase 2</title>
+    <title>IdlyCall Pro - Final Master</title>
     <style>
-        /* --- CORE THEME (NO GLOW) --- */
-        :root { --bg: #08090a; --panel: #121317; --accent: #FF7A00; --text: #ffffff; --border: #2a2b30; }
+        /* =========================================
+           CORE THEME VARIABLES
+        ========================================= */
+        :root { 
+            --bg: #08090a; 
+            --panel: #121317; 
+            --accent: #FF7A00; 
+            --text: #ffffff; 
+            --border: #2a2b30; 
+        }
+        
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; color: var(--text); }
         body { background: var(--bg); height: 100vh; overflow: hidden; display: flex; }
 
-        /* --- LOGIN SCREEN --- */
-        #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .login-box { background: var(--panel); padding: 40px; border-radius: 8px; border: 1px solid var(--border); text-align: center; width: 320px; }
-        .login-box input { width: 100%; padding: 12px; margin: 20px 0; background: #000; border: 1px solid var(--border); border-radius: 4px; color: white; outline: none; }
-        .login-box button { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        /* =========================================
+           LOGIN SCREEN (STACKING FIX APPLIED)
+        ========================================= */
+        #login-screen { 
+            position: fixed; inset: 0; background: var(--bg); 
+            display: flex; align-items: center; justify-content: center; z-index: 1000; 
+        }
+        
+        .login-box { 
+            background: var(--panel); 
+            padding: 40px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border); 
+            text-align: center; 
+            width: 320px; 
+            /* THE MAGIC FIX THAT STOPS OVERLAPPING: */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px; 
+        }
+
+        .login-box h2 { color: var(--accent); font-size: 1.8rem; margin: 0; }
+        .login-box h3 { font-size: 1.1rem; font-weight: normal; margin: 0; color: #888; }
+
+        .avatar-container { position: relative; display: inline-flex; }
+        .avatar-preview { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--accent); object-fit: cover; }
+        .upload-badge { position: absolute; bottom: 0; right: 0; background: var(--accent); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid var(--panel); }
+
+        .login-box input { width: 100%; padding: 14px; background: #000; border: 1px solid var(--border); border-radius: 6px; color: white; outline: none; transition: 0.2s; }
+        .login-box input:focus { border-color: var(--accent); }
+
+        .login-box button { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: 6px; font-weight: bold; font-size: 1.05rem; cursor: pointer; color: white; transition: 0.2s; }
         .login-box button:hover { background: #e66e00; }
 
-        /* --- APP LAYOUT --- */
+        /* =========================================
+           APP LAYOUT & SIDEBAR
+        ========================================= */
         #app-container { display: none; height: 100vh; width: 100vw; }
+        
         .sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); font-weight: bold; font-size: 1.2rem; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+        
         .user-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .user-item { padding: 12px; margin-bottom: 5px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 10px; border: 1px solid transparent; }
+        .user-item { padding: 12px; margin-bottom: 5px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; border: 1px solid transparent; transition: 0.2s; }
         .user-item:hover { background: #1a1b20; border-color: var(--border); }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00ff00; }
 
-        /* --- CHAT AREA --- */
+        /* =========================================
+           CHAT AREA & MESSAGES
+        ========================================= */
         .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; }
+        
         .chat-header { padding: 15px 25px; border-bottom: 1px solid var(--border); background: var(--panel); display: flex; justify-content: space-between; align-items: center; }
-        .action-btns button { background: #1a1b20; border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
+        .action-btns button { background: #1a1b20; border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-left: 5px; font-weight: bold; }
         .action-btns button:hover { border-color: var(--accent); }
         
-        #chat-stream { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+        #chat-stream { flex: 1; padding: 20px 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
         
-        /* --- MESSAGES --- */
         .message { display: flex; flex-direction: column; max-width: 70%; }
-        .msg-sender { font-size: 0.75rem; color: #888; margin-bottom: 5px; }
-        .msg-text { background: #1a1b20; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); }
+        .msg-sender { font-size: 0.75rem; color: #888; margin-bottom: 5px; margin-left: 5px;}
+        .msg-text { background: #1a1b20; padding: 12px 16px; border-radius: 12px; border-bottom-left-radius: 2px; border: 1px solid var(--border); line-height: 1.5; }
+        
         .message.my-message { align-self: flex-end; }
-        .message.my-message .msg-sender { align-self: flex-end; }
-        .message.my-message .msg-text { background: var(--accent); border-color: var(--accent); color: white; }
+        .message.my-message .msg-sender { align-self: flex-end; margin-right: 5px; }
+        .message.my-message .msg-text { background: var(--accent); border-color: var(--accent); color: white; border-bottom-left-radius: 12px; border-bottom-right-radius: 2px; }
 
-        /* --- FIREBASE RGB INPUT (SHARP, NO GLOW) --- */
-        .input-area { padding: 20px; background: var(--bg); }
+        /* =========================================
+           FIREBASE SHARP RGB CHATBOX
+        ========================================= */
+        .input-area { padding: 0 30px 30px 30px; background: var(--bg); }
         
         .rgb-wrapper {
             position: relative;
-            padding: 3px; /* Thickness of the RGB border */
+            padding: 2px; /* Sharp, thin border */
             border-radius: 50px;
             background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
             background-size: 400%;
-            animation: fire-rgb 8s linear infinite;
+            animation: fire-rgb 6s linear infinite;
         }
 
         @keyframes fire-rgb { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
@@ -60,36 +106,51 @@
             display: flex;
             align-items: center;
             background: #000;
-            border-radius: 48px; /* Slightly smaller than wrapper to show border */
-            padding: 5px 5px 5px 20px;
+            border-radius: 48px;
+            padding: 6px 6px 6px 20px;
         }
 
         .input-inner input { flex: 1; height: 40px; background: transparent; border: none; color: white; outline: none; font-size: 1rem; }
-        .input-inner button { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); border: none; font-weight: bold; cursor: pointer; }
+        .input-inner button { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); border: none; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        .input-inner button:hover { transform: scale(1.05); }
 
-        /* --- CALLING SYSTEM OVERLAY --- */
+        /* =========================================
+           CALLING OVERLAY
+        ========================================= */
         #call-overlay { display: none; position: fixed; inset: 0; background: #000; z-index: 9999; }
         #remote-video { width: 100%; height: 100%; object-fit: cover; }
-        #local-video { position: absolute; bottom: 30px; right: 30px; width: 200px; height: 150px; background: #111; border: 2px solid var(--accent); border-radius: 8px; object-fit: cover; }
-        .call-controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; }
-        .end-btn { background: #ff3333; color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
-        .end-btn:hover { background: #ff0000; }
+        #local-video { position: absolute; bottom: 30px; right: 30px; width: 220px; height: 160px; background: #111; border: 3px solid var(--accent); border-radius: 12px; object-fit: cover; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        .call-controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; background: rgba(20, 20, 20, 0.8); padding: 15px 30px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.1); }
+        .end-btn { background: #ff3b30; color: white; border: none; padding: 12px 30px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 1.1rem; transition: 0.2s; }
+        .end-btn:hover { background: #ff1a1a; transform: scale(1.05); }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
         <div class="login-box">
-            <h2 style="color: var(--accent);">IdlyCall</h2>
+            <h2>IC</h2>
+            <h3>IdlyCall Pro</h3>
+            
+            <div class="avatar-container">
+                <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
+                <label class="upload-badge">📷</label>
+            </div>
+            
             <input type="text" id="usernameInput" placeholder="Enter username..." autocomplete="off">
-            <button onclick="startApp()">Connect</button>
+            <button onclick="startApp()">Connect Securely</button>
         </div>
     </div>
 
     <div id="app-container">
+        
         <div class="sidebar">
-            <div class="sidebar-header">Active Chats</div>
-            <div class="user-list" id="user-list-container"></div>
+            <div class="sidebar-header">
+                <span>Active Chats</span>
+            </div>
+            <div class="user-list" id="user-list-container">
+                </div>
         </div>
 
         <div class="chat-area">
@@ -101,7 +162,8 @@
                 </div>
             </div>
             
-            <div id="chat-stream"></div>
+            <div id="chat-stream">
+                </div>
 
             <div class="input-area">
                 <div class="rgb-wrapper">
@@ -123,7 +185,6 @@
     </div>
 
     <script>
-        /* --- JAVASCRIPT LOGIC --- */
         let ws;
         let myUsername = "";
         let currentChat = "Public";
@@ -136,16 +197,17 @@
                 
                 myUsername = input;
                 
-                // Force UI to switch immediately
+                // Switch UI Immediately
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("app-container").style.display = "flex";
 
-                // Connect to Backend
+                // Connect WebSocket
                 const protocol = location.protocol === "https:" ? "wss" : "ws";
                 ws = new WebSocket(`${protocol}://${location.host}/ws/${myUsername}`);
 
                 ws.onmessage = (event) => {
                     const data = JSON.parse(event.data);
+                    
                     if (data.type === "chat") {
                         drawMessage(data.sender, data.message);
                     } 
@@ -153,12 +215,11 @@
                         updateSidebar(data.data);
                     }
                     else if (data.type === "call_end") {
-                        forceEndCall();
+                        forceEndCall(); // Close screen if other person hangs up
                     }
                 };
             } catch (error) {
                 console.error("Connection Error:", error);
-                alert("Failed to connect. Make sure your server is running.");
             }
         }
 
@@ -207,12 +268,12 @@
             if (event.key === 'Enter') sendMessage();
         }
 
-        /* --- CALLING LOGIC --- */
+        /* --- CAMERA & CALLING LOGIC --- */
         async function showCallScreen() {
             document.getElementById('call-overlay').style.display = 'block';
             
-            // Turn on the local camera
             try {
+                // Request camera and microphone access
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 document.getElementById('local-video').srcObject = localStream;
             } catch (err) {
@@ -223,14 +284,14 @@
         function forceEndCall() {
             document.getElementById('call-overlay').style.display = 'none';
             
-            // Shut off the camera
+            // Turn off the hardware camera
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
             document.getElementById('local-video').srcObject = null;
 
-            // Tell the other person the call ended
+            // Notify backend
             if(ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "call_end", receiver: currentChat }));
             }
