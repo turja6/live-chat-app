@@ -1,11 +1,11 @@
 /**
- * IdlyCall Pro - Core Application Script
+ * IdlyCall Pro v2.1 - Complete Application Script
  * Chat + WebRTC Voice/Video Calling
- * High-performance WebSocket client with full call management
+ * Features: Fullscreen | Screen Sharing | Mobile Support
  */
 
 // ==========================================
-// STATE MANAGEMENT
+// STATE
 // ==========================================
 let ws = null;
 let myUsername = localStorage.getItem("chat_username") || "";
@@ -15,16 +15,19 @@ let currentChat = "Public";
 // WebRTC State
 let peerConnection = null;
 let localStream = null;
+let screenStream = null;
 let remoteStream = null;
 let callActive = false;
 let isVideoCall = false;
 let isMuted = false;
 let isCameraOff = false;
+let isScreenSharing = false;
+let isFullscreen = false;
 let incomingCallData = null;
 let callTimerInterval = null;
 let callSeconds = 0;
 
-// ICE Servers (public STUN/TURN)
+// ICE Servers
 const iceServers = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -32,12 +35,10 @@ const iceServers = {
     ]
 };
 
-// Default avatar
 const DEFAULT_AVATAR = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
 
-// DOM Cache
+// DOM Helpers
 const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => document.querySelectorAll(sel);
 
 // ==========================================
 // IMAGE PROCESSING
@@ -45,7 +46,6 @@ const $$ = (sel) => document.querySelectorAll(sel);
 function processImage(e, targetId) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(ev) {
         const el = $(`#${targetId}`);
@@ -61,14 +61,12 @@ function processImage(e, targetId) {
 window.manualLogin = function() {
     const input = $("#usernameInput");
     const name = input?.value.trim();
-
     if (!name) {
         input?.focus();
         input?.classList.add('shake');
-        setTimeout(() => input?.classList.remove('shake'), 500);
+        setTimeout(() => input?.classList.remove('shake'), 400);
         return;
     }
-
     myUsername = name;
     localStorage.setItem("chat_username", name);
     startApp();
@@ -128,7 +126,7 @@ function handleWebSocketMessage(e) {
                 }
                 break;
 
-            // ---- WEBRTC SIGNALING EVENTS ----
+            // ---- WEBRTC SIGNALING ----
             case "incoming_call":
                 handleIncomingCall(d);
                 break;
@@ -158,7 +156,7 @@ function handleWebSocketMessage(e) {
                 break;
 
             default:
-                console.log("[WS] Unknown type:", d.type);
+                console.log("[WS] Unknown:", d.type);
         }
     } catch (err) {
         console.error("[WS] Parse error:", err);
@@ -169,21 +167,16 @@ function handleWebSocketMessage(e) {
 // SOUND UTILITIES
 // ==========================================
 function playNotificationSound() {
-    const audio = $("#chatSound");
-    if (audio) audio.play().catch(() => {});
+    $("#chatSound")?.play().catch(() => {});
 }
 
 function playRingtone() {
-    const audio = $("#ringtone");
-    if (audio) audio.play().catch(() => {});
+    $("#ringtone")?.play().catch(() => {});
 }
 
-function stopRingtone() {
+function stopRingtime() {
     const audio = $("#ringtone");
-    if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-    }
+    if (audio) { audio.pause(); audio.currentTime = 0; }
 }
 
 // ==========================================
@@ -220,13 +213,13 @@ function renderMessage(text, sender, pic, time) {
     container.appendChild(frag);
 
     requestAnimationFrame(() => {
-        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
-        if (isNearBottom) container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (nearBottom) container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     });
 }
 
 // ==========================================
-// USER LIST RENDERING
+// USER LIST
 // ==========================================
 function renderUserList(users) {
     const container = $("#user-list-container");
@@ -308,11 +301,11 @@ function closeMobileSidebar() {
 // ==========================================
 
 /**
- * INITIATE AN OUTGOING CALL
- * @param {boolean} isVideo - true for video call, false for voice only
+ * START OUTGOING CALL
+ * @param {boolean} isVideo - true for video, false for voice only
  */
 async function startCall(isVideo) {
-    // Validate we have someone to call
+    // Validate target
     if (!currentChat || currentChat === "Public") {
         alert("Select a private chat to call");
         return;
@@ -324,15 +317,15 @@ async function startCall(isVideo) {
     }
 
     isVideoCall = isVideo;
-    
+
     try {
-        // Get local media stream
+        // Get media stream
         localStream = await navigator.mediaDevices.getUserMedia({
             video: isVideo,
             audio: true
         });
 
-        // Show call UI immediately
+        // ✅ FIX: Show call interface immediately with display:flex
         showCallInterface(currentChat, null);
 
         // Create peer connection
@@ -344,14 +337,11 @@ async function startCall(isVideo) {
         });
 
         // Show local preview
-        const localVideo = $("#local-video");
-        if (localVideo) localVideo.srcObject = localStream;
+        updateLocalVideoPreview();
 
-        // Update UI state
-        updateLocalVideoVisibility();
-        $("#call-status").textContent = "Calling...";
+        $("#callStatus").textContent = "Calling...";
 
-        // Send call offer via WebSocket
+        // Send via signaling server
         ws.send(JSON.stringify({
             type: "start_call",
             target: currentChat,
@@ -360,49 +350,45 @@ async function startCall(isVideo) {
             caller_pic: myPicBase64
         }));
 
-        // Set timeout for no answer
+        // Timeout for no answer
         window.callTimeout = setTimeout(() => {
-            if ($("#call-status").textContent === "Calling...") {
+            if ($("#callStatus").textContent === "Calling...") {
                 endCall();
                 alert("No answer");
             }
-        }, 30000); // 30 second timeout
+        }, 30000);
 
     } catch (err) {
         console.error("[CALL] Media error:", err);
-        alert("Could not access camera/microphone. Check permissions.");
+        alert("Could not access camera/microphone.\nCheck browser permissions.");
         endCall();
     }
 }
 
 /**
  * HANDLE INCOMING CALL
- * Shows ringing modal and plays sound
- * @param {Object} data - Call data from server
  */
 function handleIncomingCall(data) {
     incomingCallData = data;
-    
-    // Update ringing modal with caller info
-    const callerAvatar = $("#caller-avatar");
-    const callerName = $("#caller-name");
-    const callTypeLabel = $("#call-type-label");
 
-    if (callerAvatar) callerAvatar.src = data.caller_pic || DEFAULT_AVATAR;
-    if (callerName) callerName.textContent = data.caller_name || "Unknown";
-    if (callTypeLabel) callTypeLabel.textContent = data.is_video ? "Video Call" : "Voice Call";
+    // Update ringing modal
+    const avatar = $("#caller-avatar");
+    const name = $("#caller-name");
+    const typeLabel = $("#call-type-label");
 
-    // Show ringing modal
+    if (avatar) avatar.src = data.caller_pic || DEFAULT_AVATAR;
+    if (name) name.textContent = data.caller_name || "Unknown";
+    if (typeLabel) typeLabel.textContent = data.is_video ? "Video Call" : "Voice Call";
+
+    // Show modal
     const modal = $("#ringing-modal");
     if (modal) modal.style.display = "flex";
 
-    // Play ringtone
     playRingtone();
 }
 
 /**
  * ACCEPT INCOMING CALL
- * Called when user clicks Accept button
  */
 async function acceptCall() {
     if (!incomingCallData) return;
@@ -413,35 +399,28 @@ async function acceptCall() {
     isVideoCall = incomingCallData.is_video || false;
 
     try {
-        // Get local media
         localStream = await navigator.mediaDevices.getUserMedia({
             video: isVideoCall,
             audio: true
         });
 
-        // Show call interface
+        // ✅ FIX: Show call interface
         showCallInterface(incomingCallData.caller_name, incomingCallData.caller_pic);
 
-        // Setup peer connection
         createPeerConnection();
 
-        // Add local tracks
         localStream.getTracks().forEach(track => {
             peerConnection.addTrack(track, localStream);
         });
 
-        // Show local video
-        const localVideo = $("#local-video");
-        if (localVideo) localVideo.srcObject = localStream;
-        updateLocalVideoVisibility();
+        updateLocalVideoPreview();
 
-        // Notify server we accepted
         ws.send(JSON.stringify({
             type: "accept_call",
             target: incomingCallData.caller
         }));
 
-        $("#call-status").textContent = "Connecting...";
+        $("#callStatus").textContent = "Connecting...";
 
     } catch (err) {
         console.error("[CALL] Accept error:", err);
@@ -467,27 +446,25 @@ function declineCall() {
 }
 
 /**
- * HANDLE CALL ACCEPTED BY REMOTE
+ * HANDLE CALL ACCEPTED (Caller side)
  */
 async function handleCallAccepted(data) {
     clearTimeout(window.callTimeout);
-    
-    // Create offer (we are the caller)
+
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    // Send offer via signaling
     ws.send(JSON.stringify({
         type: "offer",
         target: data.accepted_by || currentChat,
         offer: offer
     }));
 
-    $("#call-status").textContent = "Ringing...";
+    $("#callStatus").textContent = "Ringing...";
 }
 
 /**
- * HANDLE CALL DECLINED BY REMOTE
+ * HANDLE CALL DECLINED
  */
 function handleCallDeclined(data) {
     clearTimeout(window.callTimeout);
@@ -496,18 +473,16 @@ function handleCallDeclined(data) {
 }
 
 /**
- * HANDLE OFFER FROM CALLER (when we accepted)
+ * HANDLE OFFER (Callee receives)
  */
 async function handleOffer(data) {
     if (!peerConnection) createPeerConnection();
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
 
-    // Create answer
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
 
-    // Send answer back
     ws.send(JSON.stringify({
         type: "answer",
         target: data.from || currentChat,
@@ -516,7 +491,7 @@ async function handleOffer(data) {
 }
 
 /**
- * HANDLE ANSWER FROM CALLEE
+ * HANDLE ANSWER (Caller receives)
  */
 async function handleAnswer(data) {
     if (peerConnection) {
@@ -534,43 +509,36 @@ async function handleICECandidate(data) {
 }
 
 /**
- * HANDLE REMOTE ENDING THE CALL
+ * HANDLE REMOTE END
  */
 function handleRemoteEndCall(data) {
     endCall();
-    alert(data.ended_by ? `${data.ended_by} ended the call` : "Call ended");
+    if (data.ended_by) alert(`${data.ended_by} ended the call`);
 }
 
 // ==========================================
-// PEER CONNECTION MANAGEMENT
+// PEER CONNECTION
 // ==========================================
-
-/**
- * Create RTCPeerConnection with event handlers
- */
 function createPeerConnection() {
     peerConnection = new RTCPeerConnection(iceServers);
 
-    // Handle incoming remote stream
     peerConnection.ontrack = (event) => {
         console.log("[WEBRTC] Received remote track");
         remoteStream = event.streams[0];
-        
-        const remoteVideo = $("#remote-video");
-        const noVideoFallback = $("#no-remote-video");
-        
+
+        const remoteVideo = $("#remoteVideo");
+        const noVideoFallback = $("#noRemoteVideo");
+
         if (remoteVideo) {
             remoteVideo.srcObject = remoteStream;
             remoteVideo.style.display = "block";
         }
         if (noVideoFallback) noVideoFallback.style.display = "none";
 
-        // Call connected!
-        $("#call-status").textContent = "Connected";
+        $("#callStatus").textContent = "Connected";
         startCallTimer();
     };
 
-    // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
         if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
@@ -581,18 +549,17 @@ function createPeerConnection() {
         }
     };
 
-    // Connection state changes
     peerConnection.onconnectionstatechange = () => {
         console.log("[WEBRTC] State:", peerConnection.connectionState);
-        
+
         switch (peerConnection.connectionState) {
             case "connected":
-                $("#call-status").textContent = "Connected";
+                $("#callStatus").textContent = "Connected";
                 startCallTimer();
                 break;
             case "disconnected":
             case "failed":
-                $("#call-status").textContent = "Reconnecting...";
+                $("#callStatus").textContent = "Reconnecting...";
                 break;
             case "closed":
                 endCall();
@@ -602,35 +569,37 @@ function createPeerConnection() {
 }
 
 // ==========================================
-// CALL INTERFACE UI
+// CALL INTERFACE VISIBILITY MANAGEMENT
 // ==========================================
 
 /**
- * Show the call overlay interface
- * @param {string} remoteName - Name of person we're calling
- * @param {string} remotePic - Their avatar URL
+ * SHOW CALL INTERFACE
+ * ✅ FIX: Ensures display:flex is set correctly
  */
 function showCallInterface(remoteName, remotePic) {
     callActive = true;
     callSeconds = 0;
 
+    // ✅ CRITICAL FIX: Set display to flex explicitly
     const overlay = $("#call-interface");
-    if (overlay) overlay.style.display = "flex";
+    if (overlay) {
+        overlay.style.display = "flex";
+    }
 
     // Set remote user info
-    const remoteUserName = $("#remote-user-name");
-    const remoteUserAvatar = $("#remote-user-avatar");
-    
-    if (remoteUserName) remoteUserName.textContent = remoteName || "User";
-    if (remoteUserAvatar) remoteUserAvatar.src = remotePic || DEFAULT_AVATAR;
+    const nameEl = $("#remoteUserName");
+    const avatarEl = $("#remoteUserAvatar");
+
+    if (nameEl) nameEl.textContent = remoteName || "User";
+    if (avatarEl) avatarEl.src = remotePic || DEFAULT_AVATAR;
 
     // Reset control states
     resetCallControls();
 
-    // Hide/show fallback based on video availability
-    const noRemoteVideo = $("#no-remote-video");
-    const remoteVideo = $("#remote-video");
-    
+    // Show/hide fallback based on call type
+    const noRemoteVideo = $("#noRemoteVideo");
+    const remoteVideo = $("#remoteVideo");
+
     if (isVideoCall) {
         if (noRemoteVideo) noRemoteVideo.style.display = "flex";
         if (remoteVideo) remoteVideo.style.display = "none";
@@ -638,10 +607,16 @@ function showCallInterface(remoteName, remotePic) {
         if (noRemoteVideo) noRemoteVideo.style.display = "flex";
         if (remoteVideo) remoteVideo.style.display = "none";
     }
+
+    // Show/hide PiP based on video call
+    const pipContainer = $("#localPip");
+    if (pipContainer) {
+        pipContainer.style.display = isVideoCall ? "block" : "none";
+    }
 }
 
 /**
- * End the current call - cleanup everything
+ * END CALL - Cleanup everything
  */
 function endCall() {
     // Stop timer
@@ -649,13 +624,15 @@ function endCall() {
 
     // Notify server
     if (ws && ws.readyState === WebSocket.OPEN && callActive) {
-        ws.send(JSON.stringify({
-            type: "end_call",
-            target: currentChat
-        }));
+        ws.send(JSON.stringify({ type: "end_call", target: currentChat }));
     }
 
-    // Stop local media tracks
+    // Stop screen share if active
+    if (isScreenSharing) {
+        stopScreenShare();
+    }
+
+    // Stop local tracks
     if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
@@ -667,37 +644,40 @@ function endCall() {
         peerConnection = null;
     }
 
-    // Clear remote stream reference
     remoteStream = null;
 
     // Reset state
     callActive = false;
     isMuted = false;
     isCameraOff = false;
+    isScreenSharing = false;
     incomingCallData = null;
     clearTimeout(window.callTimeout);
 
-    // Hide call UI
-    const overlay = $("#call-interface");
-    if (overlay) overlay.style.display = "none";
+    // Exit fullscreen if active
+    if (isFullscreen) {
+        exitFullscreenMode();
+    }
 
-    // Stop ringtone if playing
+    // ✅ FIX: Hide call interface by setting display:none
+    const overlay = $("#call-interface");
+    if (overlay) {
+        overlay.style.display = "none";
+    }
+
+    // Stop ringtone
     stopRingtime();
 
-    // Hide ringing modal if showing
+    // Hide ringing modal
     const ringingModal = $("#ringing-modal");
     if (ringingModal) ringingModal.style.display = "none";
 
     // Clear video sources
-    const localVideo = $("#local-video");
-    const remoteVideo = $("#remote-video");
-    
-    if (localVideo) {
-        localVideo.srcObject = null;
-    }
-    if (remoteVideo) {
-        remoteVideo.srcObject = null;
-    }
+    const localVideo = $("#localVideo");
+    const remoteVideo = $("#remoteVideo");
+
+    if (localVideo) localVideo.srcObject = null;
+    if (remoteVideo) remoteVideo.srcObject = null;
 
     console.log("[CALL] Ended");
 }
@@ -709,20 +689,20 @@ window.endCall = endCall;
 // ==========================================
 
 /**
- * Toggle Mute / Unmute microphone
+ * TOGGLE MUTE
  */
 window.toggleMute = function() {
     if (!localStream) return;
 
     isMuted = !isMuted;
-    
+
     const audioTracks = localStream.getAudioTracks();
     audioTracks.forEach(track => track.enabled = !isMuted);
 
     // Update UI
-    const btn = $("#btn-mute");
-    const iconOn = $("#icon-mic-on");
-    const iconOff = $("#icon-mic-off");
+    const btn = $("#btnMute");
+    const iconOn = $("#micOn");
+    const iconOff = $("#micOff");
 
     if (btn) btn.classList.toggle("active", isMuted);
     if (iconOn) iconOn.style.display = isMuted ? "none" : "block";
@@ -730,23 +710,22 @@ window.toggleMute = function() {
 };
 
 /**
- * Toggle Camera On / Off
+ * TOGGLE CAMERA
  */
 window.toggleCamera = function() {
     if (!localStream || !isVideoCall) return;
 
     isCameraOff = !isCameraOff;
-    
+
     const videoTracks = localStream.getVideoTracks();
     videoTracks.forEach(track => track.enabled = !isCameraOff);
 
-    // Update UI visibility
-    updateLocalVideoVisibility();
+    updateLocalVideoPreview();
 
-    // Update button state
-    const btn = $("#btn-camera");
-    const iconOn = $("#cam-on");
-    const iconOff = $("#cam-off");
+    // Update button
+    const btn = $("#btnCamera");
+    const iconOn = $("#camOn");
+    const iconOff = $("#camOff");
 
     if (btn) btn.classList.toggle("active", isCameraOff);
     if (iconOn) iconOn.style.display = isCameraOff ? "none" : "block";
@@ -754,61 +733,261 @@ window.toggleCamera = function() {
 };
 
 /**
- * Update local video PiP visibility
+ * UPDATE LOCAL VIDEO PREVIEW VISIBILITY
  */
-function updateLocalVideoVisibility() {
-    const localVideo = $("#local-video");
-    const noLocalVideo = $("#no-local-video");
-    const pipContainer = $("#local-pip");
+function updateLocalVideoPreview() {
+    const localVideo = $("#localVideo");
+    const noLocalVideo = $("#noLocalVideo");
+    const pipContainer = $("#localPip");
 
     if (isVideoCall && !isCameraOff) {
         if (localVideo) localVideo.style.display = "block";
         if (noLocalVideo) noLocalVideo.style.display = "none";
         if (pipContainer) pipContainer.style.display = "block";
-    } else {
+    } else if (isVideoCall && isCameraOff) {
         if (localVideo) localVideo.style.display = "none";
         if (noLocalVideo) noLocalVideo.style.display = "flex";
-        if (pipContainer) pipContainer.style.display = "block"; // Still show container
-    }
-
-    // For voice calls, hide PiP entirely
-    if (!isVideoCall) {
+        if (pipContainer) pipContainer.style.display = "block";
+    } else {
+        // Voice call - hide PiP entirely
         if (pipContainer) pipContainer.style.display = "none";
     }
 }
 
 /**
- * Reset all call control buttons to default state
+ * RESET ALL CONTROL BUTTONS TO DEFAULT STATE
  */
 function resetCallControls() {
     isMuted = false;
     isCameraOff = false;
+    isScreenSharing = false;
 
     // Mute button
-    const muteBtn = $("#btn-mute");
-    const micOn = $("#icon-mic-on");
-    const micOff = $("#icon-mic-off");
+    const muteBtn = $("#btnMute");
+    const micOn = $("#micOn");
+    const micOff = $("#micOff");
     if (muteBtn) muteBtn.classList.remove("active");
     if (micOn) micOn.style.display = "block";
     if (micOff) micOff.style.display = "none";
 
     // Camera button
-    const camBtn = $("#btn-camera");
-    const camOn = $("#cam-on");
-    const camOff = $("#cam-off");
+    const camBtn = $("#btnCamera");
+    const camOn = $("#camOn");
+    const camOff = $("#camOff");
     if (camBtn) camBtn.classList.remove("active");
     if (camOn) camOn.style.display = "block";
     if (camOff) camOff.style.display = "none";
 
+    // Screen share button
+    const screenBtn = $("#btnScreen");
+    const screenOn = $("#screenOn");
+    const screenOff = $("#screenOff");
+    if (screenBtn) screenBtn.classList.remove("active");
+    if (screenOn) screenOn.style.display = "block";
+    if (screenOff) screenOff.style.display = "none";
+
     // Timer
-    const timer = $("#call-timer");
+    const timer = $("#callTimer");
     if (timer) timer.textContent = "00:00";
+
+    // Fullscreen icons
+    const fsEnter = $("#fsIconEnter");
+    const fsExit = $("#fsIconExit");
+    if (fsEnter) fsEnter.style.display = "block";
+    if (fsExit) fsExit.style.display = "none";
+    isFullscreen = false;
+}
+
+// ==========================================
+// SCREEN SHARING
+// ==========================================
+
+/**
+ * TOGGLE SCREEN SHARE
+ * Uses getDisplayMedia API (works on Chrome, Firefox, Edge, Safari)
+ */
+window.toggleScreenShare = async function() {
+    if (!callActive || !peerConnection) {
+        alert("Not in a call");
+        return;
+    }
+
+    if (isScreenSharing) {
+        stopScreenShare();
+        return;
+    }
+
+    try {
+        // Request screen capture
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+                cursor: "always"
+            },
+            audio: false
+        });
+
+        // Handle user stopping share via browser UI
+        screenStream.getVideoTracks()[0].onended = () => {
+            stopScreenShare();
+        };
+
+        // Replace video track in peer connection
+        const videoTrack = screenStream.getVideoTracks()[0];
+        const sender = peerConnection.getSenders().find(s =>
+            s.track && s.track.kind === "video"
+        );
+
+        if (sender) {
+            await sender.replaceTrack(videoTrack);
+        }
+
+        // Update UI state
+        isScreenSharing = true;
+
+        const btn = $("#btnScreen");
+        const iconOn = $("#screenOn");
+        const iconOff = $("#screenOff");
+
+        if (btn) btn.classList.add("active");
+        if (iconOn) iconOn.style.display = "none";
+        if (iconOff) iconOff.style.display = "block";
+
+        // Show local screen preview
+        const localVideo = $("#localVideo");
+        if (localVideo) localVideo.srcObject = screenStream;
+
+        console.log("[SCREEN] Sharing started");
+
+    } catch (err) {
+        console.error("[SCREEN] Error:", err);
+        if (err.name === "NotAllowedError") {
+            alert("Screen sharing was denied");
+        } else if (err.name === "NotFoundError") {
+            alert("No screen source available");
+        } else {
+            alert("Could not start screen sharing");
+        }
+    }
+};
+
+/**
+ * STOP SCREEN SHARING
+ */
+function stopScreenShare() {
+    if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+        screenStream = null;
+    }
+
+    // Restore camera track if available
+    if (localStream && peerConnection) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        const sender = peerConnection.getSenders().find(s =>
+            s.track && s.track.kind === "video"
+        );
+
+        if (sender && videoTrack) {
+            sender.replaceTrack(videoTrack);
+        }
+
+        // Restore local preview
+        const localVideo = $("#localVideo");
+        if (localVideo) localVideo.srcObject = localStream;
+    }
+
+    // Update UI
+    isScreenSharing = false;
+
+    const btn = $("#btnScreen");
+    const iconOn = $("#screenOn");
+    const iconOff = $("#screenOff");
+
+    if (btn) btn.classList.remove("active");
+    if (iconOn) iconOn.style.display = "block";
+    if (iconOff) iconOff.style.display = "none";
+
+    console.log("[SCREEN] Sharing stopped");
+}
+
+// ==========================================
+// FULLSCREEN MODE
+// ==========================================
+
+/**
+ * TOGGLE FULLSCREEN
+ * Works on desktop browsers and mobile (Chrome, Safari)
+ */
+window.toggleFullscreen = function() {
+    if (!document.fullscreenElement) {
+        enterFullscreenMode();
+    } else {
+        exitFullscreenMode();
+    }
+};
+
+/**
+ * ENTER FULLSCREEN
+ */
+function enterFullscreenMode() {
+    const el = $("#call-interface");
+
+    if (el.requestFullscreen) {
+        el.requestFullscreen();
+    } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen(); // Safari
+    } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen(); // IE11
+    } else if (el.webkitEnterFullscreen) {
+        el.webkitEnterFullscreen(); // iOS Safari
+    }
+
+    isFullscreen = true;
+    updateFullscreenIcon(true);
+}
+
+/**
+ * EXIT FULLSCREEN
+ */
+function exitFullscreenMode() {
+    if (document.exitFullscreen) {
+        document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    }
+
+    isFullscreen = false;
+    updateFullscreenIcon(false);
+}
+
+/**
+ * UPDATE FULLSCREEN ICON
+ */
+function updateFullscreenIcon(fullscreen) {
+    const enterIcon = $("#fsIconEnter");
+    const exitIcon = $("#fsIconExit");
+
+    if (enterIcon) enterIcon.style.display = fullscreen ? "none" : "block";
+    if (exitIcon) exitIcon.style.display = fullscreen ? "block" : "none";
+}
+
+// Listen for fullscreen change events (user pressing ESC)
+document.addEventListener("fullscreenchange", handleFullscreenChange);
+document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+function handleFullscreenChange() {
+    isFullscreen = !!document.fullscreenElement;
+    updateFullscreenIcon(isFullscreen);
 }
 
 // ==========================================
 // CALL TIMER
 // ==========================================
-
 function startCallTimer() {
     stopCallTimer();
     callSeconds = 0;
@@ -829,74 +1008,8 @@ function stopCallTimer() {
 function updateTimerDisplay() {
     const mins = Math.floor(callSeconds / 60).toString().padStart(2, '0');
     const secs = (callSeconds % 60).toString().padStart(2, '0');
-    const timerEl = $("#call-timer");
+    const timerEl = $("#callTimer");
     if (timerEl) timerEl.textContent = `${mins}:${secs}`;
-}
-
-// ==========================================
-// DRAGGABLE PIP (Picture-in-Picture)
-// ==========================================
-let dragState = { isDragging: false, startX: 0, startY: 0, initialLeft: 0, initialTop: 0 };
-
-window.startDrag = function(e) {
-    if (e.target.tagName === 'VIDEO' || e.target.id === 'no-local-video') return; // Allow interaction with video
-    
-    const pip = $("#local-pip");
-    if (!pip) return;
-
-    dragState.isDragging = true;
-    dragState.startX = e.clientX || e.touches?.[0]?.clientX;
-    dragState.startY = e.clientY || e.touches?.[0]?.clientY;
-    dragState.initialLeft = pip.offsetLeft;
-    dragState.initialTop = pip.offsetTop;
-
-    pip.style.transition = 'none';
-
-    document.addEventListener('mousemove', onDrag);
-    document.addEventListener('mouseup', stopDrag);
-    document.addEventListener('touchmove', onDrag, { passive: false });
-    document.addEventListener('touchend', stopDrag);
-};
-
-function onDrag(e) {
-    if (!dragState.isDragging) return;
-    e.preventDefault();
-
-    const pip = $("#local-pip");
-    if (!pip) return;
-
-    const clientX = e.clientX || e.touches?.[0]?.clientX;
-    const clientY = e.clientY || e.touches?.[0]?.clientY;
-
-    const dx = clientX - dragState.startX;
-    const dy = clientY - dragState.startY;
-
-    let newLeft = dragState.initialLeft + dx;
-    let newTop = dragState.initialTop + dy;
-
-    // Constrain to viewport
-    const rect = pip.getBoundingClientRect();
-    const maxLeft = window.innerWidth - rect.width;
-    const maxTop = window.innerHeight - rect.height;
-
-    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-    newTop = Math.max(0, Math.min(newTop, maxTop));
-
-    pip.style.left = newLeft + 'px';
-    pip.style.top = newTop + 'px';
-    pip.style.right = 'auto';
-}
-
-function stopDrag() {
-    dragState.isDragging = false;
-    
-    const pip = $("#local-pip");
-    if (pip) pip.style.transition = '';
-
-    document.removeEventListener('mousemove', onDrag);
-    document.removeEventListener('mouseup', stopDrag);
-    document.removeEventListener('touchmove', onDrag);
-    document.removeEventListener('touchend', stopDrag);
 }
 
 // ==========================================
@@ -904,17 +1017,28 @@ function stopDrag() {
 // ==========================================
 
 document.addEventListener("keydown", (e) => {
+    // Enter to send message
     if (e.key === "Enter" && document.activeElement.id === "msg-input") {
         e.preventDefault();
         window.sendMyMessage();
     }
-    
-    // Escape to end call
-    if (e.key === "Escape" && callActive) {
-        endCall();
+
+    // Escape to end call or exit fullscreen
+    if (e.key === "Escape") {
+        if (callActive && isFullscreen) {
+            exitFullscreenMode();
+        } else if (callActive) {
+            endCall();
+        }
+    }
+
+    // F11 or 'f' to toggle fullscreen when in call
+    if ((e.key === 'f' || e.key === 'F') && callActive && document.activeElement.tagName !== 'INPUT') {
+        toggleFullscreen();
     }
 });
 
+// Click outside to close mobile sidebar
 document.addEventListener("click", (e) => {
     if (window.innerWidth > 768) return;
     const sidebar = $("#sidebar");
@@ -924,6 +1048,7 @@ document.addEventListener("click", (e) => {
     }
 });
 
+// Window resize handler
 window.addEventListener("resize", () => {
     if (window.innerWidth > 768) {
         document.body.style.overflow = "";
@@ -931,14 +1056,25 @@ window.addEventListener("resize", () => {
     }
 });
 
+// Cleanup before page unload
 window.addEventListener("beforeunload", () => {
     if (callActive) endCall();
     if (ws) ws.close(1000);
 });
 
+// Prevent zoom on double tap (iOS)
+document.addEventListener("touchend", (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+    }
+    lastTouchEnd = now;
+});
+let lastTouchEnd = 0;
+
 // Console branding
 console.log(
-    "%c🔥 IdlyCall Pro %cv2.0 %c| Calls Enabled",
+    "%c🔥 IdlyCall Pro %cv2.1 %c| Calls + Screenshare + Fullscreen",
     "color:#FF7A00;font-weight:bold;font-size:16px;",
     "color:#9ca3af;font-size:12px;",
     "color:#fff;font-size:12px;"
