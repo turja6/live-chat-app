@@ -1,6 +1,6 @@
 # ============================================
-# IdlyCall Pro - Python Dependencies
-# Compatible with Render.com + Neon.tech
+# IdlyCall Pro - Fixed Requirements
+# Compatible with Render.com (No Rust needed!)
 # ============================================
 
 # ---- Core Framework ----
@@ -8,26 +8,26 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 jinja2==3.1.2
-pydantic==2.5.2
+# ⭐ FIX: Use pydantic v2.4.2 instead of 2.5.2
+# v2.5+ requires Rust/maturin which fails on Render's read-only FS
+pydantic==2.4.2
 python-dotenv==1.0.0
 
-# ---- Database (Neon.tech - PostgreSQL) ----
-# Note: Neon uses standard postgres drivers
-asyncpg==0.29.0          # Async PostgreSQL driver (recommended for Neon)
-psycopg2-binary==2.9.9   # Synchronous fallback
-databases==0.8.0           # Optional ORM helper
+# ---- Database (Neon.tech) ----
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+databases==0.8.0
 
 # ---- Utilities ----
-aiofiles==23.2.1          # Async file handling
-websockets==12.0          # WebSocket support (included in uvicorn)
-python-dateutil==2.8.2    # Date utilities
-orjson==3.9.12            # Fast JSON parsing
+aiofiles==23.2.1
+websockets==12.0
+python-dateutil==2.8.2
+orjson==3.9.12
 
 # ---- Production ----
-gunicorn==21.2.0           # Production WSGI server (Render uses this)
-uvloop==0.19.0            # Fast event loop (Linux/macOS)
+gunicorn==21.2.0
+uvloop==0.19.0
 
-# ---- Development ----
-# These are optional but helpful for local dev
-# watchdog==3.0.0          # File watcher for auto-reload
-# httpx==0.25.2            # Modern HTTP client (for testing)
+# ---- Development (Optional) ----
+watchdog==3.0.0
+httpx==0.25.2
