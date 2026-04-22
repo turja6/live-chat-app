@@ -10,9 +10,17 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <!-- Notification Sound -->
     <audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+    
+    <!-- Ringing Sound for Incoming Calls -->
+    <audio id="ringtone" loop preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
 
-    <!-- LOGIN MODAL -->
+    <!-- ============================================
+         LOGIN MODAL
+    ============================================ -->
     <div id="login-screen" class="modal-overlay">
         <div class="modal-box">
             <img src="/static/IC.png" class="app-logo" alt="IdlyCall">
@@ -27,8 +35,11 @@
         </div>
     </div>
 
-    <!-- MAIN APPLICATION -->
+    <!-- ============================================
+         MAIN APPLICATION CONTAINER
+    ============================================ -->
     <div id="app-container" style="display:none">
+        
         <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -40,15 +51,34 @@
 
         <!-- CHAT AREA -->
         <main class="chat-area">
+            
+            <!-- HEADER with Call Buttons -->
             <header class="chat-header">
-                <div class="header-info">
+                <div class="header-left">
                     <button class="mobile-menu" onclick="toggleMobileSidebar()" aria-label="Toggle menu">☰</button>
                     <h3 id="chatHeaderTitle">Public Server</h3>
                 </div>
+                
+                <!-- Call Button Group -->
+                <div class="call-buttons" id="callButtons">
+                    <button class="call-btn call-btn-voice" onclick="startCall(false)" title="Voice Call" aria-label="Start voice call">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                    </button>
+                    <button class="call-btn call-btn-video" onclick="startCall(true)" title="Video Call" aria-label="Start video call">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                        </svg>
+                    </button>
+                </div>
             </header>
 
+            <!-- MESSAGE STREAM -->
             <div id="chat-stream"></div>
 
+            <!-- INPUT AREA -->
             <footer class="input-area">
                 <div class="input-box">
                     <input type="text" id="msg-input" placeholder="Message..." autocomplete="off">
@@ -58,8 +88,114 @@
         </main>
     </div>
 
+    <!-- ============================================
+         INCOMING CALL RINGING MODAL
+         Appears when receiving an incoming call
+    ============================================ -->
+    <div id="ringing-modal" class="ringing-overlay" style="display:none;">
+        <div class="ringing-box">
+            <div class="ringing-avatar">
+                <img id="caller-avatar" src="" alt="Caller">
+            </div>
+            <h3 id="caller-name">Incoming Call...</h3>
+            <p id="call-type-label">Video Call</p>
+            <div class="ringing-animation">
+                <span class="ring-dot"></span>
+                <span class="ring-dot"></span>
+                <span class="ring-dot"></span>
+            </div>
+            <div class="ringing-actions">
+                <button class="ringing-btn ringing-decline" onclick="declineCall()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Decline
+                </button>
+                <button class="ringing-btn ringing-accept" onclick="acceptCall()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 10 20 15 10 25"></polyline>
+                        <path d="M4 4v7a4 4 0 0 0 4 4h12"></path>
+                    </svg>
+                    Accept
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         CALL INTERFACE OVERLAY
+         Active during ongoing calls
+         Sits on top of chat when visible
+    ============================================ -->
+    <div id="call-interface" class="call-overlay" style="display:none;">
+        
+        <!-- Remote Video (Full Background) -->
+        <video id="remote-video" class="remote-video" autoplay playsinline></video>
+        
+        <!-- No Remote Video Fallback -->
+        <div id="no-remote-video" class="no-video-fallback">
+            <img id="remote-user-avatar" src="" alt="">
+            <span id="remote-user-name">User</span>
+        </div>
+
+        <!-- Local Video (PiP - Draggable) -->
+        <div id="local-pip" class="pip-container" onmousedown="startDrag(event)">
+            <video id="local-video" class="local-video" autoplay playsinline muted></video>
+            <div id="no-local-video" class="no-pip-video">
+                <span>📷 Off</span>
+            </div>
+        </div>
+
+        <!-- Call Info Bar (Top) -->
+        <div class="call-info-bar">
+            <span id="call-status">Connecting...</span>
+            <span id="call-timer" class="call-timer">00:00</span>
+        </div>
+
+        <!-- Call Controls Bar (Bottom - Glassmorphism) -->
+        <div class="call-controls">
+            <button class="ctrl-btn ctrl-mute" id="btn-mute" onclick="toggleMute()" title="Mute/Unmute">
+                <svg id="icon-mic-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                <svg id="icon-mic-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.3"></path>
+                    <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 1.5-.7 2.83-1.78 3.69"></path>
+                </svg>
+                <span>Mute</span>
+            </button>
+            
+            <button class="ctrl-btn ctrl-camera" id="btn-camera" onclick="toggleCamera()" title="Toggle Camera">
+                <svg id="cam-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+                <svg id="cam-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                    <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+                <span>Camera</span>
+            </button>
+            
+            <button class="ctrl-btn ctrl-end" id="btn-end-call" onclick="endCall()" title="End Call">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
+                    <line x1="23" y1="1" x2="1" y2="23"></line>
+                </svg>
+                <span>End</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="/static/script.js"></script>
     <script>
+        // Plugin Loader
         const plugins = ["reactions.js", "typing.js", "previews.js"];
         plugins.forEach(p => {
             const s = document.createElement('script');
