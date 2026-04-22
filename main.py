@@ -58,26 +58,33 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             data = await websocket.receive_text()
             parsed_data = json.loads(data)
             msg_type = parsed_data.get("type")
-            target = parsed_data.get("receiver", "Public")
             
-            # Add sender info and timestamp to all incoming messages
+            # Default to Public Server if no receiver is specified
+            target = parsed_data.get("receiver", "Public Server")
+            
             parsed_data["sender"] = username
             parsed_data["timestamp"] = datetime.now().strftime("%I:%M %p")
 
-            # Route standard chat messages
+            # 1. Route Standard Chat Messages
             if msg_type == "chat":
                 payload = json.dumps(parsed_data)
-                if target == "Public":
+                # Check if it's meant for the public room
+                if target == "Public Server" or target == "Public":
                     await manager.broadcast(payload)
                 else:
+                    # It's a private message
                     await manager.send_personal_message(payload, target)
                     if target != username:
                         await manager.send_personal_message(payload, username)
                         
-            # Route silent events (Typing, Calls, Reactions)
-            elif msg_type in ["typing", "reaction", "call_end"]:
+            # 2. THE CALLING FIX: Route WebRTC & Silent Events
+            elif msg_type in [
+                "typing", "reaction", "call_end", 
+                "call_offer", "call_answer", "ice_candidate", "call_declined"
+            ]:
                 payload = json.dumps(parsed_data)
-                if target != "Public":
+                # Do not broadcast private call data to the public room!
+                if target != "Public Server" and target != "Public":
                     await manager.send_personal_message(payload, target)
 
     except WebSocketDisconnect:
