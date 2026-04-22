@@ -328,6 +328,7 @@
             gap: 12px;
             border: 1px solid transparent;
             transition: background 0.15s ease, border-color 0.15s ease;
+            position: relative;
         }
 
         .user-item:hover {
@@ -392,6 +393,24 @@
             border-radius: 50%;
             border: 2px solid var(--success);
             opacity: 0.3;
+        }
+
+        /* Unread Badge */
+        .unread-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--accent);
+            color: var(--bg);
+            font-size: 0.7rem;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
         }
 
         /* Mobile Sidebar Overlay */
@@ -805,6 +824,66 @@
             background: #dc2626;
         }
 
+        /* Incoming Call UI */
+        .incoming-call-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3500;
+        }
+
+        .incoming-call-box {
+            background: var(--panel);
+            padding: 40px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .incoming-call-box h3 {
+            font-size: 1.3rem;
+        }
+
+        .incoming-call-box p {
+            color: var(--text-muted);
+        }
+
+        .incoming-call-actions {
+            display: flex;
+            gap: 20px;
+        }
+
+        .decline-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .accept-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
         /* =========================================
            EMPTY STATE
         ========================================= */
@@ -986,12 +1065,12 @@
                     </div>
                 </div>
                 <div class="action-btns">
-                    <button class="action-btn call-btn" onclick="showCallScreen()" title="Voice Call">
+                    <button class="action-btn call-btn" onclick="startOutgoingCall()" title="Voice Call">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                         </svg>
                     </button>
-                    <button class="action-btn" onclick="showCallScreen()" title="Video Call">
+                    <button class="action-btn" onclick="startOutgoingCall()" title="Video Call">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <polygon points="23 7 16 12 23 17 23 7"></polygon>
                             <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
@@ -1057,6 +1136,18 @@
         </div>
     </div>
 
+    <!-- INCOMING CALL MODAL -->
+    <div class="incoming-call-modal" id="incoming-call-modal">
+        <div class="incoming-call-box">
+            <h3>Incoming Call</h3>
+            <p id="incoming-caller-name">Someone is calling you...</p>
+            <div class="incoming-call-actions">
+                <button class="decline-btn" onclick="declineIncomingCall()">Decline</button>
+                <button class="accept-btn" onclick="acceptIncomingCall()">Accept</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // =========================================
         // STATE VARIABLES
@@ -1065,10 +1156,31 @@
         let myUsername = "";
         let currentChat = "Public Server";
         let localStream = null;
+        let peerConnection = null;
         let callTimer = null;
         let callSeconds = 0;
         let isMuted = false;
         let isVideoOff = false;
+        
+        // BUG FIX 1: Chat history storage per conversation
+        let chatHistories = {};
+        let unreadCounts = {};
+        
+        // WebRTC call state
+        let incomingCallFrom = null;
+        let pendingOffer = null;
+        let isCallInitiator = false;
+
+        // =========================================
+        // WEBRTC CONFIGURATION
+        // =========================================
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+        };
 
         // =========================================
         // AVATAR PREVIEW
@@ -1141,25 +1253,178 @@
         }
 
         // =========================================
-        // MESSAGE HANDLING
+        // MESSAGE HANDLING - BUG FIX 1
         // =========================================
         function handleMessage(data) {
             switch (data.type) {
                 case "chat":
-                    drawMessage(data.sender, data.message);
+                    handleChatMessage(data);
                     break;
                 case "user_list":
                     updateSidebar(data.data);
                     break;
+                case "call_offer":
+                    handleCallOffer(data);
+                    break;
+                case "call_answer":
+                    handleCallAnswer(data);
+                    break;
+                case "ice_candidate":
+                    handleIceCandidate(data);
+                    break;
                 case "call_end":
                     forceEndCall();
                     break;
-                case "call_offer":
-                case "call_answer":
-                case "ice_candidate":
-                    // WebRTC signaling would be handled here
+                case "call_declined":
+                    handleCallDeclined();
                     break;
             }
+        }
+
+        // BUG FIX 1: Proper message routing with history storage
+        function handleChatMessage(data) {
+            const sender = data.sender;
+            const message = data.message;
+            const receiver = data.receiver;
+            
+            // Determine which conversation this message belongs to
+            let conversationId;
+            let isMe = sender === myUsername;
+            
+            if (isMe) {
+                // My outgoing message - store in receiver's conversation
+                conversationId = receiver;
+            } else {
+                // Incoming message - store in sender's conversation
+                conversationId = sender;
+            }
+            
+            // Initialize history array if needed
+            if (!chatHistories[conversationId]) {
+                chatHistories[conversationId] = [];
+            }
+            
+            // Create message object
+            const msgObj = {
+                sender: sender,
+                message: message,
+                timestamp: Date.now()
+            };
+            
+            // Store in history
+            chatHistories[conversationId].push(msgObj);
+            
+            // If this is the current active chat, render immediately
+            if (conversationId === currentChat) {
+                renderMessage(msgObj);
+            } else if (!isMe) {
+                // Incoming message for different chat - increment unread
+                if (!unreadCounts[conversationId]) {
+                    unreadCounts[conversationId] = 0;
+                }
+                unreadCounts[conversationId]++;
+                
+                // Update sidebar badge
+                updateUnreadBadge(conversationId);
+                
+                // Show toast notification
+                showToastNotification(sender, message);
+            }
+        }
+
+        function renderMessage(msgObj) {
+            const stream = document.getElementById('chat-stream');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+
+            const div = document.createElement('div');
+            const isMe = msgObj.sender === myUsername;
+
+            div.className = isMe ? 'message my-message' : 'message';
+
+            const time = new Date(msgObj.timestamp).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+
+            div.innerHTML = `
+                <div class="msg-sender">${isMe ? 'You' : msgObj.sender}</div>
+                <div class="msg-text">${escapeHtml(msgObj.message)}</div>
+                <div class="msg-time">${time}</div>
+            `;
+
+            stream.appendChild(div);
+            stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // BUG FIX 1: Render history when switching chats
+        function renderChatHistory(conversationId) {
+            const stream = document.getElementById('chat-stream');
+            stream.innerHTML = '';
+            
+            const history = chatHistories[conversationId];
+            
+            if (!history || history.length === 0) {
+                // Show empty state
+                stream.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <h3>Start the conversation</h3>
+                        <p>Send a message to begin chatting</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            history.forEach(msgObj => renderMessage(msgObj));
+        }
+
+        function updateUnreadBadge(conversationId) {
+            const userItem = document.querySelector(`.user-item[data-username="${conversationId}"]`);
+            if (!userItem) return;
+            
+            // Remove existing badge
+            const existingBadge = userItem.querySelector('.unread-badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            const count = unreadCounts[conversationId];
+            if (count > 0) {
+                const badge = document.createElement('div');
+                badge.className = 'unread-badge';
+                badge.textContent = count > 99 ? '99+' : count;
+                userItem.appendChild(badge);
+            }
+        }
+
+        function showToastNotification(sender, message) {
+            // Simple visual indicator - could be enhanced with a proper toast
+            const chatHeader = document.getElementById('chatHeaderTitle');
+            const originalTitle = chatHeader.textContent;
+            
+            // Flash the header briefly
+            chatHeader.style.color = 'var(--accent)';
+            chatHeader.textContent = `New message from ${sender}`;
+            
+            setTimeout(() => {
+                chatHeader.style.color = '';
+                chatHeader.textContent = originalTitle;
+            }, 2000);
         }
 
         // =========================================
@@ -1180,16 +1445,20 @@
             }
         }
 
+        // BUG FIX 1: switchChat now properly renders history
         function switchChat(targetUser, displayName) {
             currentChat = targetUser;
+
+            // Clear unread for this conversation
+            unreadCounts[targetUser] = 0;
+            updateUnreadBadge(targetUser);
 
             // Update header
             document.getElementById("chatHeaderTitle").textContent = displayName || targetUser;
             document.getElementById("chat-avatar").textContent = (displayName || targetUser).charAt(0).toUpperCase();
 
-            // Clear chat for new conversation
-            document.getElementById('chat-stream').innerHTML = '';
-            document.getElementById('empty-state') && (document.getElementById('empty-state').style.display = 'none');
+            // Render stored history
+            renderChatHistory(targetUser);
 
             // Update active state
             document.querySelectorAll('.user-item').forEach(item => {
@@ -1211,57 +1480,31 @@
 
             const usersHtml = users
                 .filter(u => u.username !== myUsername)
-                .map(user => `
-                    <div class="user-item" data-username="${user.username}" onclick="switchChat('${user.username}', '${user.username}')">
-                        <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
-                        <div class="user-info">
-                            <div class="user-name">${user.username}</div>
-                            <div class="user-preview">Click to chat</div>
+                .map(user => {
+                    const unread = unreadCounts[user.username] || 0;
+                    const badgeHtml = unread > 0 
+                        ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` 
+                        : '';
+                    
+                    return `
+                        <div class="user-item" data-username="${user.username}" onclick="switchChat('${user.username}', '${user.username}')">
+                            <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                            <div class="user-info">
+                                <div class="user-name">${user.username}</div>
+                                <div class="user-preview">${unread > 0 ? unread + ' new message(s)' : 'Click to chat'}</div>
+                            </div>
+                            <div class="status-dot"></div>
+                            ${badgeHtml}
                         </div>
-                        <div class="status-dot"></div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
 
             container.innerHTML = header + usersHtml;
         }
 
         // =========================================
-        // CHAT MESSAGES
+        // CHAT SENDING
         // =========================================
-        function drawMessage(sender, text) {
-            const stream = document.getElementById('chat-stream');
-
-            // Hide empty state if present
-            const emptyState = document.getElementById('empty-state');
-            if (emptyState) emptyState.style.display = 'none';
-
-            const div = document.createElement('div');
-            const isMe = sender === myUsername;
-
-            div.className = isMe ? 'message my-message' : 'message';
-
-            const time = new Date().toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-
-            div.innerHTML = `
-                <div class="msg-sender">${isMe ? 'You' : sender}</div>
-                <div class="msg-text">${escapeHtml(text)}</div>
-                <div class="msg-time">${time}</div>
-            `;
-
-            stream.appendChild(div);
-            stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         function sendMessage() {
             const inputField = document.getElementById("msg-input");
             const text = inputField.value.trim();
@@ -1269,6 +1512,7 @@
             if (!text) return;
 
             if (ws && ws.readyState === WebSocket.OPEN) {
+                // Store locally first (will be added to history via handleChatMessage)
                 ws.send(JSON.stringify({
                     type: "chat",
                     receiver: currentChat,
@@ -1288,34 +1532,223 @@
         }
 
         // =========================================
-        // CALL FUNCTIONALITY
+        // WEBRTC IMPLEMENTATION - BUG FIX 2
         // =========================================
-        async function showCallScreen() {
-            const overlay = document.getElementById('call-overlay');
-            const localVideo = document.getElementById('local-video');
-
-            overlay.style.display = 'block';
-            document.getElementById('call-username').textContent = currentChat;
-            document.getElementById('call-timer').textContent = 'Connecting...';
-
+        
+        function createPeerConnection() {
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            
+            peerConnection = new RTCPeerConnection(rtcConfig);
+            
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const targetUser = isCallInitiator ? currentChat : incomingCallFrom;
+                    sendSignal({
+                        type: "ice_candidate",
+                        receiver: targetUser,
+                        candidate: event.candidate.toJSON()
+                    });
+                }
+            };
+            
+            // Handle connection state changes
+            peerConnection.onconnectionstatechange = () => {
+                console.log("Connection state:", peerConnection.connectionState);
+                if (peerConnection.connectionState === 'disconnected' || 
+                    peerConnection.connectionState === 'failed') {
+                    forceEndCall();
+                }
+            };
+            
+            // Handle incoming remote stream
+            peerConnection.ontrack = (event) => {
+                console.log("Received remote track");
+                const remoteVideo = document.getElementById('remote-video');
+                if (remoteVideo.srcObject !== event.streams[0]) {
+                    remoteVideo.srcObject = event.streams[0];
+                }
+            };
+            
+            return peerConnection;
+        }
+        
+        function sendSignal(data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(data));
+            }
+        }
+        
+        // Caller: Start outgoing call
+        async function startOutgoingCall() {
+            if (currentChat === "Public Server") {
+                alert("Please select a user to call");
+                return;
+            }
+            
+            isCallInitiator = true;
+            
             try {
+                // Get local media
                 localStream = await navigator.mediaDevices.getUserMedia({
                     video: true,
                     audio: true
                 });
-                localVideo.srcObject = localStream;
-                startCallTimer();
+                
+                // Show call UI
+                showCallUI(currentChat);
+                document.getElementById('local-video').srcObject = localStream;
+                document.getElementById('call-timer').textContent = 'Calling...';
+                
+                // Create peer connection
+                createPeerConnection();
+                
+                // Add local tracks
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                // Create offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                // Send offer via WebSocket
+                sendSignal({
+                    type: "call_offer",
+                    receiver: currentChat,
+                    offer: {
+                        type: offer.type,
+                        sdp: offer.sdp
+                    }
+                });
+                
             } catch (err) {
-                console.warn("Camera/mic access denied:", err);
-                alert("Could not access camera or microphone. Please check permissions.");
+                console.error("Error starting call:", err);
+                alert("Could not access camera or microphone");
                 forceEndCall();
             }
         }
-
+        
+        // Receiver: Handle incoming call offer
+        async function handleCallOffer(data) {
+            incomingCallFrom = data.sender;
+            pendingOffer = data.offer;
+            
+            // Show incoming call modal
+            document.getElementById('incoming-caller-name').textContent = 
+                `${data.sender} is calling you...`;
+            document.getElementById('incoming-call-modal').style.display = 'flex';
+        }
+        
+        // Receiver: Accept incoming call
+        async function acceptIncomingCall() {
+            document.getElementById('incoming-call-modal').style.display = 'none';
+            
+            isCallInitiator = false;
+            
+            try {
+                // Get local media
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+                
+                // Show call UI
+                showCallUI(incomingCallFrom);
+                document.getElementById('local-video').srcObject = localStream;
+                
+                // Create peer connection
+                createPeerConnection();
+                
+                // Add local tracks
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                // Set remote description from offer
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(pendingOffer));
+                
+                // Create answer
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                // Send answer via WebSocket
+                sendSignal({
+                    type: "call_answer",
+                    receiver: incomingCallFrom,
+                    answer: {
+                        type: answer.type,
+                        sdp: answer.sdp
+                    }
+                });
+                
+                // Start timer
+                startCallTimer();
+                pendingOffer = null;
+                
+            } catch (err) {
+                console.error("Error accepting call:", err);
+                alert("Could not establish call");
+                forceEndCall();
+            }
+        }
+        
+        // Decline incoming call
+        function declineIncomingCall() {
+            sendSignal({
+                type: "call_declined",
+                receiver: incomingCallFrom
+            });
+            
+            document.getElementById('incoming-call-modal').style.display = 'none';
+            incomingCallFrom = null;
+            pendingOffer = null;
+        }
+        
+        // Caller: Handle call answer from receiver
+        async function handleCallAnswer(data) {
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                startCallTimer();
+            } catch (err) {
+                console.error("Error setting remote description:", err);
+            }
+        }
+        
+        // Handle ICE candidate
+        async function handleIceCandidate(data) {
+            try {
+                if (peerConnection && peerConnection.remoteDescription) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                }
+            } catch (err) {
+                console.error("Error adding ICE candidate:", err);
+            }
+        }
+        
+        // Handle call declined
+        function handleCallDeclined() {
+            alert("Call was declined");
+            forceEndCall();
+        }
+        
+        // Show call UI
+        function showCallUI(username) {
+            document.getElementById('call-overlay').style.display = 'block';
+            document.getElementById('call-username').textContent = username;
+        }
+        
+        // Start call timer
         function startCallTimer() {
             callSeconds = 0;
             document.getElementById('call-timer').textContent = '00:00';
-
+            
+            if (callTimer) {
+                clearInterval(callTimer);
+            }
+            
             callTimer = setInterval(() => {
                 callSeconds++;
                 const mins = Math.floor(callSeconds / 60).toString().padStart(2, '0');
@@ -1324,14 +1757,22 @@
             }, 1000);
         }
 
+        // BUG FIX 2: Properly close peer connection
         function forceEndCall() {
             const overlay = document.getElementById('call-overlay');
             const localVideo = document.getElementById('local-video');
+            const remoteVideo = document.getElementById('remote-video');
 
             // Stop timer
             if (callTimer) {
                 clearInterval(callTimer);
                 callTimer = null;
+            }
+
+            // Close peer connection
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
             }
 
             // Stop all media tracks
@@ -1342,10 +1783,15 @@
 
             // Clear video elements
             localVideo.srcObject = null;
+            remoteVideo.srcObject = null;
 
-            // Reset mute/video states
+            // Reset states
             isMuted = false;
             isVideoOff = false;
+            isCallInitiator = false;
+            incomingCallFrom = null;
+            pendingOffer = null;
+            
             document.getElementById('mute-btn').classList.remove('active');
             document.getElementById('video-btn').classList.remove('active');
 
@@ -1353,12 +1799,10 @@
             overlay.style.display = 'none';
 
             // Notify peer
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: "call_end",
-                    receiver: currentChat
-                }));
-            }
+            sendSignal({
+                type: "call_end",
+                receiver: currentChat !== "Public Server" ? currentChat : incomingCallFrom
+            });
         }
 
         function toggleMute() {
@@ -1392,8 +1836,12 @@
             // Escape to close call
             if (e.key === 'Escape') {
                 const callOverlay = document.getElementById('call-overlay');
+                const incomingModal = document.getElementById('incoming-call-modal');
+                
                 if (callOverlay.style.display === 'block') {
                     forceEndCall();
+                } else if (incomingModal.style.display === 'flex') {
+                    declineIncomingCall();
                 }
             }
         });
