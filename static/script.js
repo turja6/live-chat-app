@@ -1,78 +1,52 @@
-/* ==========================================
-   IDLYCALL CORE ENGINE - FINAL FIX
-   ========================================== */
-
 let ws;
 let myUsername = localStorage.getItem("chat_username");
 let myPicBase64 = localStorage.getItem("chat_pic") || "";
 let currentChat = "Public";
 
-// Safe Audio Check
-const getChatSound = () => document.getElementById("chatSound");
-
-function manualLogin() {
-    console.log("Login triggered...");
-    const input = document.getElementById("usernameInput");
-    
-    if (!input) {
-        console.error("CRITICAL: usernameInput element not found in HTML!");
-        alert("System Error: Login input missing. Check your index.html");
-        return;
-    }
-    
-    const val = input.value.trim();
-    if (!val) {
-        alert("Please enter a username!");
-        return;
-    }
-
-    myUsername = val;
-    localStorage.setItem("chat_username", myUsername);
-    
-    // Unlock audio for browser
-    const snd = getChatSound();
-    if (snd) { snd.play().catch(() => {}); snd.pause(); }
-
-    startApp();
+function processImage(e, tid) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        document.getElementById(tid).src = ev.target.result;
+        myPicBase64 = ev.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 
+window.manualLogin = function() {
+    const input = document.getElementById("usernameInput");
+    if (!input || !input.value.trim()) return alert("Enter a name!");
+    myUsername = input.value.trim();
+    localStorage.setItem("chat_username", myUsername);
+    startApp();
+};
+
 function startApp() {
-    console.log("Starting App for user:", myUsername);
-    const loginScreen = document.getElementById("login-screen");
-    const appContainer = document.getElementById("app-container");
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app-container").style.display = "flex";
 
-    if (loginScreen) loginScreen.style.display = "none";
-    if (appContainer) appContainer.style.display = "flex";
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${protocol}://${location.host}/ws/${myUsername}`);
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
+    ws.onopen = () => ws.send(JSON.stringify({ pic: myPicBase64 }));
 
-    ws.onopen = () => {
-        console.log("WebSocket Connected Successfully!");
-        ws.send(JSON.stringify({ pic: myPicBase64 }));
-    };
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "chat") {
-            const snd = getChatSound();
-            if (data.sender !== myUsername && snd) snd.play().catch(() => {});
-            drawMessage(data.message, data.sender, data.profile_pic, data.timestamp);
-        } else if (data.type === "user_list") {
-            updateSidebar(data.data);
+    ws.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.type === "chat") {
+            if (d.sender !== myUsername) document.getElementById("chatSound").play().catch(()=>{});
+            drawMessage(d.message, d.sender, d.profile_pic, d.timestamp);
+        } else if (d.type === "user_list") {
+            updateSidebar(d.data);
         }
     };
-
-    ws.onerror = (err) => console.error("WebSocket Error:", err);
 }
 
 function drawMessage(text, sender, pic, time) {
     const stream = document.getElementById('chat-stream');
-    if (!stream) return;
     const div = document.createElement('div');
     div.className = 'message';
     div.innerHTML = `
-        <img src="${pic || '/static/IC.png'}" class="msg-avatar">
+        <img src="${pic || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'}" class="msg-avatar">
         <div>
             <span class="msg-sender">${sender}</span><span class="msg-time">${time || ''}</span>
             <div class="msg-content">${text}</div>
@@ -84,32 +58,29 @@ function drawMessage(text, sender, pic, time) {
 
 function updateSidebar(users) {
     const container = document.getElementById('user-list-container');
-    if(!container) return;
     container.innerHTML = users.map(u => `
-        <div class="user-item" onclick="switchChat('${u.username}')">
-            <img src="${u.profile_pic || '/static/IC.png'}">
+        <div class="user-item" onclick="window.switchChat('${u.username}')">
+            <img src="${u.profile_pic || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'}" width="30" height="30" style="border-radius:50%; margin-right:10px;">
             <span>${u.username}</span>
         </div>
     `).join('');
 }
 
-function switchChat(target) {
+window.sendMyMessage = function() {
+    const inp = document.getElementById("msg-input");
+    if (!inp.value.trim()) return;
+    ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: inp.value }));
+    inp.value = "";
+};
+
+window.switchChat = function(target) {
     currentChat = target;
     document.getElementById("chatHeaderTitle").innerText = target;
     document.getElementById("chat-stream").innerHTML = "";
     ws.send(JSON.stringify({ type: "get_history", target: target }));
-}
+};
 
-function sendMyMessage() {
-    const inp = document.getElementById("msg-input");
-    if(!inp || !inp.value.trim()) return;
-    ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: inp.value }));
-    inp.value = "";
-}
-
-// FORCE GLOBAL ACCESS
-window.manualLogin = manualLogin;
-window.sendMyMessage = sendMyMessage;
-window.switchChat = switchChat;
-
-console.log("IDLYCALL BRAIN LOADED AND READY.");
+// Keyboard support
+document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && document.activeElement.id === 'msg-input') window.sendMyMessage();
+});
