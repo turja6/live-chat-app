@@ -1,87 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IdlyCall - Connected</title>
-    <link rel="icon" type="image/png" href="/static/IC.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-
-    <audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
-    <audio id="ringSound" src="https://cdn.pixabay.com/audio/2022/01/18/audio_511d1796d4.mp3" loop preload="auto"></audio>
-    <audio id="dialSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_78ec79524c.mp3" loop preload="auto"></audio>
-
-    <div id="login-screen" class="modal-overlay">
-        <div class="modal-box">
-            <img src="/static/IC.png" style="height:70px">
-            <h2 style="color:white; margin: 15px 0;">IdlyCall</h2>
-            <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
-            <input type="file" id="login-file" style="display:none" onchange="processImage(event, 'login-preview')">
-            <label for="login-file" style="color:var(--accent-main); cursor:pointer; font-weight:bold;">📷 Change Photo</label>
-            <input type="text" id="usernameInput" placeholder="Enter Username">
-            <button onclick="manualLogin()" class="login-btn">Connect</button>
+<div id="login-screen" class="modal-overlay">
+    <div class="modal-box">
+        <h2 style="color: var(--accent); font-size: 1.5rem;">IC</h2>
+        <h3>IdlyCall</h3>
+        
+        <div class="avatar-section">
+            <img id="login-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
+            <input type="file" id="login-file" hidden onchange="processImage(event, 'login-preview')">
+            <label for="login-file" class="upload-label">📷 Change Photo</label>
         </div>
+
+        <input type="text" id="usernameInput" placeholder="Enter username...">
+        <button onclick="window.manualLogin()" class="primary-btn">Connect</button>
     </div>
-
-    <div id="app-container" style="display:none">
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <img src="/static/IC.png" style="height:35px">
-                <h3 style="color:white">Chats</h3>
-            </div>
-            <div class="user-list" id="user-list-container"></div>
-        </div>
-
-        <div class="chat-area">
-            <header>
-                <div class="header-left">
-                    <button onclick="document.getElementById('sidebar').classList.add('open')" class="menu-btn">☰</button>
-                    <h3 id="chatHeaderTitle" style="color:white">Public Server</h3>
-                </div>
-                <div class="call-buttons" id="call-buttons-container" style="display:none">
-                    <button onclick="startCall(false)">📞</button>
-                    <button onclick="startCall(true)">🎥</button>
-                </div>
-            </header>
-
-            <div id="chat-stream"></div>
-
-            <div class="input-wrapper">
-                <div class="input-box">
-                    <label for="imgInp" style="cursor:pointer; margin-right:15px; font-size:1.5rem;">➕</label>
-                    <input type="file" id="imgInp" style="display:none" onchange="sendImage(event)">
-                    <input type="text" id="msg-input" placeholder="Message...">
-                    <button onclick="sendMyMessage()" class="send-icon-btn">➤</button>
-                </div>
-            </div>
-
-            <div id="call-interface">
-                <div class="remote-video-area"><video id="remoteVideo" autoplay playsinline></video></div>
-                <div class="local-video-area"><video id="localVideo" autoplay playsinline muted></video></div>
-                <div class="call-controls">
-                    <button class="call-btn" onclick="flipCamera()">🔄</button>
-                    <button class="call-btn" id="toggleVideoBtn" onclick="toggleVideo()">📷</button>
-                    <button class="call-btn" id="toggleAudioBtn" onclick="toggleAudio()">🎤</button>
-                    <button class="call-btn danger" onclick="endCallBtnClicked()">☎️</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="/static/script.js"></script>
-
-    <script>
-        const activePlugins = ["reactions.js", "typing.js", "previews.js"];
-        activePlugins.forEach(file => {
-            const s = document.createElement('script');
-            s.src = `/static/plugins/${file}`;
-            // Error handling for plugins
-            s.onerror = () => console.log(`Plugin failed to load: ${file}`);
-            document.body.appendChild(s);
-        });
-    </script>
-</body>
-</html>
+</div>
