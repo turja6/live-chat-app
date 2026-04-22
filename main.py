@@ -1,26 +1,21 @@
 """
-IdlyCall Pro - FastAPI Server
-Production-ready for Render.com
-Database: Neon.tech (PostgreSQL)
+IdlyCall Pro v2.1 - FastAPI Server
+Render.com + Neon.tech Compatible
+Pydantic v1.10.x (No Rust Required)
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 import json
 import os
 import uuid
-import asyncio
 import logging
 from datetime import datetime
-
-# ============================================================
-# CONFIGURATION & LOGGING
-# ============================================================
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,74 +24,50 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="IdlyCall Pro API",
+    title="IdlyCall Pro",
     version="2.1.0",
     description="Real-time chat with WebRTC calling"
 )
 
-# CORS Middleware (important for WebRTC)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to your domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ============================================================
-# DATABASE CONNECTION (Neon.tech)
-# ============================================================
-
-try:
-    import asyncpg
-    from databases import Database
-    
-    # Get database URL from environment (Render/Neon sets this automatically)
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/idlycall")
-    
-    # For Neon.tech, we use asyncpg directly for better performance
-    DATABASE_URL_ASYNC = os.getenv("DATABASE_URL_ASYNC", DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://").replace("postgres://", "postgresql+asyncpg://"))
-    
-    logger.info(f"✅ Database configured")
-    
-except ImportError:
-    logger.warning("⚠️  Database libraries not installed. Using in-memory storage.")
-    DATABASE_URL = None
-
-# ============================================================
-# IN-MEMORY STORAGE (Fallback if no DB)
+# STORAGE
 # ============================================================
 
 class MemoryStorage:
-    """In-memory storage for development/fallback"""
+    """In-memory storage for development"""
     
     def __init__(self):
-        self.users = {}  # username -> {ws, profile_pic, online}
-        self.chat_history = {}  # (user1, user2) -> [messages]
-        self.active_calls = {}  # call_id -> {participants, type}
+        self.users = {}      # username -> {ws, profile_pic, online}
+        self.chat_history = {} # (user1, user2) -> [messages]
     
-    def user_connect(self, username: str, ws: WebSocket, pic: str = None):
+    def connect_user(self, username, websocket, pic=None):
         self.users[username] = {
-            "ws": ws,
+            "ws": websocket,
             "profile_pic": pic or "",
             "online": True,
             "last_seen": datetime.now()
         }
     
-    def user_disconnect(self, username: str):
+    def disconnect_user(self, username):
         if username in self.users:
-            self.users[username]["online"] = False
-            self.users[username]["ws"] = None
             del self.users[username]
     
     def get_online_users(self) -> List[Dict]:
         return [
-            {"username": u, "profile_pic": d["profile_pic"], "online": d["online"]}
+            {"username": u, "profile_pic": d["profile_pic"], "online": True}
             for u, d in self.users.items()
-            if d.get("online", False)
+            if d.get("online")
         ]
     
-    def save_message(self, sender: str, receiver: str, message: str, pic: str = None):
+    def save_message(self, sender, receiver, message, pic=None) -> Dict:
         key = tuple(sorted([sender, receiver]))
         if key not in self.chat_history:
             self.chat_history[key] = []
@@ -113,194 +84,170 @@ class MemoryStorage:
         self.chat_history[key].append(msg)
         return msg
     
-    def get_history(self, user1: str, user2: str) -> List[Dict]:
+    def get_messages(self, user1, user2) -> List[Dict]:
         key = tuple(sorted([user1, user2]))
-        return self.chat_history.get(key [], [])
+        return self.chat_history.get(key, [])
 
-# Initialize storage
 storage = MemoryStorage()
 
-# Templates
 templates = Jinja2Templates(directory="templates")
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # ============================================================
-# DATA MODELS (Pydantic)
+# DATA MODELS (Pydantic v1 Style)
 # ============================================================
 
-class Message(BaseModel):
+class MessageModel(BaseModel):
     message: str
     sender: Optional[str] = None
     profile_pic: Optional[str] = None
     timestamp: Optional[str] = None
 
-class CallSignal(BaseModel):
-    type: str  # start_call, accept_call, decline_call, offer, answer, ice_candidate, call_end
+class CallSignalModel(BaseModel):
+    type: str
     target: Optional[str] = None
     caller_name: Optional[str] = None
     caller_pic: Optional[str] = None
     is_video: Optional[bool] = False
-    offer: Optional[Dict] = None
-    answer: Optional[Dict] = None
-    candidate: Optional[Dict] = None
+    offer: Optional[dict] = None
+    answer: Optional[dict] = None
+    candidate: Optional[dict] = None
     ended_by: Optional[str] = None
     reason: Optional[str] = None
     accepted_by: Optional[str] = None
     from_user: Optional[str] = None
 
 # ============================================================
-# HEALTH CHECK ENDPOINT (Render requires this)
+# ROUTES
 # ============================================================
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for Render.com"""
     return {
         "status": "healthy",
         "service": "IdlyCall Pro",
         "version": "2.1.0",
-        "timestamp": datetime.now().isoformat(),
         "active_users": len(storage.get_online_users())
     }
 
-# ============================================================
-# ROOT ENDPOINT - Serve Index
-# ============================================================
-
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    """Serve the main HTML page"""
     return templates.TemplateResponse("index.html", {"request": request})
 
 # ============================================================
-# STATIC FILES MOUNT
-# ============================================================
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# ============================================================
-# WEBSOCKET ENDPOINT - Main Chat & Signaling
+# WEBSOCKET ENDPOINT
 # ============================================================
 
 @app.websocket("/ws/{username}")
-async def websocket_endpoint(websocket: WebSocket, username: str):
-    """
-    Main WebSocket handler for:
-    - Chat messaging
-    - User presence
-    - WebRTC signaling
-    """
-    
+async def websocket_handler(websocket: WebSocket, username: str):
     await websocket.accept()
-    logger.info(f"🔌 WebSocket connected: {username}")
+    logger.info(f"[WS] Connected: {username}")
     
-    # Register user
-    storage.user_connect(username, websocket)
-    
-    # Send current user list to everyone
+    storage.connect_user(username, websocket)
     await broadcast_user_list()
     
     try:
         while True:
-            data = await websocket.receive_text()
+            raw_data = await websocket.receive_text()
             
             try:
-                payload = json.loads(data)
-                msg_type = payload.get("type", "")
+                data = json.loads(raw_data)
+                msg_type = data.get("type", "")
                 
-                logger.debug(f"📨 [{username}] {msg_type}: {str(payload)[:100]}...")
+                logger.debug(f"[WS] {username}: {msg_type}")
                 
-                # Handle different message types
+                # Route to appropriate handler
                 if msg_type == "chat":
-                    await handle_chat_message(username, payload, websocket)
+                    await handle_chat_message(username, data, websocket)
                 
                 elif msg_type == "get_history":
-                    await handle_get_history(username, payload, websocket)
+                    await handle_get_history(username, data, websocket)
                 
-                elif msg_type in ["start_call", "incoming_call"]:
-                    await handle_call_initiation(username, payload, websocket)
+                elif msg_type == "start_call":
+                    await handle_start_call(username, data, websocket)
                 
                 elif msg_type == "accept_call":
-                    await handle_call_acceptance(username, payload, websocket)
+                    await handle_accept_call(username, data, websocket)
                 
                 elif msg_type == "decline_call":
-                    await handle_call_decline(username, payload, websocket)
+                    await handle_decline_call(username, data, websocket)
                 
                 elif msg_type == "offer":
-                    await relay_signal(username, payload, "offer")
+                    await handle_offer_relay(username, data)
                 
                 elif msg_type == "answer":
-                    await relay_signal(username, payload, "answer")
+                    await handle_answer_relay(username, data)
                 
                 elif msg_type == "ice_candidate":
-                    await relay_signal(username, payload, "ice_candidate")
+                    await handle_ice_candidate_relay(username, data)
                 
                 elif msg_type in ["call_end", "call_ended"]:
-                    await handle_call_end(username, payload, websocket)
+                    await handle_end_call(username, data, websocket)
                 
                 elif msg_type == "profile_update":
-                    await handle_profile_update(username, payload, websocket)
+                    await handle_profile_update(username, data)
                 
                 else:
-                    logger.warning(f"Unknown message type: {msg_type}")
+                    logger.warning(f"[WS] Unknown type: {msg_type}")
                     
             except json.JSONDecodeError:
-                logger.error(f"Invalid JSON from {username}")
+                logger.error("[WS] Invalid JSON received")
                 await websocket.send_json({"type": "error", "message": "Invalid JSON"})
     
     except WebSocketDisconnect:
-        logger.info(f"❌ WebSocket disconnected: {username}")
-        storage.user_disconnect(username)
+        logger.info(f"[WS] Disconnected: {username}")
+        storage.disconnect_user(username)
         await broadcast_user_list()
     
     except Exception as e:
-        logger.error(f"WebSocket error for {username}: {e}")
-        storage.user_disconnect(username)
+        logger.error(f"[WS] Error: {e}", exc_info=True)
+        storage.disconnect_user(username)
 
 # ============================================================
 # MESSAGE HANDLERS
 # ============================================================
 
-async def handle_chat_message(sender: str, payload: Dict, ws: WebSocket):
+async def handle_chat_message(sender: str, data: dict, ws: WebSocket):
     """Handle incoming chat message"""
     
-    receiver = payload.get("receiver", "Public")
-    message_text = payload.get("message", "").strip()
-    pic = payload.get("pic") or storage.users.get(sender, {}).get("profile_pic", "")
+    receiver = data.get("receiver", "Public")
+    text = data.get("message", "").strip()
+    pic = data.get("pic") or storage.users.get(sender, {}).get("profile_pic", "")
     
-    if not message_text:
+    if not text:
         return
     
-    # Save to storage
-    saved_msg = storage.save_message(sender, receiver, message_text, pic)
+    # Save message
+    saved_msg = storage.save_message(sender, receiver, text, pic)
     
-    # Create response message
+    # Build response
     response = {
         "type": "chat",
-        "message": message_text,
+        "message": text,
         "sender": sender,
         "profile_pic": pic,
-        "timestamp": saved_msg.get("timestamp", ""),
-        "id": saved_msg.get("id", "")
+        "timestamp": saved_msg.get("timestamp"),
+        "id": saved_msg.get("id")
     }
     
-    # Send to receiver if online and not Public channel
+    # Send to receiver if online and not public
     if receiver != "Public" and receiver in storage.users:
-        target_ws = storage.users.get(receiver, {}).get("ws")
+        target_ws = storage.users[receiver].get("ws")
         if target_ws:
             try:
                 await target_ws.send_json(response)
             except Exception as e:
-                logger.error(f"Failed to send to {receiver}: {e}")
+                logger.error(f"[MSG] Failed to send to {receiver}: {e}")
     
-    # Echo back to sender (for consistency)
+    # Echo back to sender
     await ws.send_json(response)
 
-async def handle_get_history(user: str, payload: Dict, ws: WebSocket):
+async def handle_get_history(user: str, data: dict, ws: WebSocket):
     """Send chat history between two users"""
     
-    target = payload.get("target", "Public")
-    
-    messages = storage.get_history(user, target)
+    target = data.get("target", "Public")
+    messages = storage.get_messages(user, target)
     
     await ws.send_json({
         "type": "history",
@@ -308,48 +255,44 @@ async def handle_get_history(user: str, payload: Dict, ws: WebSocket):
         "target": target
     })
 
-async def handle_profile_update(user: str, payload: Dict, ws: WebSocket):
+async def handle_profile_update(user: str, data: dict, ws: WebSocket):
     """Update user's profile picture"""
     
-    pic = payload.get("pic")
+    pic = data.get("pic")
     if user in storage.users:
         storage.users[user]["profile_pic"] = pic or ""
     
-    # Broadcast updated user list
+    # Broadcast updated list
     await broadcast_user_list()
 
 # ============================================================
 # CALL SIGNALING HANDLERS
 # ============================================================
 
-async def handle_call_initiation(caller: str, payload: Dict, ws: WebSocket):
-    """Handle incoming/outgoing call initiation"""
+async def handle_start_call(caller: str, data: dict, ws: WebSocket):
+    """Initiate an outgoing call"""
     
-    target = payload.get("target")
-    is_video = payload.get("is_video", False)
-    caller_name = payload.get("caller_name", caller)
-    caller_pic = payload.get("caller_pic") or storage.users.get(caller, {}).get("profile_pic", "")
+    target = data.get("target")
+    is_video = data.get("is_video", False)
+    caller_name = data.get("caller_name", caller)
+    caller_pic = data.get("caller_pic") or storage.users.get(caller, {}).get("profile_pic", "")
     
-    if not target or target == "Public":
+    if not target or target.lower() == "public":
         await ws.send_json({
             "type": "error",
             "message": "Cannot call Public channel. Select a private chat."
         })
         return
     
-    # Check if target is online
-    if target not in storage.users or not storage.users[target].get("online"):
+    if target not in storage.users:
         await ws.send_json({
             "type": "call_declined",
             "reason": "User offline"
         })
         return
     
-    # Check if target is already in a call
-    # (You can implement call state tracking here)
-    
     # Send incoming_call notification to target
-    target_ws = storage.users.get(target, {}).get("ws")
+    target_ws = storage.users[target].get("ws")
     if target_ws:
         await target_ws.send_json({
             "type": "incoming_call",
@@ -359,15 +302,14 @@ async def handle_call_initiation(caller: str, payload: Dict, ws: WebSocket):
             "is_video": is_video
         })
         
-        logger.info(f"📞 Call from {caller} → {target} ({'Video' if 'Video' else 'Voice'})")
+        logger.info(f"[CALL] 📞 {caller} → {target} ({'Video' if is_video else 'Voice'})")
 
-async def handle_call_acceptance(callee: str, payload: Dict, ws: WebSocket):
+async def handle_accept_call(callee: str, data: dict, ws: WebSocket):
     """Handle call acceptance"""
     
-    caller = payload.get("target")  # The person who initiated
+    caller = data.get("target")
     
-    # Notify caller that call was accepted
-    if caller in storage.users:
+    if caller and caller in storage.users:
         caller_ws = storage.users[caller].get("ws")
         if caller_ws:
             await caller_ws.send_json({
@@ -375,12 +317,12 @@ async def handle_call_acceptance(callee: str, payload: Dict, ws: WebSocket):
                 "accepted_by": callee
             })
 
-async def handle_call_decline(decliner: str, payload: Dict, ws: WebSocket):
+async def handle_decline_call(decliner: str, data: dict, ws: WebSocket):
     """Handle call decline"""
     
-    caller = payload.get("target")
+    caller = data.get("target")
     
-    if caller in storage.users:
+    if caller and caller in storage.users:
         caller_ws = storage.users[caller].get("ws")
         if caller_ws:
             await caller_ws.send_json({
@@ -388,25 +330,46 @@ async def handle_call_decline(decliner: str, payload: Dict, ws: WebSocket):
                 "declined_by": decliner
             })
 
-async def relay_signal(sender: str, payload: Dict, signal_type: str):
-    """Relay WebRTC signaling messages between peers"""
+async def handle_offer_relay(sender: str, data: dict):
+    """Relay SDP offer to callee"""
     
-    target = payload.get("target")
+    target = data.get("target")
     
     if target and target in storage.users:
         target_ws = storage.users[target].get("ws")
         if target_ws:
-            # Forward the signal to target with sender info
-            forward_payload = payload.copy()
-            forward_payload["from"] = sender
-            
-            await target_ws.send_json(forward_payload)
-            logger.debug(f"🔄 Relayed {signal_type}: {sender} → {target}")
+            forward_data = data.copy()
+            forward_data["from"] = sender
+            await target_ws.send_json(forward_data)
 
-async def handle_call_end(ender: str, payload: Dict, ws: WebSocket):
+async def handle_answer_relay(sender: str, data: dict):
+    """Relay SDP answer to caller"""
+    
+    target = data.get("target")
+    
+    if target and target in storage.users:
+        target_ws = storage.users[target].get("ws")
+        if target_ws:
+            forward_data = data.copy()
+            forward_data["from"] = sender
+            await target_ws.send_json(forward_data)
+
+async def handle_ice_candidate_relay(sender: str, data: dict):
+    """Relay ICE candidate"""
+    
+    target = data.get("target")
+    
+    if target and target in storage.users:
+        target_ws = storage.users[target].get("ws")
+        if target_ws:
+            forward_data = data.copy()
+            forward_data["from"] = sender
+            await target_ws.send_json(forward_data)
+
+async def handle_end_call(ender: str, data: dict, ws: WebSocket):
     """Handle call termination"""
     
-    target = payload.get("target")
+    target = data.get("target")
     
     # Notify other party
     if target and target in storage.users:
@@ -415,80 +378,53 @@ async def handle_call_end(ender: str, payload: Dict, ws: WebSocket):
             await target_ws.send_json({
                 "type": "call_ended",
                 "ended_by": ender,
-                "reason": payload.get("reason", "unknown")
+                "reason": data.get("reason", "unknown")
             })
     
-    logger.info(f"📞 Call ended by {ender}")
+    logger.info(f"[CALL] Ended by {ender}")
 
 # ============================================================
 # BROADCAST HELPERS
 # ============================================================
 
 async def broadcast_user_list():
-    """Broadcast updated user list to all connected users"""
+    """Broadcast online users to all connected clients"""
     
     users = storage.get_online_users()
-    broadcast_payload = {
-        "type": "user_list",
-        "data": users
-    }
+    payload = {"type": "user_list", "data": users}
     
-    for username, data in list(storage.users.items()):
-        ws = data.get("ws")
+    disconnected = []
+    
+    for username, udata in list(storage.users.items()):
+        ws = udata.get("ws")
         if ws:
             try:
-                await ws.send_json(broadcast_payload)
+                await ws.send_json(payload)
             except Exception:
-                pass  # User may have disconnected
-
-# ============================================================
-# API ENDPOINTS (REST - for future mobile app etc.)
-# ============================================================
-
-@app.get("/api/users")
-async def get_users_api():
-    """Get all online users"""
-    return {"users": storage.get_online_users()}
-
-@app.post("/api/messages")
-async def save_message_api(msg: Message):
-    """Save a message via REST API"""
-    saved = storage.save_message(
-        msg.sender or "anonymous",
-        "Public",
-        msg.message,
-        msg.profile_pic
-    )
-    return {"status": "ok", "message_id": saved["id"]}
-
-# ============================================================
-# RENDER.COM DEPLOYMENT CONFIGURATION
-# ============================================================
-
-# Render sets these environment variables automatically:
-# - PORT (usually 10000)
-# - DATABASE_URL (if you add Neon addon)
-
-# If you need to run locally:
-if __name__ == "__main__":
-    import uvicorn
+                disconnected.append(username)
     
+    # Clean up failed connections
+    for username in disconnected:
+        storage.disconnect_user(username)
+
+# ============================================================
+# RUN SERVER
+# ============================================================
+
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     
     print("""
-    ╔════════════════════════════════════════╗
-    ║     🔥 IdlyCall Pro Server v2.1         ║
-    ║                                        ║
-    ║   Running on: http://localhost:{}      ║
-    ║   Database: Neon.tech (PostgreSQL)      ║
-    ║   Platform: Render.com                  ║
-    ╚══════════════════════════════════════╝
-    """.format(port))
+╔════════════════════════════════════════╗
+║     🔥 IdlyCall Pro v2.1                 ║
+║     Pydantic v1 | Neon.tech | Render       ║
+╚════════════════════════════════════════╝
+""")
     
     uvicorn.run(
-        "main:app",
+        app,
         host="0.0.0.0",
         port=port,
-        reload=True,  # Enable hot reload in development
+        reload=True,
         log_level="info"
     )

@@ -1,6 +1,6 @@
 # ============================================
-# IdlyCall Pro - Fixed Requirements
-# Compatible with Render.com (No Rust needed!)
+# IdlyCall Pro - RENDER-COMPATIBLE Requirements
+# NO RUST NEEDED - Pure Python only!
 # ============================================
 
 # ---- Core Framework ----
@@ -8,9 +8,8 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 jinja2==3.1.2
-# ⭐ FIX: Use pydantic v2.4.2 instead of 2.5.2
-# v2.5+ requires Rust/maturin which fails on Render's read-only FS
-pydantic==2.4.2
+# ⭐ PYDANTIC V1 (NOT V2!) - v1 doesn't need Rust/maturin
+pydantic[email]==1.10.13
 python-dotenv==1.0.0
 
 # ---- Database (Neon.tech) ----
@@ -28,6 +27,6 @@ orjson==3.9.12
 gunicorn==21.2.0
 uvloop==0.19.0
 
-# ---- Development (Optional) ----
+# ---- Dev (optional) ----
 watchdog==3.0.0
 httpx==0.25.2

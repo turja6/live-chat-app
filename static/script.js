@@ -1,34 +1,16 @@
 /**
- * ============================================================
- * IdlyCall Pro v2.1 - Complete Application JavaScript
- * ============================================================
- * 
- * Features:
- * ✅ Real-time WebSocket Chat
- * ✅ WebRTC Voice & Video Calling
- * ✅ Screen Sharing (Desktop browsers)
- * ✅ Fullscreen Mode (Desktop + Mobile)
- * ✅ Mobile Responsive UI
- * ✅ Force End Call (Emergency Exit - BULLETPROOF)
- * 
- * File: /static/script.js
- * Dependencies: None (vanilla JS)
- * Browser Support: Chrome, Firefox, Safari, Edge (modern versions)
+ * IdlyCall Pro v2.1 - Complete Application Script
+ * Chat + WebRTC Calling | Mobile Ready
  */
 
 // ============================================================
-// SECTION 1: GLOBAL STATE MANAGEMENT
+// STATE MANAGEMENT
 // ============================================================
 
 const AppState = {
-    // WebSocket
     ws: null,
-    
-    // User Identity
     myUsername: localStorage.getItem("chat_username") || "",
     myPicBase64: localStorage.getItem("chat_pic") || "",
-    
-    // Current Context
     currentChat: "Public",
     
     // WebRTC
@@ -37,15 +19,13 @@ const AppState = {
     screenStream: null,
     remoteStream: null,
     
-    // Call Status Flags
+    // Call state
     callActive: false,
     isVideoCall: false,
     isMuted: false,
     isCameraOff: false,
     isScreenSharing: false,
     isFullscreen: false,
-    
-    // Incoming Call Data
     incomingCallData: null,
     
     // Timers
@@ -54,21 +34,17 @@ const AppState = {
     callTimeout: null
 };
 
-// WebRTC Configuration
 const RTC_CONFIG = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' }
-    ],
-    iceCandidatePoolSize: 10
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
 };
 
-// Default Avatar
 const DEFAULT_AVATAR = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
 
 // ============================================================
-// SECTION 2: DOM UTILITY HELPERS
+// DOM HELPERS
 // ============================================================
 
 const $ = (sel) => document.querySelector(sel);
@@ -101,7 +77,7 @@ function safeSend(socket, data) {
 }
 
 // ============================================================
-// SECTION 3: IMAGE PROCESSING
+// IMAGE PROCESSING
 // ============================================================
 
 function processImage(event, targetId) {
@@ -129,7 +105,7 @@ function processImage(event, targetId) {
 }
 
 // ============================================================
-// SECTION 4: AUTHENTICATION
+// AUTHENTICATION
 // ============================================================
 
 window.manualLogin = function() {
@@ -154,7 +130,7 @@ window.manualLogin = function() {
 };
 
 // ============================================================
-// SECTION 5: APPLICATION INITIALIZATION
+// APP INITIALIZATION
 // ============================================================
 
 function startApplication() {
@@ -166,82 +142,82 @@ function startApplication() {
 
     try {
         AppState.ws = new WebSocket(wsUrl);
-        setupWebSocketHandlers(AppState.ws);
-    } catch (err) {
-        console.error("[APP] WS error:", err);
-        alert('Failed to connect');
-    }
-}
 
-function setupWebSocketHandlers(ws) {
-    ws.onopen = () => {
-        console.log("[WS] ✓ Connected");
-        safeSend(ws, { pic: AppState.myPicBase64 });
-    };
+        AppState.ws.onopen = () => {
+            console.log("[WS] ✓ Connected");
+            safeSend(AppState.ws, { pic: AppState.myPicBase64 });
+        };
 
-    ws.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            routeMessage(data);
-        } catch (e) {
-            console.error("[WS] Parse error:", e);
-        }
-    };
+        AppState.ws.onmessage = handleMessage;
+        AppState.ws.onclose = (e) => {
+            console.log(`[WS] Disconnected: ${e.code}`);
+            if (e.code !== 1000 && AppState.myUsername) {
+                setTimeout(() => {
+                    if (getElement("app-container")?.style.display !== "none") {
+                        startApplication();
+                    }
+                }, 3000);
+            }
+        };
 
-    ws.onclose = (e) => {
-        console.log(`[WS] Disconnected: ${e.code}`);
-        if (e.code !== 1000 && AppState.myUsername) {
-            setTimeout(() => {
-                if (getElement("app-container")?.style.display !== "none") {
-                    startApplication();
-                }
-            }, 3000);
-        }
-    };
+        AppState.ws.onerror = (err) => console.error("[WS] Error:", err);
 
-    ws.onerror = (err) => console.error("[WS] Error:", err);
-}
-
-function routeMessage(data) {
-    switch (data.type) {
-        case "chat":
-            handleChatMessage(data);
-            break;
-        case "user_list":
-            renderUserList(data.data);
-            break;
-        case "history":
-            loadHistory(data.messages);
-            break;
-        case "incoming_call":
-            handleIncomingCall(data);
-            break;
-        case "call_accepted":
-            handleCallAccepted(data);
-            break;
-        case "call_declined":
-            handleCallDeclined(data);
-            break;
-        case "offer":
-            handleOffer(data);
-            break;
-        case "answer":
-            handleAnswer(data);
-            break;
-        case "ice_candidate":
-            handleICECandidate(data);
-            break;
-        case "call_ended":
-        case "call_end":
-            handleRemoteEndCall(data);
-            break;
-        default:
-            console.log("[WS] Unknown:", data.type);
+    } catch (error) {
+        console.error("[APP] WebSocket creation failed:", error);
+        showErrorMessage("Failed to connect to server.");
     }
 }
 
 // ============================================================
-// SECTION 6: SOUND UTILITIES
+// WEBSOCKET MESSAGE ROUTER
+// ============================================================
+
+function handleMessage(event) {
+    try {
+        const data = JSON.parse(event.data);
+
+        switch (data.type) {
+            case "chat":
+                handleChatMessage(data);
+                break;
+            case "user_list":
+                renderUserList(data.data);
+                break;
+            case "history":
+                loadHistory(data.messages);
+                break;
+            case "incoming_call":
+                handleIncomingCall(data);
+                break;
+            case "call_accepted":
+                handleCallAccepted(data);
+                break;
+            case "call_declined":
+                handleCallDeclined(data);
+                break;
+            case "offer":
+                handleSDPOffer(data);
+                break;
+            case "answer":
+                handleSDPAnswer(data);
+                break;
+            case "ice_candidate":
+                handleICECandidate(data);
+                break;
+            case "call_ended":
+            case "call_end":
+                handleRemoteEndCall(data);
+                break;
+            default:
+                console.log("[WS] Unhandled:", data.type);
+        }
+    } catch (err) {
+        console.error("[WS] Parse error:", err);
+    }
+}
+
+// ============================================================
+// SOUND UTILITIES
 // ============================================================
 
 function playNotificationSound() {
@@ -267,7 +243,7 @@ function stopRingtime() {
 }
 
 // ============================================================
-// SECTION 7: SANITIZATION
+// SANITIZATION
 // ============================================================
 
 function escapeHTML(str) {
@@ -278,7 +254,7 @@ function escapeHTML(str) {
 }
 
 // ============================================================
-// SECTION 8: MESSAGE RENDERING
+// MESSAGE RENDERING
 // ============================================================
 
 function renderMessage(text, sender, pic, time) {
@@ -289,7 +265,7 @@ function renderMessage(text, sender, pic, time) {
     const div = document.createElement("div");
     div.className = "message";
     div.innerHTML = `
-        <img class="msg-avatar" src="${pic || DEFAULT_AVATAR}" loading="lazy">
+        <img class="msg-avatar" src="${pic || DEFAULT_AVATAR}" alt="" loading="lazy">
         <div class="msg-body">
             <div class="msg-meta">
                 <span class="msg-sender">${escapeHTML(sender)}</span>
@@ -302,7 +278,8 @@ function renderMessage(text, sender, pic, time) {
     container.appendChild(frag);
 
     requestAnimationFrame(() => {
-        if (container.scrollHeight - container.scrollTop - container.clientHeight < 150) {
+        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        if (distanceFromBottom < 150) {
             container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
         }
     });
@@ -314,7 +291,7 @@ function handleChatMessage(data) {
 }
 
 // ============================================================
-// SECTION 9: USER LIST
+// USER LIST
 // ============================================================
 
 function renderUserList(users) {
@@ -330,7 +307,7 @@ function renderUserList(users) {
 
     container.innerHTML = arr.map(u => `
         <div class="user-item" onclick="switchToChat('${escapeHTML(u.username)}')">
-            <img src="${u.profile_pic || DEFAULT_AVATAR}" loading="lazy" width="36" height="36" style="border-radius:50%;margin-right:10px;">
+            <img src="${u.profile_pic || DEFAULT_AVATAR}" alt="" loading="lazy" width="36" height="36" style="border-radius:50%;margin-right:10px;">
             <span>${escapeHTML(u.username)}</span>
         </div>
     `).join("");
@@ -343,13 +320,13 @@ function loadHistory(messages) {
 }
 
 // ============================================================
-// SECTION 10: CHAT SWITCHING
+// CHAT SWITCHING
 // ============================================================
 
 window.switchToChat = function(target) {
     if (!target) return;
     AppState.currentChat = target;
-    
+
     const title = $("#chatHeaderTitle");
     if (title) title.textContent = target;
 
@@ -362,7 +339,7 @@ window.switchToChat = function(target) {
 window.switchChat = window.switchToChat;
 
 // ============================================================
-// SECTION 11: SEND MESSAGE
+// SEND MESSAGE
 // ============================================================
 
 window.sendMyMessage = function() {
@@ -371,7 +348,7 @@ window.sendMyMessage = function() {
 
     if (!text) return;
     if (!AppState.ws || AppState.ws.readyState !== WebSocket.OPEN) {
-        alert('Not connected');
+        showErrorMessage("Not connected");
         return;
     }
 
@@ -381,13 +358,13 @@ window.sendMyMessage = function() {
 };
 
 // ============================================================
-// SECTION 12: MOBILE SIDEBAR
+// MOBILE SIDEBAR
 // ============================================================
 
 window.toggleMobileSidebar = function() {
     const sidebar = $("#sidebar");
     if (!sidebar) return;
-    
+
     const isOpen = sidebar.classList.contains("open");
     sidebar.classList.toggle("open");
 
@@ -405,17 +382,17 @@ function closeMobileSidebar() {
 }
 
 // ============================================================
-// SECTION 13: WEBCRT CALLING SYSTEM
+// WEBRTC CALLING SYSTEM
 // ============================================================
 
 async function startCall(isVideo) {
     if (!AppState.currentChat || AppState.currentChat === "Public") {
-        alert("Select a private chat first");
+        showErrorMessage("Select a private chat first");
         return;
     }
 
     if (AppState.callActive) {
-        alert("Already in a call");
+        showErrorMessage("Already in a call");
         return;
     }
 
@@ -448,7 +425,7 @@ async function startCall(isVideo) {
         AppState.callTimeout = setTimeout(() => {
             if (AppState.callActive && $("#callStatus")?.textContent === "Calling...") {
                 window.forceEndCall();
-                alert("No answer");
+                showErrorMessage("No answer");
             }
         }, 30000);
 
@@ -468,14 +445,14 @@ function cleanupPartialCall() {
 }
 
 // ============================================================
-// SECTION 14: INCOMING CALL HANDLING
+// INCOMING CALL HANDLERS
 // ============================================================
 
 function handleIncomingCall(data) {
     AppState.incomingCallData = data;
 
     $("#caller-avatar").src = data.caller_pic || DEFAULT_AVATAR;
-    $("#caller-name").textContent = data.caller_name || "Unknown";
+    $("#caller-name").textContent = data.caller_name || "Unknown Caller";
     $("#call-type-label").textContent = data.is_video ? "Video Call" : "Voice Call";
 
     setDisplay("ringing-modal", "flex");
@@ -527,7 +504,7 @@ window.acceptCall = acceptCall;
 window.declineCall = declineCall;
 
 // ============================================================
-// SECTION 15: WEBRTC SIGNALING HANDLERS
+// WEBRTC SIGNALING
 // ============================================================
 
 async function handleCallAccepted(data) {
@@ -545,22 +522,24 @@ async function handleCallAccepted(data) {
 
 function handleCallDeclined(data) {
     if (AppState.callTimeout) { clearTimeout(AppState.callTimeout); AppState.callTimeout = null; }
-    alert("Call declined");
+    showErrorMessage("Call declined");
     window.forceEndCall();
 }
 
-async function handleOffer(data) {
+async function handleSDPOffer(data) {
     if (!AppState.peerConnection) createPeerConnection();
 
     try {
         await AppState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+
         const answer = await AppState.peerConnection.createAnswer();
         await AppState.peerConnection.setLocalDescription(answer);
+
         safeSend(AppState.ws, { type: "answer", target: data.from || AppState.currentChat, answer });
     } catch (e) { console.error("[OFFER-HANDLE] Error:", e); }
 }
 
-async function handleAnswer(data) {
+async function handleSDPAnswer(data) {
     if (AppState.peerConnection) {
         try {
             await AppState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
@@ -582,7 +561,7 @@ function handleRemoteEndCall(data) {
 }
 
 // ============================================================
-// SECTION 16: PEER CONNECTION
+// PEER CONNECTION
 // ============================================================
 
 function createPeerConnection() {
@@ -625,14 +604,13 @@ function createPeerConnection() {
 }
 
 // ============================================================
-// SECTION 17: CALL INTERFACE VISIBILITY
+// CALL INTERFACE VISIBILITY
 // ============================================================
 
 function showCallInterface(remoteName, remotePic) {
     AppState.callActive = true;
     AppState.callSeconds = 0;
 
-    // ✅ CRITICAL: Set display to flex
     const overlay = $("#call-interface");
     if (overlay) overlay.style.display = "flex";
 
@@ -641,11 +619,19 @@ function showCallInterface(remoteName, remotePic) {
 
     resetAllControls();
 
-    // Setup video elements
-    const isVideo = AppState.isVideoCall;
-    $("#remoteVideo").style.display = isVideo ? "block" : "none";
-    $("#noRemoteVideo").style.display = "flex";
-    $("#localPip").style.display = isVideo ? "block" : "none";
+    const remoteVideo = $("#remoteVideo");
+    const noRemoteVideo = $("#noRemoteVideo");
+    const pipContainer = $("#localPip");
+
+    if (AppState.isVideoCall) {
+        if (remoteVideo) remoteVideo.style.display = "block";
+        if (noRemoteVideo) noRemoteVideo.style.display = "flex";
+        if (pipContainer) pipContainer.style.display = "block";
+    } else {
+        if (remoteVideo) remoteVideo.style.display = "none";
+        if (noRemoteVideo) noRemoteVideo.style.display = "flex";
+        if (pipContainer) pipContainer.style.display = "none";
+    }
 }
 
 function hideCallInterface() {
@@ -659,93 +645,65 @@ function updateCallStatus(status) {
 }
 
 // ============================================================
-// SECTION 18: ⭐⭐⭐ FORCE END CALL ⭐⭐⭐
-// THE FIX - Bulletproof emergency exit function
+// ⭐⭐⭐ FORCE END CALL (THE FIX)
 // ============================================================
 
-/**
- * ══════════════════════════════════════════════════════
- * FORCE END CALL - Emergency Exit Function
- * ══════════════════════════════════════════════════════
- * 
- * GUARANTEES user can exit call screen NO MATTER WHAT.
- * 
- * Handles:
- * ✅ Hides call interface (returns to chat)
- * ✅ Stops ALL media tracks (turns off camera LED)
- * ✅ Sends end signal via WebSocket
- * ✅ Closes peer connection
- * ✅ Stops ringtone sounds
- * ✅ Exits fullscreen mode
- * ✅ Resets ALL state variables
- * ✅ Won't crash even if things are already null
- * 
- * Safe to call multiple times - idempotent.
- * 
- * Usage: onclick="window.forceEndCall()"
- */
 window.forceEndCall = function() {
 
     console.log("════════════════════════════════════════");
     console.log("[FORCE-END] Executing emergency exit...");
     console.log("════════════════════════════════════════");
 
-    // STEP 1: Hide call interface
+    // STEP 1: Hide interface
     try {
         const overlay = getElement('call-interface');
         if (overlay) overlay.style.display = 'none';
-        console.log("[FORCE-END] ✓ Interface hidden");
-    } catch (e) { console.error("[FORCE-END] Step 1 error:", e.message); }
+        console.log("[FORCE-END] ✓ Step 1: Hidden");
+    } catch (e) {}
 
-    // Also hide ringing modal
+    // Hide ringing modal
     try {
         const modal = getElement('ringing-modal');
         if (modal) modal.style.display = 'none';
     } catch (e) {}
 
-    // STEP 2: Stop local media tracks (camera + mic)
-    // Wrapped in try-catch for safety
+    // STEP 2: Stop local media
     try {
         if (AppState.localStream) {
-            const tracks = AppState.localStream.getTracks();
-            tracks.forEach((track, i) => {
-                console.log(`[FORCE-END] Stopping track ${i}: ${track.kind}`);
-                if (track.stop) track.stop();
-                track.enabled = false;
+            AppState.localStream.getTracks().forEach((t, i) => {
+                if (t.stop) t.stop();
+                t.enabled = false;
             });
             AppState.localStream = null;
-            console.log("[FORCE-END] ✓ Local media stopped");
+            console.log("[FORCE-END] ✓ Step 2: Media stopped");
         }
     } catch (e) {
-        console.error("[FORCE-END] Step 2 error:", e.message);
-        AppState.localStream = null; // Force null anyway
+        AppState.localStream = null;
     }
 
-    // STEP 3: Stop screen share if active
+    // STEP 3: Stop screen share
     try {
         if (AppState.screenStream) {
             AppState.screenStream.getTracks().forEach(t => { if(t.stop) t.stop(); t.enabled = false; });
             AppState.screenStream = null;
             AppState.isScreenSharing = false;
-            console.log("[FORCE-END] ✓ Screen share stopped");
         }
     } catch (e) {
         AppState.screenStream = null;
         AppState.isScreenSharing = false;
     }
 
-    // STEP 4: Send end signal via WebSocket
+    // STEP 4: Send end signal
     try {
         if (AppState.ws && AppState.ws.readyState === WebSocket.OPEN && AppState.callActive) {
             safeSend(AppState.ws, {
                 type: "call_end",
                 target: AppState.currentChat,
-                ended_by: AppState.myUsername,
-                timestamp: new Date().toISOString()
+                ended_by: AppState.myUsername
             });
-            console.log("[FORCE-END] ✓ End signal sent");
+            console.log("[FORCE-END] ✓ Step 4: Signal sent");
         }
-    } catch (e) { console.error("[FORCE-END] Step 4 error:", e.message); }
+    } catch (e) {}
 
     // STEP 5: Close peer connection
     try {
@@ -754,14 +712,13 @@ window.forceEndCall = function() {
             AppState.peerConnection = null;
         }
         AppState.remoteStream = null;
-        console.log("[FORCE-END] ✓ Peer connection closed");
     } catch (e) {
         AppState.peerConnection = null;
         AppState.remoteStream = null;
     }
 
     // STEP 6: Stop ringtone
-    try { stopRingtime(); console.log("[FORCE-END] ✓ Ringtone stopped"); } catch (e) {}
+    try { stopRingtime(); } catch (e) {}
 
     // STEP 7: Exit fullscreen
     try {
@@ -770,20 +727,20 @@ window.forceEndCall = function() {
             else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
             else if (document.msExitFullscreen) document.msExitFullscreen();
             AppState.isFullscreen = false;
-            console.log("[FORCE-END] ✓ Exited fullscreen");
         }
-    } catch (e) { AppState.isFullscreen = false; }
+    } catch (e) {
+        AppState.isFullscreen = false;
+    }
 
-    // STEP 8: Clear video sources
+    // STEP 8: Clear videos
     try {
-        const localVid = getElement('localVideo');
-        const remoteVid = getElement('remoteVideo');
-        if (localVid) localVid.srcObject = null;
-        if (remoteVid) remoteVid.srcObject = null;
-        console.log("[FORCE-END] ✓ Video sources cleared");
+        const lv = getElement('localVideo');
+        const rv = getElement('remoteVideo');
+        if (lv) lv.srcObject = null;
+        if (rv) rv.srcObject = null;
     } catch (e) {}
 
-    // STEP 9: Reset ALL state variables
+    // STEP 9: Reset ALL state
     AppState.callActive = false;
     AppState.isMuted = false;
     AppState.isCameraOff = false;
@@ -794,58 +751,45 @@ window.forceEndCall = function() {
     if (AppState.callTimerInterval) { clearInterval(AppState.callTimerInterval); AppState.callTimerInterval = null; }
     AppState.callSeconds = 0;
 
-    console.log("[FORCE-END] ✓ All state reset");
+    console.log("[FORCE-END] ✓ Step 9: State reset");
 
-    // STEP 10: Reset control buttons
+    // STEP 10: Reset controls
     try { resetAllControls(); } catch (e) {}
 
-    // FINAL: Success confirmation
-    console.log("════════════════════════════════════════");
-    console.log("%c✅ [FORCE-END] SUCCESS! User returned to chat.", "color:#22c55e;font-weight:bold;font-size:14px;");
+    console.log("%c✅ [FORCE-END] SUCCESS!", "color:#22c55e;font-weight:bold;font-size:14px;");
     console.log("════════════════════════════════════════");
 };
 
-/**
- * Reset control button visual states
- */
 function resetAllControls() {
     try {
-        // Mute
         $("#btnMute")?.classList.remove('active');
         $("#micOn")?.style?.removeProperty('display');
         $("#micOff")?.style?.setProperty('display', 'none');
 
-        // Camera
         $("#btnCamera")?.classList.remove('active');
         $("#camOn")?.style?.removeProperty('display');
         $("#camOff")?.style?.setProperty('display', 'none');
 
-        // Screen
         $("#btnScreen")?.classList.remove('active');
         $("#screenOn")?.style?.removeProperty('display');
         $("#screenOff")?.style?.setProperty('display', 'none');
 
-        // Timer
         const timer = $("#callTimer");
         if (timer) timer.textContent = '00:00';
 
-        // Status
         const status = $("#callStatus");
         if (status) status.textContent = 'Connecting...';
 
-        // Fullscreen icons
         $("#fsIconEnter")?.style?.removeProperty('display');
         $("#fsIconExit")?.style?.setProperty('display', 'none');
         AppState.isFullscreen = false;
-
-    } catch (e) { console.error("[RESET] Error:", e); }
+    } catch (e) {}
 }
 
-// Backward compatibility
 window.endCall = window.forceEndCall;
 
 // ============================================================
-// SECTION 19: CALL CONTROLS (Mute/Camera)
+// CALL CONTROLS
 // ============================================================
 
 window.toggleMute = function() {
@@ -891,7 +835,7 @@ function updateLocalVideoPreview() {
 }
 
 // ============================================================
-// SECTION 20: SCREEN SHARING
+// SCREEN SHARING
 // ============================================================
 
 window.toggleScreenShare = async function() {
@@ -930,13 +874,12 @@ window.toggleScreenShare = async function() {
         const localVid = $("#localVideo");
         if (localVid) localVid.srcObject = AppState.screenStream;
 
-        console.log("[SCREEN] Sharing started");
-
+        console.log("[SCREEN] Started");
     } catch (err) {
         console.error("[SCREEN] Error:", err);
         if (err.name === 'NotAllowedError') alert("Screen sharing denied");
         else if (err.name === 'NotFoundError') alert("No screen source available");
-        else alert("Screen sharing error: " + err.message);
+        else alert("Error: " + err.message);
     }
 };
 
@@ -960,9 +903,7 @@ function stopScreenShareInternal() {
 
         $("#btnScreen")?.classList.remove('active');
         $("#screenOn")?.style?.removeProperty('display');
-        $("#screenOff")?.style?.setProperty('display', 'none');
-
-        console.log("[SCREEN] Sharing stopped");
+        $("#screenOff")?.style?.setProperty('display', 'block');
     } catch (e) {
         AppState.screenStream = null;
         AppState.isScreenSharing = false;
@@ -970,7 +911,7 @@ function stopScreenShareInternal() {
 }
 
 // ============================================================
-// SECTION 21: FULLSCREEN MODE
+// FULLSCREEN MODE
 // ============================================================
 
 window.toggleFullscreen = function() {
@@ -1005,10 +946,9 @@ function exitFullscreen() {
 
 function updateFSIcon(fs) {
     $("#fsIconEnter")?.style?.setProperty('display', fs ? 'none' : 'block');
-    $("#fsIconExit")?.style?.setProperty('display', fs ? 'block' : 'none');
+    $('#fsIconExit')?.style?.setProperty('display', fs ? 'block' : 'none');
 }
 
-// Listen for fullscreen changes
 ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
     document.addEventListener(evt, () => {
         AppState.isFullscreen = !!document.fullscreenElement;
@@ -1017,7 +957,7 @@ function updateFSIcon(fs) {
 });
 
 // ============================================================
-// SECTION 22: CALL TIMER
+// CALL TIMER
 // ============================================================
 
 function startCallTimer() {
@@ -1045,7 +985,7 @@ function updateTimerDisplay() {
 }
 
 // ============================================================
-// SECTION 23: EVENT LISTENERS
+// EVENT LISTENERS
 // ============================================================
 
 document.addEventListener('keydown', (e) => {
@@ -1092,7 +1032,6 @@ window.addEventListener('beforeunload', () => {
     if (AppState.ws) AppState.ws.close(1000);
 });
 
-// Prevent zoom on double-tap (iOS)
 let lastTouchEnd = 0;
 document.addEventListener('touchend', (e) => {
     const now = Date.now();
@@ -1101,23 +1040,21 @@ document.addEventListener('touchend', (e) => {
 }, { passive: false });
 
 // ============================================================
-// SECTION 24: INITIALIZATION
+// INITIALIZATION
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("%c🔥 IdlyCall Pro v2.1 Loaded", "color:#FF7A00;font-weight:bold;font-size:16px;");
     console.log("%c📞 Calls | 🖥️ Screenshare | ⌨️ ESC=End, F=Fullscreen", "color:#9ca3af;font-size:11px;");
 
-    // Focus username input on login screen
     if ($("#login-screen")?.style.display !== "none") {
         setTimeout(() => $("#usernameInput")?.focus(), 500);
     }
 
-    // Inject shake animation if not present
     if (!$("#shake-style")) {
         const style = document.createElement('style');
         style.id = "shake-style";
-        style.textContent = `@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}.shake{animation:shake 0.4s ease}`;
+        style.textContent = `@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}.shake{animation:shake 0.4s ease-in-out}`;
         document.head.appendChild(style);
     }
 });
