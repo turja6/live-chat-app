@@ -5,91 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IdlyCall Pro</title>
     <link rel="icon" type="image/png" href="/static/IC.png">
-    
-    <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Main Stylesheet -->
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!-- Chat Notification Sound -->
     <audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
 
-    <!-- ============================================
-         LOGIN SCREEN MODAL
-    ============================================ -->
+    <!-- LOGIN SCREEN -->
     <div id="login-screen" class="modal-overlay">
         <div class="modal-box">
-            <!-- App Logo -->
-            <img src="/static/IC.png" class="app-logo" alt="IdlyCall Logo">
-            
+            <img src="/static/IC.png" class="app-logo">
             <h2>IdlyCall</h2>
-            
-            <!-- Avatar Upload Section -->
             <div class="avatar-container">
-                <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Profile Preview">
+                <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
                 <input type="file" id="login-file" hidden onchange="processImage(event, 'login-preview')">
                 <label for="login-file" class="upload-badge">📷</label>
             </div>
-            
-            <!-- Username Input -->
             <input type="text" id="usernameInput" placeholder="Enter username...">
-            
-            <!-- Connect Button -->
             <button onclick="window.manualLogin()" class="login-btn">Connect</button>
         </div>
     </div>
 
-    <!-- ============================================
-         MAIN APPLICATION CONTAINER
-    ============================================ -->
+    <!-- MAIN APP -->
     <div id="app-container" style="display:none">
-        
-        <!-- SIDEBAR NAVIGATION -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="/static/IC.png" alt="Logo" height="30">
+                <img src="/static/IC.png" height="30">
                 <span>Chats</span>
             </div>
-            <div class="user-list" id="user-list-container">
-                <!-- User items dynamically inserted here via JS -->
-            </div>
+            <div class="user-list" id="user-list-container"></div>
         </aside>
 
-        <!-- MAIN CHAT AREA -->
         <main class="chat-area">
-            <!-- Chat Header -->
             <header class="chat-header">
                 <div class="header-info">
-                    <!-- Mobile Menu Toggle Button (Hidden on Desktop) -->
-                    <button class="mobile-menu" onclick="toggleMobileSidebar()">☰</button>
+                    <button class="mobile-menu" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
                     <h3 id="chatHeaderTitle">Public Server</h3>
                 </div>
             </header>
 
-            <!-- Messages Stream Container -->
-            <div id="chat-stream">
-                <!-- Messages dynamically inserted here via JS -->
-            </div>
+            <div id="chat-stream"></div>
 
-            <!-- Input Area Footer -->
             <footer class="input-area">
                 <div class="input-box">
-                    <input type="text" id="msg-input" placeholder="Message..." autocomplete="off">
-                    <button onclick="window.sendMyMessage()" class="send-btn" aria-label="Send message">➤</button>
+                    <input type="text" id="msg-input" placeholder="Message...">
+                    <button onclick="window.sendMyMessage()" class="send-btn">➤</button>
                 </div>
             </footer>
         </main>
     </div>
 
-    <!-- Main Application Script -->
     <script src="/static/script.js"></script>
-    
-    <!-- Plugin Loader (Optional) -->
     <script>
-        // Only load plugins if the files actually exist in your folder
-        const activePlugins = ["reactions.js"]; 
+        const activePlugins = ["reactions.js", "typing.js", "previews.js"]; 
         activePlugins.forEach(file => {
             const s = document.createElement('script');
             s.src = `/static/plugins/${file}`;
