@@ -7,7 +7,7 @@ from datetime import datetime
 # 1. YOUR NEON CLOUD DATABASE URL
 # ==========================================
 # Make sure to replace YOUR_SECRET_PASSWORD with your actual password
-SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_LGF2KxR6Irlv@ep-late-mode-aoo6usay-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
