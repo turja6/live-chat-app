@@ -1,101 +1,143 @@
-import sqlite3
+from sqlalchemy import create_engine, Column, Integer, String, Text, or_, and_
+from sqlalchemy.orm import declarative_base, sessionmaker
 import json
 from datetime import datetime
 
-def get_db():
-    # check_same_thread=False allows FastAPI async routes to safely use the SQLite connection
-    return sqlite3.connect('chat.db', check_same_thread=False)
+# ==========================================
+# 1. YOUR NEON CLOUD DATABASE URL
+# ==========================================
+# Make sure to replace YOUR_SECRET_PASSWORD with your actual password
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_LGF2KxR6Irlv@ep-late-mode-aoo6usay-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+# ==========================================
+# 2. DATABASE MODELS (TABLES)
+# ==========================================
+
+class User(Base):
+    __tablename__ = "users"
+    
+    username = Column(String, primary_key=True, index=True)
+    profile_pic = Column(Text, default="/static/IC.png")
+    status = Column(String, default="Offline")
+
+class Message(Base):
+    __tablename__ = "messages"
+    
+    # We use an auto-incrementing ID here to perfectly replace SQLite's "rowid" sorting
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    msg_id = Column(String, unique=True, index=True)
+    sender = Column(String, nullable=False)
+    receiver = Column(String, nullable=False)
+    profile_pic = Column(Text)
+    message = Column(Text, nullable=False)
+    timestamp = Column(String)
+    reactions = Column(Text, default="{}")
+
+# ==========================================
+# 3. HELPER FUNCTIONS FOR main.py
+# ==========================================
 
 def init_db():
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Create the Users Table
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users
-                      (username TEXT PRIMARY KEY, profile_pic TEXT, status TEXT)''')
-                      
-    # Create the Messages Table with msg_id and reactions columns
-    cursor.execute('''CREATE TABLE IF NOT EXISTS messages
-                      (msg_id TEXT PRIMARY KEY, 
-                       sender TEXT, 
-                       receiver TEXT, 
-                       profile_pic TEXT, 
-                       message TEXT, 
-                       timestamp TEXT, 
-                       reactions TEXT)''')
-                       
-    conn.commit()
-    conn.close()
+    # Automatically creates the tables in Neon if they don't exist yet
+    Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def update_user(username, profile_pic, status):
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO users (username, profile_pic, status) VALUES (?, ?, ?)", 
-                   (username, profile_pic, status))
-    conn.commit()
-    conn.close()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if user:
+            user.profile_pic = profile_pic
+            user.status = status
+        else:
+            new_user = User(username=username, profile_pic=profile_pic, status=status)
+            db.add(new_user)
+        db.commit()
+    finally:
+        db.close()
 
 def update_status_only(username, status):
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET status = ? WHERE username = ?", (status, username))
-    conn.commit()
-    conn.close()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if user:
+            user.status = status
+            db.commit()
+    finally:
+        db.close()
 
 def get_all_users():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT username, profile_pic, status FROM users")
-    
-    # Format as a list of dictionaries for JSON serialization
-    users = [{"username": row[0], "profile_pic": row[1], "status": row[2]} for row in cursor.fetchall()]
-    conn.close()
-    return users
+    db = SessionLocal()
+    try:
+        users = db.query(User).all()
+        return [{"username": u.username, "profile_pic": u.profile_pic, "status": u.status} for u in users]
+    finally:
+        db.close()
 
 def save_message(msg_id, sender, receiver, profile_pic, message):
-    conn = get_db()
-    cursor = conn.cursor()
-    timestamp = datetime.now().strftime("%I:%M %p")
-    reactions = "{}" # Initialize with an empty JSON object string
-    
-    cursor.execute("INSERT INTO messages (msg_id, sender, receiver, profile_pic, message, timestamp, reactions) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                   (msg_id, sender, receiver, profile_pic, message, timestamp, reactions))
-    conn.commit()
-    conn.close()
+    db = SessionLocal()
+    try:
+        ts = datetime.now().strftime("%I:%M %p")
+        new_msg = Message(
+            msg_id=msg_id,
+            sender=sender,
+            receiver=receiver,
+            profile_pic=profile_pic,
+            message=message,
+            timestamp=ts,
+            reactions="{}"
+        )
+        db.add(new_msg)
+        db.commit()
+    finally:
+        db.close()
 
 def add_reaction(msg_id, emoji):
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT reactions FROM messages WHERE msg_id = ?", (msg_id,))
-    row = cursor.fetchone()
-    
-    if row:
-        # Load the existing reactions JSON string into a Python dictionary
-        reactions = json.loads(row[0])
-        
-        # Increment the specific emoji count
-        reactions[emoji] = reactions.get(emoji, 0) + 1
-        
-        # Save it back to the database as a JSON string
-        cursor.execute("UPDATE messages SET reactions = ? WHERE msg_id = ?", (json.dumps(reactions), msg_id))
-        conn.commit()
-        
-    conn.close()
+    db = SessionLocal()
+    try:
+        msg = db.query(Message).filter(Message.msg_id == msg_id).first()
+        if msg:
+            reactions = json.loads(msg.reactions)
+            reactions[emoji] = reactions.get(emoji, 0) + 1
+            msg.reactions = json.dumps(reactions)
+            db.commit()
+    finally:
+        db.close()
 
 def get_history(user1, user2="Public"):
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    if user2 == "Public":
-        cursor.execute("SELECT msg_id, sender, profile_pic, message, timestamp, reactions FROM messages WHERE receiver = 'Public' ORDER BY rowid DESC LIMIT 50")
-    else:
-        # Fetch private messages between user1 and user2
-        cursor.execute('''SELECT msg_id, sender, profile_pic, message, timestamp, reactions FROM messages 
-                          WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) 
-                          ORDER BY rowid DESC LIMIT 50''', (user1, user2, user2, user1))
-                          
-    rows = cursor.fetchall()
-    conn.close()
-    
-    # Reverse the rows so oldest messages are at the top, and parse the reaction JSON strings back into dictionaries for the frontend
-    return [{"msg_id": row[0], "sender": row[1], "profile_pic": row[2], "message": row[3], "timestamp": row[4], "reactions": json.loads(row[5])} for row in reversed(rows)]
+    db = SessionLocal()
+    try:
+        if user2 == "Public":
+            # Fetches the last 50 public messages
+            messages = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(50).all()
+        else:
+            # Fetches private messages between the two users
+            messages = db.query(Message).filter(
+                or_(
+                    and_(Message.sender == user1, Message.receiver == user2),
+                    and_(Message.sender == user2, Message.receiver == user1)
+                )
+            ).order_by(Message.id.desc()).limit(50).all()
+        
+        # Reverse and format exactly how your frontend expects it
+        return [{
+            "msg_id": msg.msg_id, 
+            "sender": msg.sender, 
+            "profile_pic": msg.profile_pic, 
+            "message": msg.message, 
+            "timestamp": msg.timestamp, 
+            "reactions": json.loads(msg.reactions)
+        } for msg in reversed(messages)]
+    finally:
+        db.close()

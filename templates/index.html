@@ -138,6 +138,9 @@
             display: none; position: absolute; inset: 0; background: #000; z-index: 150;
             flex-direction: column; overflow: hidden;
         }
+        /* Fullscreen styles */
+        #call-interface:fullscreen { width: 100vw; height: 100vh; }
+        
         .call-top-bar { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 160; pointer-events: none; }
         .call-status { background: rgba(0,0,0,0.6); color: var(--online); padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.1); }
         
@@ -172,7 +175,7 @@
             .mobile-toggle { display: block; }
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
             .sidebar.open { transform: translateX(0); }
-            .call-controls { width: 90%; gap: 10px; padding: 10px; justify-content: center; }
+            .call-controls { width: 95%; gap: 8px; padding: 10px; justify-content: center; }
             .local-video-area { width: 120px; height: 160px; bottom: 90px; right: 10px; }
             .msg-image-attachment { max-width: 100%; }
         }
@@ -180,9 +183,9 @@
 </head>
 <body>
 
-    <audio id="chatSound" src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3"></audio>
-    <audio id="ringSound" src="https://cdn.pixabay.com/audio/2022/01/18/audio_511d1796d4.mp3" loop></audio>
-    <audio id="dialSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_78ec79524c.mp3" loop></audio>
+    <audio id="chatSound" src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3" preload="auto"></audio>
+    <audio id="ringSound" src="https://cdn.pixabay.com/audio/2022/01/18/audio_511d1796d4.mp3" loop preload="auto"></audio>
+    <audio id="dialSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_78ec79524c.mp3" loop preload="auto"></audio>
 
     <div id="login-screen" class="modal-overlay">
         <div class="modal-box">
@@ -269,6 +272,7 @@
                     <button class="call-btn active" id="toggleVideoBtn" onclick="toggleVideo()" title="Camera">📷</button>
                     <button class="call-btn active" id="toggleAudioBtn" onclick="toggleAudio()" title="Microphone">🎤</button>
                     <button class="call-btn" id="shareScreenBtn" onclick="toggleScreenShare()" title="Share Screen">🖥️</button>
+                    <button class="call-btn" id="fullscreenBtn" onclick="toggleFullScreen()" title="Full Screen">⛶</button>
                     <button class="call-btn danger" onclick="endCallBtnClicked()" title="Disconnect">☎️</button>
                 </div>
             </div>
@@ -284,10 +288,14 @@
         let userProfiles = {};
         let unreadCounts = {};
 
-        // Audio Setup
+        // Audio Setup with safe play catch for browser autoplay policies
         const chatSound = document.getElementById("chatSound"); chatSound.volume = 0.2;
         const ringSound = document.getElementById("ringSound"); ringSound.volume = 0.5;
         const dialSound = document.getElementById("dialSound"); dialSound.volume = 0.4;
+        
+        function safePlayAudio(audioElement) {
+            audioElement.play().catch(e => console.log("Browser autoplay blocked audio until user interaction."));
+        }
 
         function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 
@@ -336,6 +344,10 @@
             if (!myUsername) return alert("Username required!");
             localStorage.setItem("chat_username", myUsername);
             localStorage.setItem("chat_pic", myPicBase64);
+            // Playing a silent sound on login to explicitly unlock browser audio autoplay
+            chatSound.play().catch(e=>{}); 
+            chatSound.pause();
+            chatSound.currentTime = 0;
             startApp();
         }
 
@@ -370,7 +382,7 @@
                 
                 if (data.type === "chat") {
                     if (data.sender !== myUsername) {
-                        chatSound.play().catch(e=>{});
+                        safePlayAudio(chatSound);
                         notifyUser(`New message from ${data.sender}`, data.message.startsWith("data:image") ? "Sent an image" : data.message);
                     }
                     if ((currentChat === "Public" && data.receiver === "Public") || 
@@ -478,6 +490,20 @@
             }; reader.readAsDataURL(file); e.target.value = '';
         }
 
+        // === FULLSCREEN SYSTEM ===
+        function toggleFullScreen() {
+            const callElem = document.getElementById("call-interface");
+            if (!document.fullscreenElement) {
+                callElem.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable fullscreen mode: ${err.message}`);
+                });
+                document.getElementById("fullscreenBtn").innerText = "🗗"; // Change icon
+            } else {
+                document.exitFullscreen();
+                document.getElementById("fullscreenBtn").innerText = "⛶"; // Revert icon
+            }
+        }
+
         // === HD WEBRTC CALL ENGINE ===
         let peerConnection, localStream, screenStream, activeCallUser = null, incomingOfferData = null, iceCandidateQueue = [];
         let isVideoOn = true, isAudioOn = true, isSharingScreen = false, currentFacingMode = "user";
@@ -487,7 +513,17 @@
 
         async function initMedia(videoReq) {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: videoReq ? { facingMode: currentFacingMode, width: {ideal: 1280}, height: {ideal: 720} } : false, audio: true });
+                // HD 1080p Video Constraints and Noise Cancellation
+                const constraints = {
+                    video: videoReq ? { 
+                        facingMode: currentFacingMode, 
+                        width: { ideal: 1920 }, 
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 30 }
+                    } : false, 
+                    audio: { echoCancellation: true, noiseSuppression: true } 
+                };
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
                 document.getElementById("localVideo").srcObject = localStream;
                 isVideoOn = videoReq; isAudioOn = true;
                 document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn);
@@ -511,7 +547,7 @@
             activeCallUser = currentChat;
             document.getElementById("call-interface").style.display = "flex";
             updateCallStatus("Ringing...");
-            dialSound.play().catch(e=>{});
+            safePlayAudio(dialSound);
             if (!await initMedia(videoReq)) { dialSound.pause(); return forceEndCall(); }
             createPeerConnection();
             const offer = await peerConnection.createOffer();
@@ -524,7 +560,7 @@
             document.getElementById("incoming-caller-name").innerText = data.sender;
             document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "/static/IC.png";
             document.getElementById("incoming-call-modal").style.display = "flex";
-            ringSound.play().catch(e=>{});
+            safePlayAudio(ringSound);
             notifyUser(`Incoming call from ${data.sender}`, "IdlyCall Ringing");
         }
 
@@ -579,7 +615,8 @@
             currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
             const oldT = localStream.getVideoTracks()[0]; if(oldT) oldT.stop();
             try {
-                const newS = await navigator.mediaDevices.getUserMedia({ video: { facingMode: {exact: currentFacingMode} } });
+                // HD constraints for back camera
+                const newS = await navigator.mediaDevices.getUserMedia({ video: { facingMode: {exact: currentFacingMode}, width: {ideal: 1920}, height: {ideal: 1080} } });
                 const newT = newS.getVideoTracks()[0];
                 localStream.removeTrack(oldT); localStream.addTrack(newT);
                 document.getElementById("localVideo").srcObject = localStream;
@@ -594,7 +631,8 @@
             
             try {
                 if (!isSharingScreen) {
-                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    // HD constraints for Screen Share
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: {ideal: 1920}, height: {ideal: 1080}, frameRate: {ideal: 30} }, audio: true });
                     const screenTrack = screenStream.getVideoTracks()[0];
                     const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
                     if (sender) sender.replaceTrack(screenTrack);
@@ -623,6 +661,7 @@
             if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
             iceCandidateQueue = []; activeCallUser = null; incomingOfferData = null; isSharingScreen = false;
             document.getElementById("shareScreenBtn").classList.remove("active");
+            if (document.fullscreenElement) { document.exitFullscreen(); document.getElementById("fullscreenBtn").innerText = "⛶"; }
             document.getElementById("call-interface").style.display = "none";
             document.getElementById("incoming-call-modal").style.display = "none";
         }
