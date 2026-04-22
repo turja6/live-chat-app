@@ -4,17 +4,14 @@ from fastapi.responses import HTMLResponse
 import json
 from datetime import datetime
 
-# Import your secure database connection
-import database
-
 app = FastAPI()
 
-# Mount the static folder so CSS and JS can load
+# Mount the static directory for images/assets if needed
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class ConnectionManager:
     def __init__(self):
-        # Stores active users: {"Turja": <WebSocket>}
+        # Stores active users: {"Username": <WebSocket_Object>}
         self.active_connections: dict[str, WebSocket] = {}
 
     async def connect(self, websocket: WebSocket, username: str):
@@ -27,8 +24,8 @@ class ConnectionManager:
             del self.active_connections[username]
 
     async def broadcast_user_list(self):
-        # Send updated user list to everyone
-        users = [{"username": "Public", "status": "Online"}]
+        # Always keep the Public Server at the top of the list
+        users = [{"username": "Public Server", "status": "Online"}]
         users += [{"username": u, "status": "Online"} for u in self.active_connections.keys()]
         
         message = json.dumps({"type": "user_list", "data": users})
@@ -47,6 +44,7 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def get_chat_app():
+    # Serves the monolithic HTML file
     with open("templates/index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
@@ -55,38 +53,45 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket, username)
     try:
         while True:
+            # 1. Receive data from the frontend
             data = await websocket.receive_text()
             parsed_data = json.loads(data)
             msg_type = parsed_data.get("type")
             
-            # Default to Public Server if no receiver is specified
+            # Default to Public Server if no specific receiver is targeted
             target = parsed_data.get("receiver", "Public Server")
             
+            # Inject trusted server-side data before routing
             parsed_data["sender"] = username
             parsed_data["timestamp"] = datetime.now().strftime("%I:%M %p")
 
-            # 1. Route Standard Chat Messages
+            # 2. Route Standard Chat Messages
             if msg_type == "chat":
                 payload = json.dumps(parsed_data)
-                # Check if it's meant for the public room
-                if target == "Public Server" or target == "Public":
+                # If target is Public, broadcast to everyone
+                if target == "Public Server":
                     await manager.broadcast(payload)
                 else:
-                    # It's a private message
+                    # If target is private, send to receiver AND back to sender
                     await manager.send_personal_message(payload, target)
                     if target != username:
                         await manager.send_personal_message(payload, username)
                         
-            # 2. THE CALLING FIX: Route WebRTC & Silent Events
+            # 3. Route Silent Background Events (Typing & WebRTC Calling)
+            # These should NEVER be broadcast to the Public Server.
             elif msg_type in [
-                "typing", "reaction", "call_end", 
-                "call_offer", "call_answer", "ice_candidate", "call_declined"
+                "typing", 
+                "call_offer", 
+                "call_answer", 
+                "ice_candidate", 
+                "call_end", 
+                "call_declined"
             ]:
                 payload = json.dumps(parsed_data)
-                # Do not broadcast private call data to the public room!
-                if target != "Public Server" and target != "Public":
+                if target != "Public Server":
                     await manager.send_personal_message(payload, target)
 
     except WebSocketDisconnect:
         manager.disconnect(username)
+        # Broadcast updated list when someone closes the app
         await manager.broadcast_user_list()

@@ -608,28 +608,6 @@
             margin-left: 0;
         }
 
-        .date-divider {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin: 8px 0;
-        }
-
-        .date-divider::before,
-        .date-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        .date-divider span {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
         /* =========================================
            FIREBASE SHARP RGB CHATBOX
         ========================================= */
@@ -1289,11 +1267,11 @@
             }
         }
 
-        // UPDATED FUNCTION: Proper Public/Private routing
         function handleChatMessage(data) {
             const sender = data.sender;
             const message = data.message;
             const receiver = data.receiver;
+            const timestamp = data.timestamp; // Server-provided timestamp
             
             let conversationId;
             let isMe = sender === myUsername;
@@ -1312,7 +1290,7 @@
             }
             
             // Save the message
-            const msgObj = { sender: sender, message: message, timestamp: Date.now() };
+            const msgObj = { sender: sender, message: message, timestamp: timestamp || Date.now() };
             chatHistories[conversationId].push(msgObj);
             
             // Check if we are currently looking at this specific chat
@@ -1351,16 +1329,22 @@
 
             div.className = isMe ? 'message my-message' : 'message';
 
-            const time = new Date(msgObj.timestamp).toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
+            // Use server timestamp if available, else format current time
+            let timeStr;
+            if (typeof msgObj.timestamp === 'string') {
+                timeStr = msgObj.timestamp; // Already formatted by server
+            } else {
+                timeStr = new Date(msgObj.timestamp).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            }
 
             div.innerHTML = `
                 <div class="msg-sender">${isMe ? 'You' : msgObj.sender}</div>
                 <div class="msg-text">${escapeHtml(msgObj.message)}</div>
-                <div class="msg-time">${time}</div>
+                <div class="msg-time">${timeStr}</div>
             `;
 
             stream.appendChild(div);
@@ -1473,26 +1457,29 @@
             const container = document.getElementById('user-list-container');
             const header = '<div class="user-list-header">Online Now</div>';
 
-            const usersHtml = users
-                .filter(u => u.username !== myUsername)
-                .map(user => {
-                    const unread = unreadCounts[user.username] || 0;
-                    const badgeHtml = unread > 0 
-                        ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` 
-                        : '';
-                    
-                    return `
-                        <div class="user-item" data-username="${user.username}" onclick="switchChat('${user.username}', '${user.username}')">
-                            <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
-                            <div class="user-info">
-                                <div class="user-name">${user.username}</div>
-                                <div class="user-preview">${unread > 0 ? unread + ' new message(s)' : 'Click to chat'}</div>
-                            </div>
-                            <div class="status-dot"></div>
-                            ${badgeHtml}
+            const usersHtml = users.map(user => {
+                // Don't filter out current user - backend handles this, but frontend can hide self-chat
+                // The backend currently sends all users including self based on logic.
+                // Let's hide "self" in the sidebar list to avoid confusion, but keep "Public Server".
+                if (user.username === myUsername) return '';
+
+                const unread = unreadCounts[user.username] || 0;
+                const badgeHtml = unread > 0 
+                    ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` 
+                    : '';
+                
+                return `
+                    <div class="user-item" data-username="${user.username}" onclick="switchChat('${user.username}', '${user.username}')">
+                        <div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                        <div class="user-info">
+                            <div class="user-name">${user.username}</div>
+                            <div class="user-preview">${unread > 0 ? unread + ' new message(s)' : 'Click to chat'}</div>
                         </div>
-                    `;
-                }).join('');
+                        ${user.username !== "Public Server" ? '<div class="status-dot"></div>' : ''}
+                        ${badgeHtml}
+                    </div>
+                `;
+            }).join('');
 
             container.innerHTML = header + usersHtml;
         }
