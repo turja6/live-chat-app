@@ -1,274 +1,297 @@
-// ============================================
-// IdlyCall Pro - Core Application Script
-// Preserves your original functionality
-// ============================================
+/**
+ * IdlyCall Pro - Core Application Script
+ * High-performance WebSocket chat client
+ */
 
-let ws;
+// State
+let ws = null;
 let myUsername = localStorage.getItem("chat_username") || "";
 let myPicBase64 = localStorage.getItem("chat_pic") || "";
 let currentChat = "Public";
 
-// Image Processing (Original Function)
-function processImage(e, tid) {
+// Default avatar fallback
+const DEFAULT_AVATAR = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
+
+// ==========================================
+// IMAGE PROCESSING
+// ==========================================
+function processImage(e, targetId) {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = function(ev) {
-        document.getElementById(tid).src = ev.target.result;
+        const el = document.getElementById(targetId);
+        if (el) el.src = ev.target.result;
         myPicBase64 = ev.target.result;
     };
     reader.readAsDataURL(file);
 }
 
-// Login Handler (Original Function)
+// ==========================================
+// AUTHENTICATION
+// ==========================================
 window.manualLogin = function() {
     const input = document.getElementById("usernameInput");
-    if (!input || !input.value.trim()) {
-        alert("Please enter a username!");
+    const name = input?.value.trim();
+
+    if (!name) {
+        input?.focus();
         return;
     }
-    
-    myUsername = input.value.trim();
-    localStorage.setItem("chat_username", myUsername);
+
+    myUsername = name;
+    localStorage.setItem("chat_username", name);
     startApp();
 };
 
-// Start Application (Original Logic)
+// ==========================================
+// APP INITIALIZATION
+// ==========================================
 function startApp() {
-    // Hide login screen
+    // Toggle views
     document.getElementById("login-screen").style.display = "none";
-    
-    // Show main app
     document.getElementById("app-container").style.display = "flex";
-    
-    // Setup WebSocket
-    const protocol = location.protocol === "https:" ? "wss" : "ws";
-    ws = new WebSocket(`${protocol}://${location.host}/ws/${myUsername}`);
-    
-    ws.onopen = function() {
-        console.log('Connected to server');
+
+    // Establish WebSocket
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${proto}://${location.host}/ws/${encodeURIComponent(myUsername)}`);
+
+    ws.onopen = () => {
+        console.log("[WS] Connected");
         ws.send(JSON.stringify({ pic: myPicBase64 }));
     };
-    
-    ws.onmessage = function(e) {
+
+    ws.onmessage = (e) => {
         try {
             const d = JSON.parse(e.data);
-            
-            if (d.type === "chat") {
-                // Play sound for others' messages
-                if (d.sender !== myUsername) {
-                    playSound();
-                }
-                drawMessage(d.message, d.sender, d.profile_pic, d.timestamp);
-                
-            } else if (d.type === "user_list") {
-                updateSidebar(d.data);
-                
-            } else if (d.type === "history") {
-                // Load chat history
-                if (d.messages) {
-                    d.messages.forEach(msg => {
-                        drawMessage(msg.message, msg.sender, msg.profile_pic, msg.timestamp);
-                    });
-                }
+
+            switch (d.type) {
+                case "chat":
+                    if (d.sender !== myUsername) playNotificationSound();
+                    renderMessage(d.message, d.sender, d.profile_pic, d.timestamp);
+                    break;
+
+                case "user_list":
+                    renderUserList(d.data);
+                    break;
+
+                case "history":
+                    if (Array.isArray(d.messages)) {
+                        d.messages.forEach(m => 
+                            renderMessage(m.message, m.sender, m.profile_pic, m.timestamp)
+                        );
+                    }
+                    break;
+
+                default:
+                    console.log("[WS] Unknown type:", d.type);
             }
         } catch (err) {
-            console.error('Message parse error:', err);
+            console.error("[WS] Parse error:", err);
         }
     };
-    
-    ws.onclose = function(e) {
-        console.log('Disconnected:', e.code, e.reason);
-        // Auto-reconnect after 3 seconds if not intentional
+
+    ws.onclose = (e) => {
+        console.log("[WS] Disconnected:", e.code);
+        // Auto-reconnect after 3s (unless intentional close)
         if (e.code !== 1000 && myUsername) {
             setTimeout(() => {
-                if (document.getElementById('app-container').style.display !== 'none') {
+                if (document.getElementById("app-container").style.display !== "none") {
                     startApp();
                 }
             }, 3000);
         }
     };
-    
-    ws.onerror = function(err) {
-        console.error('WebSocket error:', err);
+
+    ws.onerror = (err) => {
+        console.error("[WS] Error:", err);
     };
 }
 
-// Play Notification Sound
-function playSound() {
-    const audio = document.getElementById('chatSound');
-    if (audio) {
-        audio.play().catch(function(e) {
-            console.log('Sound blocked by browser');
-        });
-    }
+// ==========================================
+// SOUND
+// ==========================================
+function playNotificationSound() {
+    const audio = document.getElementById("chatSound");
+    if (audio) audio.play().catch(() => {});
 }
 
-// Draw Message (Original Function Enhanced)
-function drawMessage(text, sender, pic, time) {
-    const stream = document.getElementById('chat-stream');
-    if (!stream) return;
-    
-    const div = document.createElement('div');
-    div.className = 'message';
-    
-    const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
-    
-    div.innerHTML = `
-        <img src="${pic || defaultAvatar}" class="msg-avatar" alt="${sender}'s avatar">
-        <div>
-            <span class="msg-sender">${escapeHtml(sender)}</span><span class="msg-time">${time || ''}</span>
-            <div class="msg-content">${escapeHtml(text)}</div>
+// ==========================================
+// SANITIZATION
+// ==========================================
+function escapeHTML(str) {
+    if (!str) return "";
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ==========================================
+// MESSAGE RENDERING (Optimized DOM ops)
+// ==========================================
+function renderMessage(text, sender, pic, time) {
+    const container = document.getElementById("chat-stream");
+    if (!container) return;
+
+    // Build fragment to minimize reflows
+    const frag = document.createDocumentFragment();
+
+    const msgEl = document.createElement("div");
+    msgEl.className = "message";
+
+    const avatarSrc = pic || DEFAULT_AVATAR;
+
+    msgEl.innerHTML = `
+        <img class="msg-avatar" src="${avatarSrc}" alt="" loading="lazy">
+        <div class="msg-body">
+            <div class="msg-meta">
+                <span class="msg-sender">${escapeHTML(sender)}</span>
+                <span class="msg-time">${time || ""}</span>
+            </div>
+            <div class="msg-content">${escapeHTML(text)}</div>
         </div>
     `;
-    
-    stream.appendChild(div);
-    
-    // Auto-scroll to bottom
+
+    frag.appendChild(msgEl);
+    container.appendChild(frag);
+
+    // Smart scroll - only scroll if near bottom
     requestAnimationFrame(() => {
-        stream.scrollTop = stream.scrollHeight;
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        if (isNearBottom) {
+            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        }
     });
 }
 
-// Escape HTML (Security Enhancement)
-function escapeHtml(text) {
-    if (!text) return '';
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-// Update Sidebar User List (Original Function)
-function updateSidebar(users) {
-    const container = document.getElementById('user-list-container');
+// ==========================================
+// USER LIST RENDERING
+// ==========================================
+function renderUserList(users) {
+    const container = document.getElementById("user-list-container");
     if (!container) return;
-    
-    const defaultAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png';
-    
-    if (users && users.length > 0) {
-        container.innerHTML = users.map(u => `
-            <div class="user-item" onclick="switchChat('${escapeHtml(u.username)}')">
-                <img src="${u.profile_pic || defaultAvatar}" width="30" height="30" style="border-radius:50%; margin-right:10px;">
-                <span>${escapeHtml(u.username)}</span>
-            </div>
-        `).join('');
-    } else {
-        container.innerHTML = '<p style="color: var(--text-dim); padding: 20px; text-align: center;">No users online</p>';
+
+    if (!users || users.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:16px;text-align:center;font-size:13px;">No users online</p>';
+        return;
     }
+
+    const html = users.map(u => `
+        <div class="user-item" onclick="switchChat('${escapeHTML(u.username)}')">
+            <img src="${u.profile_pic || DEFAULT_AVATAR}" alt="" loading="lazy">
+            <span>${escapeHTML(u.username)}</span>
+        </div>
+    `).join("");
+
+    container.innerHTML = html;
 }
 
-// Switch Chat (Original Function + Mobile Close)
+// ==========================================
+// CHAT SWITCHING
+// ==========================================
 window.switchChat = function(target) {
     currentChat = target;
-    
-    const titleEl = document.getElementById('chatHeaderTitle');
-    if (titleEl) titleEl.innerText = target;
-    
-    const stream = document.getElementById('chat-stream');
-    if (stream) stream.innerHTML = '';
-    
-    // Request history from server
+
+    const title = document.getElementById("chatHeaderTitle");
+    if (title) title.textContent = target;
+
+    const stream = document.getElementById("chat-stream");
+    if (stream) stream.innerHTML = "";
+
     if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "get_history", target: target }));
+        ws.send(JSON.stringify({ type: "get_history", target }));
     }
-    
-    // Close mobile sidebar after selection
+
     closeMobileSidebar();
 };
 
-// Send Message (Original Function)
+// ==========================================
+// SEND MESSAGE
+// ==========================================
 window.sendMyMessage = function() {
-    const inp = document.getElementById("msg-input");
-    if (!inp || !inp.value.trim()) return;
-    
+    const input = document.getElementById("msg-input");
+    const text = input?.value.trim();
+
+    if (!text) return;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-        alert('Not connected to server');
+        alert("Not connected");
         return;
     }
-    
+
     ws.send(JSON.stringify({
         type: "chat",
         receiver: currentChat,
-        message: inp.value.trim()
+        message: text
     }));
-    
-    inp.value = '';
-    inp.focus();
+
+    input.value = "";
+    input.focus();
 };
 
-// Keyboard Enter to Send (Original Listener)
-document.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter' && document.activeElement.id === 'msg-input') {
+// ==========================================
+// MOBILE SIDEBAR
+// ==========================================
+window.toggleMobileSidebar = function() {
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+
+    const isOpen = sidebar.classList.contains("open");
+    sidebar.classList.toggle("open");
+
+    if (window.innerWidth <= 768) {
+        document.body.style.overflow = isOpen ? "" : "hidden";
+    }
+};
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar && window.innerWidth <= 768 && sidebar.classList.contains("open")) {
+        sidebar.classList.remove("open");
+        document.body.style.overflow = "";
+    }
+}
+
+// ==========================================
+// EVENT LISTENERS
+// ==========================================
+
+// Enter key to send
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && document.activeElement.id === "msg-input") {
         e.preventDefault();
         window.sendMyMessage();
     }
 });
 
-// ============================================
-// MOBILE SIDEBAR ENHANCEMENTS (New Additions)
-// ============================================
-
-/**
- * Toggle mobile sidebar visibility
- * Call this from your mobile menu button
- */
-window.toggleMobileSidebar = function() {
-    const sidebar = document.getElementById('sidebar');
-    if (!sidebar) return;
-    
-    const isOpen = sidebar.classList.contains('open');
-    sidebar.classList.toggle('open');
-    
-    // Lock body scroll on mobile when sidebar open
-    if (window.innerWidth <= 768) {
-        document.body.style.overflow = isOpen ? '' : 'hidden';
-    }
-};
-
-/**
- * Close mobile sidebar (utility function)
- */
-function closeMobileSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && window.innerWidth <= 768 && sidebar.classList.contains('open')) {
-        sidebar.classList.remove('open');
-        document.body.style.overflow = '';
-    }
-}
-
-// Click outside to close sidebar (Mobile)
-document.addEventListener('click', function(e) {
+// Click outside to close mobile sidebar
+document.addEventListener("click", (e) => {
     if (window.innerWidth > 768) return;
-    
-    const sidebar = document.getElementById('sidebar');
-    const menuBtn = document.querySelector('.mobile-menu');
-    
-    if (sidebar && sidebar.classList.contains('open') && 
-        !sidebar.contains(e.target) && 
-        menuBtn && !menuBtn.contains(e.target)) {
+
+    const sidebar = document.getElementById("sidebar");
+    const menuBtn = document.querySelector(".mobile-menu");
+
+    if (
+        sidebar?.classList.contains("open") &&
+        !sidebar.contains(e.target) &&
+        menuBtn && !menuBtn.contains(e.target)
+    ) {
         closeMobileSidebar();
     }
 });
 
-// Reset sidebar on window resize
-window.addEventListener('resize', function() {
+// Reset on resize
+window.addEventListener("resize", () => {
     if (window.innerWidth > 768) {
-        document.body.style.overflow = '';
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) sidebar.classList.remove('open');
+        document.body.style.overflow = "";
+        document.getElementById("sidebar")?.classList.remove("open");
     }
 });
 
-// Cleanup on page unload
-window.addEventListener('beforeunload', function() {
-    if (ws) {
-        ws.close(1000, 'Page closing');
-    }
+// Cleanup
+window.addEventListener("beforeunload", () => {
+    if (ws) ws.close(1000);
 });
 
-// Console branding
-console.log('%c🔥 IdlyCall Pro Loaded', 'color: #FF7A00; font-size: 16px; font-weight: bold;');
+// Ready log
+console.log("%c✓ IdlyCall Pro", "color:#FF7A00;font-weight:bold;font-size:14px;");

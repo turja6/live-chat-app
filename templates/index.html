@@ -5,41 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>IdlyCall Pro</title>
     <link rel="icon" type="image/png" href="/static/IC.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <audio id="chatSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
 
-    <!-- LOGIN SCREEN -->
+    <!-- LOGIN MODAL -->
     <div id="login-screen" class="modal-overlay">
         <div class="modal-box">
-            <img src="/static/IC.png" class="app-logo">
+            <img src="/static/IC.png" class="app-logo" alt="IdlyCall">
             <h2>IdlyCall</h2>
             <div class="avatar-container">
-                <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
+                <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" alt="Avatar Preview">
                 <input type="file" id="login-file" hidden onchange="processImage(event, 'login-preview')">
                 <label for="login-file" class="upload-badge">📷</label>
             </div>
-            <input type="text" id="usernameInput" placeholder="Enter username...">
+            <input type="text" id="usernameInput" placeholder="Enter username..." autocomplete="off">
             <button onclick="window.manualLogin()" class="login-btn">Connect</button>
         </div>
     </div>
 
-    <!-- MAIN APP -->
+    <!-- MAIN APPLICATION -->
     <div id="app-container" style="display:none">
+        <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <img src="/static/IC.png" height="30">
+                <img src="/static/IC.png" alt="Logo" width="28" height="28">
                 <span>Chats</span>
             </div>
             <div class="user-list" id="user-list-container"></div>
         </aside>
 
+        <!-- CHAT AREA -->
         <main class="chat-area">
             <header class="chat-header">
                 <div class="header-info">
-                    <button class="mobile-menu" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                    <button class="mobile-menu" onclick="toggleMobileSidebar()" aria-label="Toggle menu">☰</button>
                     <h3 id="chatHeaderTitle">Public Server</h3>
                 </div>
             </header>
@@ -48,8 +51,8 @@
 
             <footer class="input-area">
                 <div class="input-box">
-                    <input type="text" id="msg-input" placeholder="Message...">
-                    <button onclick="window.sendMyMessage()" class="send-btn">➤</button>
+                    <input type="text" id="msg-input" placeholder="Message..." autocomplete="off">
+                    <button onclick="window.sendMyMessage()" class="send-btn" aria-label="Send">➤</button>
                 </div>
             </footer>
         </main>
@@ -57,10 +60,10 @@
 
     <script src="/static/script.js"></script>
     <script>
-        const activePlugins = ["reactions.js", "typing.js", "previews.js"]; 
-        activePlugins.forEach(file => {
+        const plugins = ["reactions.js", "typing.js", "previews.js"];
+        plugins.forEach(p => {
             const s = document.createElement('script');
-            s.src = `/static/plugins/${file}`;
+            s.src = `/static/plugins/${p}`;
             document.body.appendChild(s);
         });
     </script>
