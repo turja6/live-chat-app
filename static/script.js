@@ -1,4 +1,5 @@
-/* --- FIXED LOGIN LOGIC --- */
+console.log("!!! BRAIN LOADED !!!");
+alert("JS is running!");
 function manualLogin() {
     // 1. Get the username from the input box
     const input = document.getElementById("usernameInput");
