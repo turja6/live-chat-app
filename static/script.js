@@ -1,5 +1,5 @@
 /* ==========================================
-   IDLYCALL CORE ENGINE
+   IDLYCALL CORE ENGINE - FINAL FIX
    ========================================== */
 
 let ws;
@@ -7,22 +7,37 @@ let myUsername = localStorage.getItem("chat_username");
 let myPicBase64 = localStorage.getItem("chat_pic") || "";
 let currentChat = "Public";
 
-// Audio
-const chatSound = document.getElementById("chatSound");
+// Safe Audio Check
+const getChatSound = () => document.getElementById("chatSound");
 
 function manualLogin() {
     console.log("Login triggered...");
     const input = document.getElementById("usernameInput");
-    if (!input) return console.error("Input box not found!");
     
-    myUsername = input.value.trim();
-    if (!myUsername) return alert("Enter a name!");
+    if (!input) {
+        console.error("CRITICAL: usernameInput element not found in HTML!");
+        alert("System Error: Login input missing. Check your index.html");
+        return;
+    }
+    
+    const val = input.value.trim();
+    if (!val) {
+        alert("Please enter a username!");
+        return;
+    }
 
+    myUsername = val;
     localStorage.setItem("chat_username", myUsername);
+    
+    // Unlock audio for browser
+    const snd = getChatSound();
+    if (snd) { snd.play().catch(() => {}); snd.pause(); }
+
     startApp();
 }
 
 function startApp() {
+    console.log("Starting App for user:", myUsername);
     const loginScreen = document.getElementById("login-screen");
     const appContainer = document.getElementById("app-container");
 
@@ -33,23 +48,27 @@ function startApp() {
     ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
 
     ws.onopen = () => {
-        console.log("WebSocket Connected!");
+        console.log("WebSocket Connected Successfully!");
         ws.send(JSON.stringify({ pic: myPicBase64 }));
     };
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === "chat") {
-            if (data.sender !== myUsername) chatSound.play().catch(() => {});
+            const snd = getChatSound();
+            if (data.sender !== myUsername && snd) snd.play().catch(() => {});
             drawMessage(data.message, data.sender, data.profile_pic, data.timestamp);
         } else if (data.type === "user_list") {
             updateSidebar(data.data);
         }
     };
+
+    ws.onerror = (err) => console.error("WebSocket Error:", err);
 }
 
 function drawMessage(text, sender, pic, time) {
     const stream = document.getElementById('chat-stream');
+    if (!stream) return;
     const div = document.createElement('div');
     div.className = 'message';
     div.innerHTML = `
@@ -74,13 +93,23 @@ function updateSidebar(users) {
     `).join('');
 }
 
+function switchChat(target) {
+    currentChat = target;
+    document.getElementById("chatHeaderTitle").innerText = target;
+    document.getElementById("chat-stream").innerHTML = "";
+    ws.send(JSON.stringify({ type: "get_history", target: target }));
+}
+
 function sendMyMessage() {
     const inp = document.getElementById("msg-input");
-    if(!inp.value.trim()) return;
+    if(!inp || !inp.value.trim()) return;
     ws.send(JSON.stringify({ type: "chat", receiver: currentChat, message: inp.value }));
     inp.value = "";
 }
 
-// Global hook for the button in HTML
+// FORCE GLOBAL ACCESS
 window.manualLogin = manualLogin;
 window.sendMyMessage = sendMyMessage;
+window.switchChat = switchChat;
+
+console.log("IDLYCALL BRAIN LOADED AND READY.");
