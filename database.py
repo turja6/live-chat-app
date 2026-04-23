@@ -4,31 +4,35 @@ import json
 from datetime import datetime
 
 # ==========================================
-# 1. YOUR NEON CLOUD DATABASE URL
+# 1. DATABASE CONFIGURATION
 # ==========================================
-# Make sure to replace YOUR_SECRET_PASSWORD with your actual password
+# REPLACE THE STRING BELOW WITH YOUR ACTUAL NEON DATABASE URL
+# Example: "postgresql://user:password@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require"
 SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Optimized for Serverless/Cloud (Neon)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, 
+    pool_pre_ping=True,  # Keeps connections alive, prevents "server closed connection" errors
+    pool_size=5,
+    max_overflow=10
+)
 
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ==========================================
-# 2. DATABASE MODELS (TABLES)
+# 2. DATABASE MODELS
 # ==========================================
 
 class User(Base):
     __tablename__ = "users"
-    
     username = Column(String, primary_key=True, index=True)
     profile_pic = Column(Text, default="/static/IC.png")
     status = Column(String, default="Offline")
 
 class Message(Base):
     __tablename__ = "messages"
-    
-    # We use an auto-incrementing ID here to perfectly replace SQLite's "rowid" sorting
     id = Column(Integer, primary_key=True, autoincrement=True)
     msg_id = Column(String, unique=True, index=True)
     sender = Column(String, nullable=False)
@@ -39,11 +43,10 @@ class Message(Base):
     reactions = Column(Text, default="{}")
 
 # ==========================================
-# 3. HELPER FUNCTIONS FOR main.py
+# 3. HELPER FUNCTIONS
 # ==========================================
 
 def init_db():
-    # Automatically creates the tables in Neon if they don't exist yet
     Base.metadata.create_all(bind=engine)
 
 def get_db():
@@ -90,13 +93,8 @@ def save_message(msg_id, sender, receiver, profile_pic, message):
     try:
         ts = datetime.now().strftime("%I:%M %p")
         new_msg = Message(
-            msg_id=msg_id,
-            sender=sender,
-            receiver=receiver,
-            profile_pic=profile_pic,
-            message=message,
-            timestamp=ts,
-            reactions="{}"
+            msg_id=msg_id, sender=sender, receiver=receiver,
+            profile_pic=profile_pic, message=message, timestamp=ts, reactions="{}"
         )
         db.add(new_msg)
         db.commit()
@@ -119,10 +117,8 @@ def get_history(user1, user2="Public"):
     db = SessionLocal()
     try:
         if user2 == "Public":
-            # Fetches the last 50 public messages
             messages = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(50).all()
         else:
-            # Fetches private messages between the two users
             messages = db.query(Message).filter(
                 or_(
                     and_(Message.sender == user1, Message.receiver == user2),
@@ -130,14 +126,9 @@ def get_history(user1, user2="Public"):
                 )
             ).order_by(Message.id.desc()).limit(50).all()
         
-        # Reverse and format exactly how your frontend expects it
         return [{
-            "msg_id": msg.msg_id, 
-            "sender": msg.sender, 
-            "profile_pic": msg.profile_pic, 
-            "message": msg.message, 
-            "timestamp": msg.timestamp, 
-            "reactions": json.loads(msg.reactions)
+            "msg_id": msg.msg_id, "sender": msg.sender, "profile_pic": msg.profile_pic,
+            "message": msg.message, "timestamp": msg.timestamp, "reactions": json.loads(msg.reactions)
         } for msg in reversed(messages)]
     finally:
         db.close()
