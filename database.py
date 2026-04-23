@@ -2,21 +2,24 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, or_, and_
 from sqlalchemy.orm import declarative_base, sessionmaker
 import json
 from datetime import datetime
+import os
 
 # ==========================================
-# 1. DATABASE CONFIGURATION
+# 1. SMART DATABASE CONFIGURATION
 # ==========================================
-# REPLACE THE STRING BELOW WITH YOUR ACTUAL NEON DATABASE URL
-# Example: "postgresql://user:password@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require"
-SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# If you have a Neon/Postgres URL, paste it here. 
+# If not, it will automatically use a fast local file (idlycall_local.db).
+DEFAULT_URL = "sqlite:///./idlycall_local.db"
+CLOUD_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require" # <--- PASTE YOUR URL HERE OR LEAVE IT
 
-# Optimized for Serverless/Cloud (Neon)
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    pool_pre_ping=True,  # Keeps connections alive, prevents "server closed connection" errors
-    pool_size=5,
-    max_overflow=10
-)
+# Use Cloud URL only if it looks valid (contains @), otherwise use Local
+if "@" in CLOUD_URL:
+    SQLALCHEMY_DATABASE_URL = CLOUD_URL
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
+else:
+    SQLALCHEMY_DATABASE_URL = DEFAULT_URL
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+    print("⚠️ Cloud DB URL not found. Using Local SQLite for speed.")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -24,7 +27,6 @@ Base = declarative_base()
 # ==========================================
 # 2. DATABASE MODELS
 # ==========================================
-
 class User(Base):
     __tablename__ = "users"
     username = Column(String, primary_key=True, index=True)
@@ -45,7 +47,6 @@ class Message(Base):
 # ==========================================
 # 3. HELPER FUNCTIONS
 # ==========================================
-
 def init_db():
     Base.metadata.create_all(bind=engine)
 
