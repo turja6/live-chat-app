@@ -448,8 +448,11 @@
             
             let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
             
-            let contentHtml = text.startsWith("data:image/") 
-                ? `<img src="${text}" class="msg-image-attachment">` 
+            // Check if it's a local upload OR a Cloudinary cloud link
+            let isImage = text.startsWith("data:image/") || text.includes("res.cloudinary.com");
+            
+            let contentHtml = isImage 
+                ? `<img src="${text}" class="msg-image-attachment" onclick="window.open(this.src, '_blank')" title="Click to open full size">` 
                 : `<div class="msg-content">${text}</div>`;
                 
             msgDiv.innerHTML = `
