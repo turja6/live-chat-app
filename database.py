@@ -6,10 +6,10 @@ from datetime import datetime
 # ==========================================
 # 1. YOUR NEON CLOUD DATABASE URL
 # ==========================================
-# Removed 'channel_binding=require' to prevent psycopg2 build errors
-SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# pool_pre_ping=True is critical for Neon! It stops the database from randomly dropping the connection.
+engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -20,14 +20,12 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    
     username = Column(String, primary_key=True, index=True)
     profile_pic = Column(Text, default="/static/IC.png")
     status = Column(String, default="Offline")
 
 class Message(Base):
     __tablename__ = "messages"
-    
     id = Column(Integer, primary_key=True, autoincrement=True)
     msg_id = Column(String, unique=True, index=True)
     sender = Column(String, nullable=False)
@@ -38,18 +36,15 @@ class Message(Base):
     reactions = Column(Text, default="{}")
 
 # ==========================================
-# 3. HELPER FUNCTIONS FOR main.py
+# 3. SAFE HELPER FUNCTIONS
 # ==========================================
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
-
-def get_db():
-    db = SessionLocal()
     try:
-        yield db
-    finally:
-        db.close()
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables connected and verified.")
+    except Exception as e:
+        print(f"❌ FATAL DB ERROR: Could not create tables. {e}")
 
 def update_user(username, profile_pic, status):
     db = SessionLocal()
@@ -62,6 +57,9 @@ def update_user(username, profile_pic, status):
             new_user = User(username=username, profile_pic=profile_pic, status=status)
             db.add(new_user)
         db.commit()
+    except Exception as e:
+        print(f"❌ DB ERROR (update_user): {e}")
+        db.rollback()
     finally:
         db.close()
 
@@ -72,6 +70,9 @@ def update_status_only(username, status):
         if user:
             user.status = status
             db.commit()
+    except Exception as e:
+        print(f"❌ DB ERROR (update_status): {e}")
+        db.rollback()
     finally:
         db.close()
 
@@ -80,6 +81,9 @@ def get_all_users():
     try:
         users = db.query(User).all()
         return [{"username": u.username, "profile_pic": u.profile_pic, "status": u.status} for u in users]
+    except Exception as e:
+        print(f"❌ DB ERROR (get_all_users): {e}")
+        return []
     finally:
         db.close()
 
@@ -88,16 +92,15 @@ def save_message(msg_id, sender, receiver, profile_pic, message):
     try:
         ts = datetime.now().strftime("%I:%M %p")
         new_msg = Message(
-            msg_id=msg_id,
-            sender=sender,
-            receiver=receiver,
-            profile_pic=profile_pic,
-            message=message,
-            timestamp=ts,
-            reactions="{}"
+            msg_id=msg_id, sender=sender, receiver=receiver,
+            profile_pic=profile_pic, message=message,
+            timestamp=ts, reactions="{}"
         )
         db.add(new_msg)
         db.commit()
+    except Exception as e:
+        print(f"❌ DB ERROR (save_message): {e}")
+        db.rollback()
     finally:
         db.close()
 
@@ -110,6 +113,9 @@ def add_reaction(msg_id, emoji):
             reactions[emoji] = reactions.get(emoji, 0) + 1
             msg.reactions = json.dumps(reactions)
             db.commit()
+    except Exception as e:
+        print(f"❌ DB ERROR (add_reaction): {e}")
+        db.rollback()
     finally:
         db.close()
 
@@ -127,12 +133,11 @@ def get_history(user1, user2="Public"):
             ).order_by(Message.id.desc()).limit(50).all()
         
         return [{
-            "msg_id": msg.msg_id, 
-            "sender": msg.sender, 
-            "profile_pic": msg.profile_pic, 
-            "message": msg.message, 
-            "timestamp": msg.timestamp, 
-            "reactions": json.loads(msg.reactions)
+            "msg_id": msg.msg_id, "sender": msg.sender, "profile_pic": msg.profile_pic, 
+            "message": msg.message, "timestamp": msg.timestamp, "reactions": json.loads(msg.reactions)
         } for msg in reversed(messages)]
+    except Exception as e:
+        print(f"❌ DB ERROR (get_history): {e}")
+        return []
     finally:
         db.close()
