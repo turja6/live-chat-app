@@ -79,13 +79,13 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         setup_json = json.loads(setup_data)
         pic = setup_json.get("pic", "/static/IC.png")
 
-        # Database hit is now safe. If it fails, the server prints the error but stays connected!
-        database.update_user(username, pic, "Online")
+        # PROTECTING FASTAPI: Run sync DB calls in async threads!
+        await asyncio.to_thread(database.update_user, username, pic, "Online")
         
-        history = database.get_history(username, "Public")
+        history = await asyncio.to_thread(database.get_history, username, "Public")
         await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
         
-        users = database.get_all_users()
+        users = await asyncio.to_thread(database.get_all_users)
         await manager.broadcast({"type": "user_list", "data": users})
         
         while True:
@@ -105,7 +105,7 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 else:
                     preview = scrape_link_preview(msg_text)
 
-                database.save_message(msg_id, username, receiver, pic, msg_text)
+                await asyncio.to_thread(database.save_message, msg_id, username, receiver, pic, msg_text)
                 
                 payload = {
                     "type": "chat", "msg_id": msg_id, "sender": username, 
@@ -119,12 +119,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     if username != receiver: await manager.send_personal_message(payload, username)
 
             elif msg_type == "get_history":
-                history = database.get_history(username, data["target"])
+                history = await asyncio.to_thread(database.get_history, username, data["target"])
                 await manager.send_personal_message({"type": "history", "target": data["target"], "data": history}, username)
             
             elif msg_type == "update_settings":
-                database.update_user(data.get("new_name", username), data["pic"], "Online")
-                users = database.get_all_users()
+                await asyncio.to_thread(database.update_user, data.get("new_name", username), data["pic"], "Online")
+                users = await asyncio.to_thread(database.get_all_users)
                 await manager.broadcast({"type": "user_list", "data": users})
 
             elif msg_type in ["call_offer", "call_answer", "ice_candidate", "call_end"]:
@@ -134,8 +134,9 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
 
     except WebSocketDisconnect:
         manager.disconnect(username)
-        database.update_status_only(username, "Offline")
-        users = database.get_all_users()
+        await asyncio.to_thread(database.update_status_only, username, "Offline")
+        users = await asyncio.to_thread(database.get_all_users)
         await manager.broadcast({"type": "user_list", "data": users})
     except Exception as e:
         print(f"❌ Server Error in WebSocket: {e}")
+        manager.disconnect(username)

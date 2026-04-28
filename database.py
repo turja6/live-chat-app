@@ -6,13 +6,13 @@ from datetime import datetime
 # ==========================================
 # 1. YOUR NEON CLOUD DATABASE URL
 # ==========================================
-SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
+# Notice: "-pooler" has been REMOVED from the URL. This connects directly!
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
-# Added TCP Keepalives and Pool Recycling to stop Neon from killing the connection!
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
     pool_pre_ping=True,
-    pool_recycle=300,  # Recycle connections every 5 minutes
+    pool_recycle=300,
     connect_args={
         "keepalives": 1,
         "keepalives_idle": 30,
@@ -20,13 +20,8 @@ engine = create_engine(
         "keepalives_count": 5
     }
 )
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-
-# ==========================================
-# 2. DATABASE MODELS (TABLES)
-# ==========================================
 
 class User(Base):
     __tablename__ = "users"
@@ -45,16 +40,12 @@ class Message(Base):
     timestamp = Column(String)
     reactions = Column(Text, default="{}")
 
-# ==========================================
-# 3. SAFE HELPER FUNCTIONS
-# ==========================================
-
 def init_db():
     try:
         Base.metadata.create_all(bind=engine)
         print("✅ Database tables connected and verified.")
     except Exception as e:
-        print(f"❌ FATAL DB ERROR: Could not create tables. {e}")
+        print(f"❌ FATAL DB ERROR: {e}")
 
 def update_user(username, profile_pic, status):
     db = SessionLocal()
@@ -68,8 +59,8 @@ def update_user(username, profile_pic, status):
             db.add(new_user)
         db.commit()
     except Exception as e:
-        print(f"❌ DB ERROR (update_user): {e}")
         db.rollback()
+        print(f"❌ DB ERROR (update_user): {e}")
     finally:
         db.close()
 
@@ -81,8 +72,8 @@ def update_status_only(username, status):
             user.status = status
             db.commit()
     except Exception as e:
-        print(f"❌ DB ERROR (update_status): {e}")
         db.rollback()
+        print(f"❌ DB ERROR (update_status): {e}")
     finally:
         db.close()
 
@@ -109,8 +100,8 @@ def save_message(msg_id, sender, receiver, profile_pic, message):
         db.add(new_msg)
         db.commit()
     except Exception as e:
-        print(f"❌ DB ERROR (save_message): {e}")
         db.rollback()
+        print(f"❌ DB ERROR (save_message): {e}")
     finally:
         db.close()
 
@@ -119,13 +110,13 @@ def add_reaction(msg_id, emoji):
     try:
         msg = db.query(Message).filter(Message.msg_id == msg_id).first()
         if msg:
-            reactions = json.loads(msg.reactions)
+            reactions = json.loads(msg.reactions) if msg.reactions else {}
             reactions[emoji] = reactions.get(emoji, 0) + 1
             msg.reactions = json.dumps(reactions)
             db.commit()
     except Exception as e:
-        print(f"❌ DB ERROR (add_reaction): {e}")
         db.rollback()
+        print(f"❌ DB ERROR (add_reaction): {e}")
     finally:
         db.close()
 
@@ -144,7 +135,8 @@ def get_history(user1, user2="Public"):
         
         return [{
             "msg_id": msg.msg_id, "sender": msg.sender, "profile_pic": msg.profile_pic, 
-            "message": msg.message, "timestamp": msg.timestamp, "reactions": json.loads(msg.reactions)
+            "message": msg.message, "timestamp": msg.timestamp, 
+            "reactions": json.loads(msg.reactions) if msg.reactions else {}
         } for msg in reversed(messages)]
     except Exception as e:
         print(f"❌ DB ERROR (get_history): {e}")
