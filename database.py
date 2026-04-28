@@ -6,7 +6,6 @@ from datetime import datetime
 # ==========================================
 # 1. YOUR NEON CLOUD DATABASE URL
 # ==========================================
-# Notice: "-pooler" has been REMOVED from the URL. This connects directly!
 SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
 engine = create_engine(
@@ -48,8 +47,9 @@ def init_db():
         print(f"❌ FATAL DB ERROR: {e}")
 
 def update_user(username, profile_pic, status):
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal() # NOW SAFELY INSIDE THE SHIELD
         user = db.query(User).filter(User.username == username).first()
         if user:
             user.profile_pic = profile_pic
@@ -59,38 +59,41 @@ def update_user(username, profile_pic, status):
             db.add(new_user)
         db.commit()
     except Exception as e:
-        db.rollback()
+        if db: db.rollback()
         print(f"❌ DB ERROR (update_user): {e}")
     finally:
-        db.close()
+        if db: db.close()
 
 def update_status_only(username, status):
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         user = db.query(User).filter(User.username == username).first()
         if user:
             user.status = status
             db.commit()
     except Exception as e:
-        db.rollback()
+        if db: db.rollback()
         print(f"❌ DB ERROR (update_status): {e}")
     finally:
-        db.close()
+        if db: db.close()
 
 def get_all_users():
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         users = db.query(User).all()
         return [{"username": u.username, "profile_pic": u.profile_pic, "status": u.status} for u in users]
     except Exception as e:
         print(f"❌ DB ERROR (get_all_users): {e}")
         return []
     finally:
-        db.close()
+        if db: db.close()
 
 def save_message(msg_id, sender, receiver, profile_pic, message):
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         ts = datetime.now().strftime("%I:%M %p")
         new_msg = Message(
             msg_id=msg_id, sender=sender, receiver=receiver,
@@ -100,14 +103,15 @@ def save_message(msg_id, sender, receiver, profile_pic, message):
         db.add(new_msg)
         db.commit()
     except Exception as e:
-        db.rollback()
+        if db: db.rollback()
         print(f"❌ DB ERROR (save_message): {e}")
     finally:
-        db.close()
+        if db: db.close()
 
 def add_reaction(msg_id, emoji):
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         msg = db.query(Message).filter(Message.msg_id == msg_id).first()
         if msg:
             reactions = json.loads(msg.reactions) if msg.reactions else {}
@@ -115,14 +119,15 @@ def add_reaction(msg_id, emoji):
             msg.reactions = json.dumps(reactions)
             db.commit()
     except Exception as e:
-        db.rollback()
+        if db: db.rollback()
         print(f"❌ DB ERROR (add_reaction): {e}")
     finally:
-        db.close()
+        if db: db.close()
 
 def get_history(user1, user2="Public"):
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         if user2 == "Public":
             messages = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(50).all()
         else:
@@ -140,6 +145,6 @@ def get_history(user1, user2="Public"):
         } for msg in reversed(messages)]
     except Exception as e:
         print(f"❌ DB ERROR (get_history): {e}")
-        return []
+        return [] # If DB fails, it returns an empty chat history instead of crashing!
     finally:
-        db.close()
+        if db: db.close()

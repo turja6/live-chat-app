@@ -36,10 +36,8 @@ def scrape_link_preview(text: str):
         with urllib.request.urlopen(req, timeout=2) as response:
             html = response.read().decode('utf-8', errors='ignore')
             title_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
-            image_match = re.search(r'<meta property="og:image" content="(.*?)"', html, re.IGNORECASE)
-            desc_match = re.search(r'<meta name="description" content="(.*?)"', html, re.IGNORECASE)
             if title_match:
-                return { "url": url, "title": title_match.group(1), "image": image_match.group(1) if image_match else "", "description": desc_match.group(1) if desc_match else "" }
+                return { "url": url, "title": title_match.group(1) }
     except: pass
     return None
 
@@ -79,7 +77,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         setup_json = json.loads(setup_data)
         pic = setup_json.get("pic", "/static/IC.png")
 
-        # PROTECTING FASTAPI: Run sync DB calls in async threads!
         await asyncio.to_thread(database.update_user, username, pic, "Online")
         
         history = await asyncio.to_thread(database.get_history, username, "Public")
@@ -89,54 +86,63 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         await manager.broadcast({"type": "user_list", "data": users})
         
         while True:
-            data_str = await websocket.receive_text()
-            data = json.loads(data_str)
-            msg_type = data.get("type")
-            
-            if msg_type == "chat":
-                msg_id = data.get("msg_id")
-                receiver = data["receiver"]
-                msg_text = data["message"]
+            try:
+                # NEW: If anything in this loop fails, it suppresses the error instead of killing the WebSocket!
+                data_str = await websocket.receive_text()
+                data = json.loads(data_str)
+                msg_type = data.get("type")
                 
-                preview = None
-                if msg_text.startswith("data:image/"):
-                    upload_result = await asyncio.to_thread(cloudinary.uploader.upload, msg_text)
-                    msg_text = upload_result.get("secure_url") 
-                else:
-                    preview = scrape_link_preview(msg_text)
+                if msg_type == "chat":
+                    msg_id = data.get("msg_id")
+                    receiver = data["receiver"]
+                    msg_text = data["message"]
+                    
+                    preview = None
+                    if msg_text.startswith("data:image/"):
+                        upload_result = await asyncio.to_thread(cloudinary.uploader.upload, msg_text)
+                        msg_text = upload_result.get("secure_url") 
+                    else:
+                        preview = await asyncio.to_thread(scrape_link_preview, msg_text)
 
-                await asyncio.to_thread(database.save_message, msg_id, username, receiver, pic, msg_text)
+                    await asyncio.to_thread(database.save_message, msg_id, username, receiver, pic, msg_text)
+                    
+                    payload = {
+                        "type": "chat", "msg_id": msg_id, "sender": username, 
+                        "receiver": receiver, "profile_pic": pic, "message": msg_text, 
+                        "timestamp": datetime.now().strftime("%I:%M %p"), "reactions": {}, "preview": preview
+                    }
+                    
+                    if receiver == "Public": await manager.broadcast(payload)
+                    else:
+                        await manager.send_personal_message(payload, receiver)
+                        if username != receiver: await manager.send_personal_message(payload, username)
+
+                elif msg_type == "get_history":
+                    history = await asyncio.to_thread(database.get_history, username, data["target"])
+                    await manager.send_personal_message({"type": "history", "target": data["target"], "data": history}, username)
                 
-                payload = {
-                    "type": "chat", "msg_id": msg_id, "sender": username, 
-                    "receiver": receiver, "profile_pic": pic, "message": msg_text, 
-                    "timestamp": datetime.now().strftime("%I:%M %p"), "reactions": {}, "preview": preview
-                }
-                
-                if receiver == "Public": await manager.broadcast(payload)
-                else:
-                    await manager.send_personal_message(payload, receiver)
-                    if username != receiver: await manager.send_personal_message(payload, username)
+                elif msg_type == "update_settings":
+                    await asyncio.to_thread(database.update_user, data.get("new_name", username), data["pic"], "Online")
+                    users = await asyncio.to_thread(database.get_all_users)
+                    await manager.broadcast({"type": "user_list", "data": users})
 
-            elif msg_type == "get_history":
-                history = await asyncio.to_thread(database.get_history, username, data["target"])
-                await manager.send_personal_message({"type": "history", "target": data["target"], "data": history}, username)
-            
-            elif msg_type == "update_settings":
-                await asyncio.to_thread(database.update_user, data.get("new_name", username), data["pic"], "Online")
-                users = await asyncio.to_thread(database.get_all_users)
-                await manager.broadcast({"type": "user_list", "data": users})
+                elif msg_type in ["call_offer", "call_answer", "ice_candidate", "call_end"]:
+                    target_user = data["target"]
+                    data["sender"] = username 
+                    await manager.send_personal_message(data, target_user)
 
-            elif msg_type in ["call_offer", "call_answer", "ice_candidate", "call_end"]:
-                target_user = data["target"]
-                data["sender"] = username 
-                await manager.send_personal_message(data, target_user)
+            except WebSocketDisconnect:
+                # The user literally closed their browser tab. Break the loop cleanly.
+                break
+            except Exception as e:
+                # A backend glitch happened, but the loop SURVIVES!
+                print(f"⚠️ GLITCH CAUGHT: {e}")
 
-    except WebSocketDisconnect:
+    except Exception as e:
+        print(f"❌ FATAL ERROR: {e}")
+    finally:
+        # This cleanup only runs when the user actually leaves or closes the tab
         manager.disconnect(username)
         await asyncio.to_thread(database.update_status_only, username, "Offline")
         users = await asyncio.to_thread(database.get_all_users)
         await manager.broadcast({"type": "user_list", "data": users})
-    except Exception as e:
-        print(f"❌ Server Error in WebSocket: {e}")
-        manager.disconnect(username)
