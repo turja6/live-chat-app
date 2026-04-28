@@ -1,4 +1,206 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IdlyCall - Connected</title>
+    <link rel="icon" type="image/png" href="/static/IC.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #202225;
+            --bg-mid: #2f3136;
+            --bg-light: #36393f;
+            --text-main: #dcddde;
+            --text-muted: #8e9297;
+            --accent: #ff9800;
+            --accent-hover: #e68a00;
+            --input-bg: #40444b;
+            --online: #3ba55d;
+            --danger: #ed4245;
+            --sidebar-width: 260px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .modal-box { background: var(--bg-light); border: 1px solid var(--bg-dark); padding: 30px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .modal-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 4px; border: none; background: var(--bg-dark); color: white; outline: none; font-size: 1rem; }
+        .modal-box button { width: 100%; padding: 12px; border-radius: 4px; border: none; font-weight: bold; background: var(--accent); color: white; font-size: 1rem; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
+        .modal-box button:hover { background: var(--accent-hover); }
+        .modal-box button.cancel { background: transparent; color: var(--text-main); border: 1px solid var(--bg-mid); }
+        .modal-box button.cancel:hover { background: var(--bg-mid); }
+        .modal-box button.danger { background: var(--danger); color: white; }
+        .modal-box button.danger:hover { background: #d83c3e; }
+        .app-logo { height: 60px; object-fit: contain; margin-bottom: 10px; }
+        .avatar-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid var(--accent); }
+        .pulse-avatar { animation: pulse 1.5s infinite; border: 3px solid var(--accent); }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 152, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); } }
+        
+        #app-container { display: none; width: 100%; height: 100%; }
+        .sidebar { width: var(--sidebar-width); background: var(--bg-mid); border-right: 1px solid var(--bg-dark); display: flex; flex-direction: column; z-index: 20; transition: transform 0.3s ease; }
+        .sidebar-header { height: 60px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bg-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .user-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .user-list::-webkit-scrollbar { width: 6px; }
+        .user-list::-webkit-scrollbar-thumb { background: var(--bg-dark); border-radius: 3px; }
+        .user-item { display: flex; align-items: center; padding: 8px 10px; border-radius: 4px; cursor: pointer; transition: 0.2s; margin-bottom: 2px; position: relative; }
+        .user-item:hover, .user-item.active { background: var(--bg-light); color: white; }
+        .user-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
+        .online { background: var(--online); }
+        .offline { background: var(--text-muted); }
+        .unread-badge { background: var(--danger); color: white; font-size: 11px; font-weight: bold; border-radius: 12px; padding: 2px 6px; margin-left: auto; }
+        
+        .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; background: var(--bg-light); }
+        header { height: 60px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--bg-dark); box-shadow: 0 1px 2px rgba(0,0,0,0.2); z-index: 10; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        .chat-title { font-size: 1.1rem; font-weight: bold; color: white; }
+        .call-buttons button { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; transition: 0.2s; margin-left: 15px; }
+        .call-buttons button:hover { color: white; }
+        #chat-stream { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+        #chat-stream::-webkit-scrollbar { width: 8px; }
+        #chat-stream::-webkit-scrollbar-thumb { background: var(--bg-dark); border-radius: 4px; }
+        .message { display: flex; align-items: flex-start; position: relative; transition: 0.1s; border-radius: 4px; padding: 4px 20px; margin: 0 -20px; }
+        .message:hover { background: #32353b; }
+        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 16px; object-fit: cover; margin-top: 4px; }
+        .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .msg-sender { font-weight: bold; color: white; font-size: 1rem; }
+        .msg-time { font-size: 0.75rem; color: var(--text-muted); }
+        .msg-content { color: var(--text-main); font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
+        .msg-image-attachment { max-width: 350px; max-height: 350px; border-radius: 8px; margin-top: 8px; object-fit: cover; cursor: pointer; }
+        .input-wrapper { padding: 0 20px 20px 20px; position: relative; }
+        .input-box { display: flex; align-items: center; background: var(--input-bg); border-radius: 8px; padding: 10px 15px; }
+        .input-box input { flex: 1; background: transparent; border: none; color: white; font-size: 1rem; outline: none; }
+        .input-box input::placeholder { color: var(--text-muted); }
+        .action-btn { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; margin-right: 15px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .action-btn:hover { color: white; }
+        .send-btn { color: var(--accent); margin-left: 10px; margin-right: 0; }
+        
+        #call-interface { display: none; position: absolute; inset: 0; background: #000; z-index: 150; flex-direction: column; overflow: hidden; }
+        #call-interface:fullscreen { width: 100vw; height: 100vh; }
+        .call-top-bar { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 160; pointer-events: none; }
+        .call-status { background: rgba(0,0,0,0.6); color: var(--online); padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.1); }
+        .remote-video-area { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; background: #000; }
+        .remote-video-area video { width: 100%; height: 100%; object-fit: contain; }
+        .local-video-area { position: absolute; bottom: 90px; right: 20px; width: 240px; height: 140px; background: #18191c; border-radius: 8px; overflow: hidden; border: 1px solid #36393f; box-shadow: 0 8px 24px rgba(0,0,0,0.6); z-index: 160; cursor: grab; }
+        .local-video-area video { width: 100%; height: 100%; object-fit: cover; }
+        .local-video-area:active { cursor: grabbing; }
+        .call-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: #2f3136; padding: 10px 20px; border-radius: 30px; border: 1px solid #202225; z-index: 170; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .call-btn { width: 45px; height: 45px; border-radius: 50%; border: none; font-size: 1.2rem; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; background: #40444b; color: white; }
+        .call-btn:hover { background: #4f545c; }
+        .call-btn.active { background: white; color: black; }
+        .call-btn.danger { background: var(--danger); color: white; width: 60px; border-radius: 30px; }
+        .call-btn.danger:hover { background: #d83c3e; }
+        
+        @media (max-width: 768px) {
+            .mobile-toggle { display: block; }
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+            .sidebar.open { transform: translateX(0); }
+            .call-controls { width: 95%; gap: 8px; padding: 10px; justify-content: center; }
+            .local-video-area { width: 120px; height: 160px; bottom: 90px; right: 10px; }
+            .msg-image-attachment { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="chatSound" src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3" preload="auto"></audio>
+    <audio id="ringSound" src="https://cdn.pixabay.com/audio/2022/01/18/audio_511d1796d4.mp3" loop preload="auto"></audio>
+    <audio id="dialSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_78ec79524c.mp3" loop preload="auto"></audio>
+
+    <div id="login-screen" class="modal-overlay">
+        <div class="modal-box">
+            <img src="/static/IC.png" alt="IdlyCall Logo" class="app-logo">
+            <h2 style="margin-bottom: 20px; color: white;">Welcome Back</h2>
+            <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
+            <label for="login-file" style="display: block; color: var(--accent); cursor: pointer; margin-bottom: 15px;">📷 Upload Avatar</label>
+            <input type="file" id="login-file" accept="image/*" style="display:none;" onchange="processImage(event, 'login-preview')">
+            <input type="text" id="usernameInput" placeholder="Enter Username" autocomplete="off">
+            <button onclick="manualLogin()">Connect</button>
+        </div>
+    </div>
+
+    <div id="settings-screen" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <h2 style="margin-bottom: 20px;">User Settings</h2>
+            <img id="settings-preview" class="avatar-preview" src="">
+            <label for="settings-file" style="display: block; color: var(--accent); cursor: pointer; margin-bottom: 15px;">📷 Change Avatar</label>
+            <input type="file" id="settings-file" accept="image/*" style="display:none;" onchange="processImage(event, 'settings-preview')">
+            <input type="text" id="settingsNameInput" placeholder="New Username" autocomplete="off">
+            <button onclick="saveSettings()">Save Changes</button>
+            <button class="cancel" onclick="document.getElementById('settings-screen').style.display='none'">Cancel</button>
+        </div>
+    </div>
+
+    <div id="incoming-call-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <img id="incoming-avatar" class="avatar-preview pulse-avatar" src="">
+            <h3 id="incoming-caller-name" style="margin-bottom: 5px; color: white;">Caller</h3>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">is calling you...</p>
+            <div style="display: flex; gap: 10px;">
+                <button style="background: var(--online);" onclick="acceptCall()">Accept</button>
+                <button class="danger" onclick="rejectCall()">Decline</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="/static/IC.png" alt="IdlyCall" style="height: 30px; object-fit: contain;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1256/1256650.png'">
+                <button style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size: 1.2rem;" onclick="openSettings()" title="Settings">⚙️</button>
+            </div>
+            <div class="user-list" id="user-list-container"></div>
+        </div>
+
+        <div class="chat-area" onclick="document.getElementById('sidebar').classList.remove('open')">
+            <header>
+                <div class="header-left">
+                    <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                    <span style="color:var(--text-muted); margin-right:5px; font-size:1.4rem;">@</span>
+                    <div class="chat-title" id="chatHeaderTitle">Public Server</div>
+                </div>
+                <div class="call-buttons" id="call-buttons-container" style="display: none;">
+                    <button onclick="startCall(false)" title="Voice Call">📞</button>
+                    <button onclick="startCall(true)" title="Video Call">🎥</button>
+                </div>
+            </header>
+
+            <div id="chat-stream"></div>
+
+            <div class="input-wrapper">
+                <div class="input-box">
+                    <label for="imageAttachInput" class="action-btn" style="background:#4f545c; color:#202225; border-radius:50%; width:28px; height:28px; font-weight:bold;">＋</label>
+                    <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
+                    <input type="text" id="msg-input" placeholder="Message..." autocomplete="off">
+                    <button class="action-btn send-btn" onclick="sendMyMessage()">➤</button>
+                </div>
+            </div>
+
+            <div id="call-interface">
+                <div class="call-top-bar">
+                    <div class="call-status" id="call-status">Connecting...</div>
+                </div>
+                <div class="remote-video-area">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                </div>
+                <div class="local-video-area" id="localWrapper">
+                    <video id="localVideo" autoplay playsinline muted></video>
+                </div>
+                <div class="call-controls">
+                    <button class="call-btn" onclick="flipCamera()" title="Flip Camera">🔄</button>
+                    <button class="call-btn active" id="toggleVideoBtn" onclick="toggleVideo()" title="Camera">📷</button>
+                    <button class="call-btn active" id="toggleAudioBtn" onclick="toggleAudio()" title="Microphone">🎤</button>
+                    <button class="call-btn" id="shareScreenBtn" onclick="toggleScreenShare()" title="Share Screen">🖥️</button>
+                    <button class="call-btn" id="fullscreenBtn" onclick="toggleFullScreen()" title="Full Screen">⛶</button>
+                    <button class="call-btn danger" onclick="endCallBtnClicked()" title="Disconnect">☎️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
         let ws;
         let myUsername = localStorage.getItem("chat_username");
         let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
@@ -6,11 +208,15 @@
         let userProfiles = {};
         let unreadCounts = {};
 
-        const chatSound = document.getElementById("chatSound"); chatSound.volume = 0.2;
-        const ringSound = document.getElementById("ringSound"); ringSound.volume = 0.5;
-        const dialSound = document.getElementById("dialSound"); dialSound.volume = 0.4;
+        // Added safety checks so it never crashes if an element is missing
+        const chatSound = document.getElementById("chatSound"); 
+        if(chatSound) chatSound.volume = 0.2;
+        const ringSound = document.getElementById("ringSound"); 
+        if(ringSound) ringSound.volume = 0.5;
+        const dialSound = document.getElementById("dialSound"); 
+        if(dialSound) dialSound.volume = 0.4;
         
-        function safePlayAudio(audioElement) { audioElement.play().catch(e => console.log("Audio blocked.")); }
+        function safePlayAudio(audioElement) { if(audioElement) audioElement.play().catch(e => console.log("Audio blocked.")); }
         function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
 
         window.onload = () => {
@@ -47,7 +253,7 @@
                 localStorage.setItem("chat_username", myUsername);
                 localStorage.setItem("chat_pic", myPicBase64);
                 
-                chatSound.play().catch(e=>{}); chatSound.pause(); chatSound.currentTime = 0;
+                if(chatSound) { chatSound.play().catch(e=>{}); chatSound.pause(); chatSound.currentTime = 0; }
                 startApp();
             } catch (e) {
                 alert("Login script failed: " + e.message);
@@ -67,11 +273,10 @@
             
             ws.onopen = () => { ws.send(JSON.stringify({ pic: myPicBase64 })); };
             
-            // ALERT THE USER IF THE CONNECTION DIES
             ws.onerror = (error) => { console.error("WebSocket Error:", error); };
             ws.onclose = (event) => {
                 console.warn("WebSocket Closed", event);
-                alert("Connection to the server lost! Please check your Python terminal window for Database errors.");
+                alert("Connection to the server lost! Check your Render logs for details.");
                 document.getElementById("app-container").style.display = "none";
                 document.getElementById("login-screen").style.display = "flex";
             };
@@ -140,7 +345,6 @@
             else { document.exitFullscreen(); document.getElementById("fullscreenBtn").innerText = "⛶"; }
         }
 
-        // --- WebRTC Calling Engine (Truncated here for space, keep your previous WebRTC code block exactly the same) ---
         let peerConnection, localStream, screenStream, activeCallUser = null, incomingOfferData = null, iceCandidateQueue = [];
         let isVideoOn = true, isAudioOn = true, isSharingScreen = false, currentFacingMode = "user";
         const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -160,13 +364,13 @@
         function createPeerConnection() {
             peerConnection = new RTCPeerConnection(rtcConfig);
             localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            peerConnection.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; dialSound.pause(); ringSound.pause(); updateCallStatus("Connected"); };
+            peerConnection.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; if(dialSound) dialSound.pause(); if(ringSound) ringSound.pause(); updateCallStatus("Connected"); };
             peerConnection.onicecandidate = e => { if (e.candidate) ws.send(JSON.stringify({ type: "ice_candidate", target: activeCallUser, candidate: e.candidate })); };
         }
 
         async function startCall(videoReq) {
             activeCallUser = currentChat; document.getElementById("call-interface").style.display = "flex"; updateCallStatus("Ringing..."); safePlayAudio(dialSound);
-            if (!await initMedia(videoReq)) { dialSound.pause(); return forceEndCall(); }
+            if (!await initMedia(videoReq)) { if(dialSound) dialSound.pause(); return forceEndCall(); }
             createPeerConnection(); const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer);
             ws.send(JSON.stringify({ type: "call_offer", target: activeCallUser, sdp: offer, video: videoReq }));
         }
@@ -178,7 +382,7 @@
         }
 
         async function acceptCall() {
-            ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none";
+            if(ringSound) ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none";
             if (currentChat !== incomingOfferData.sender) switchChat(incomingOfferData.sender);
             document.getElementById("call-interface").style.display = "flex"; updateCallStatus("Connecting..."); activeCallUser = incomingOfferData.sender;
             if (!await initMedia(incomingOfferData.video)) return forceEndCall();
@@ -188,8 +392,8 @@
             ws.send(JSON.stringify({ type: "call_answer", target: activeCallUser, sdp: answer }));
         }
 
-        function rejectCall() { ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none"; if (incomingOfferData) ws.send(JSON.stringify({ type: "call_end", target: incomingOfferData.sender })); incomingOfferData = null; }
-        async function handleAnswer(sdp) { dialSound.pause(); await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp)); while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{}); }
+        function rejectCall() { if(ringSound) ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none"; if (incomingOfferData) ws.send(JSON.stringify({ type: "call_end", target: incomingOfferData.sender })); incomingOfferData = null; }
+        async function handleAnswer(sdp) { if(dialSound) dialSound.pause(); await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp)); while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{}); }
         async function handleIceCandidate(c) { const rtcC = new RTCIceCandidate(c); if (peerConnection && peerConnection.remoteDescription) { try { await peerConnection.addIceCandidate(rtcC); } catch(e){} } else { iceCandidateQueue.push(rtcC); } }
 
         function toggleAudio() { if (!localStream) return; isAudioOn = !isAudioOn; localStream.getAudioTracks()[0].enabled = isAudioOn; document.getElementById("toggleAudioBtn").classList.toggle("active", isAudioOn); }
@@ -228,7 +432,7 @@
         function endCallBtnClicked() { if (activeCallUser) ws.send(JSON.stringify({ type: "call_end", target: activeCallUser })); forceEndCall(); }
 
         function forceEndCall() {
-            dialSound.pause(); ringSound.pause();
+            if(dialSound) dialSound.pause(); if(ringSound) ringSound.pause();
             if (peerConnection) { peerConnection.close(); peerConnection = null; }
             if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
             if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
@@ -246,3 +450,5 @@
         document.addEventListener("touchstart", dragStart, {passive:false}); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag, {passive:false});
         document.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);
     </script>
+</body>
+</html>
