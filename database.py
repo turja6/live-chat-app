@@ -6,7 +6,7 @@ from datetime import datetime
 # ==========================================
 # 1. YOUR NEON CLOUD DATABASE URL
 # ==========================================
-# Make sure to replace YOUR_SECRET_PASSWORD with your actual password
+# Removed 'channel_binding=require' to prevent psycopg2 build errors
 SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
@@ -28,7 +28,6 @@ class User(Base):
 class Message(Base):
     __tablename__ = "messages"
     
-    # We use an auto-incrementing ID here to perfectly replace SQLite's "rowid" sorting
     id = Column(Integer, primary_key=True, autoincrement=True)
     msg_id = Column(String, unique=True, index=True)
     sender = Column(String, nullable=False)
@@ -43,7 +42,6 @@ class Message(Base):
 # ==========================================
 
 def init_db():
-    # Automatically creates the tables in Neon if they don't exist yet
     Base.metadata.create_all(bind=engine)
 
 def get_db():
@@ -119,10 +117,8 @@ def get_history(user1, user2="Public"):
     db = SessionLocal()
     try:
         if user2 == "Public":
-            # Fetches the last 50 public messages
             messages = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(50).all()
         else:
-            # Fetches private messages between the two users
             messages = db.query(Message).filter(
                 or_(
                     and_(Message.sender == user1, Message.receiver == user2),
@@ -130,7 +126,6 @@ def get_history(user1, user2="Public"):
                 )
             ).order_by(Message.id.desc()).limit(50).all()
         
-        # Reverse and format exactly how your frontend expects it
         return [{
             "msg_id": msg.msg_id, 
             "sender": msg.sender, 

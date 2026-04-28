@@ -2,6 +2,7 @@ import json
 import re
 import urllib.request
 import asyncio
+import os
 from datetime import datetime
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -12,10 +13,13 @@ import cloudinary
 import cloudinary.uploader
 import database
 
+# Auto-create folders to prevent FastAPI startup crashes
+os.makedirs("static", exist_ok=True)
+os.makedirs("templates", exist_ok=True)
+
 # ==========================================
 # 1. CLOUDINARY CONFIGURATION
 # ==========================================
-# PASTE YOUR CLOUDINARY KEYS HERE!
 cloudinary.config( 
   cloud_name = "dvdfjknil", 
   api_key = "452245293533251", 
@@ -31,7 +35,7 @@ templates = Jinja2Templates(directory="templates")
 database.init_db()
 
 # ==========================================
-# 2. LINK PREVIEW & DB PATCHES (Updated for Neon)
+# 2. LINK PREVIEW & DB PATCHES
 # ==========================================
 def scrape_link_preview(text: str):
     urls = re.findall(r'(https?://[^\s]+)', text)
@@ -146,9 +150,8 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 reply_to = data.get("reply_to", None)
                 
                 preview = None
-                # CLOUDINARY INTERCEPTOR
-                if msg_text.startswith("data:"):
-                    # Upload media to cloud without freezing the server
+                # Check for "data:image/" so text starting with "data:" doesn't crash Cloudinary
+                if msg_text.startswith("data:image/"):
                     upload_result = await asyncio.to_thread(cloudinary.uploader.upload, msg_text)
                     msg_text = upload_result.get("secure_url") 
                 else:
@@ -217,8 +220,7 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 users = database.get_all_users()
                 await manager.broadcast({"type": "user_list", "data": users})
 
-            # --- WEBRTC CALLING ENGINE ROUTING (FIXED) ---
-            # Added "call_end" so if User A hangs up, User B actually receives the hangup command!
+            # --- WEBRTC CALLING ENGINE ROUTING ---
             elif msg_type in ["call_offer", "call_answer", "ice_candidate", "call_end"]:
                 target_user = data["target"]
                 data["sender"] = username 
