@@ -24,11 +24,10 @@ app.add_middleware(
 )
 
 # Cloudinary Configuration
-# Replace with your actual credentials or set as Environment Variables in Render
 cloudinary.config( 
-    cloud_name = "dvwec2kgx", 
-    api_key = "YOUR_API_KEY", 
-    api_secret = "YOUR_API_SECRET",
+    cloud_name = "dvdfjknil", 
+    api_key = "452245293533251", 
+    api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
     secure=True
 )
 
@@ -44,7 +43,6 @@ def get_db():
 
 @app.get("/")
 async def read_root():
-    # Serves the index.html from the templates folder
     return FileResponse("templates/index.html")
 
 @app.post("/login")
@@ -79,9 +77,13 @@ def get_users(db: Session = Depends(get_db)):
 
 @app.get("/messages/{receiver}")
 def get_messages(receiver: str, db: Session = Depends(get_db)):
+    # For public channel
     if receiver == "public":
         messages = db.query(database.Message).filter(database.Message.receiver == "public").order_by(database.Message.timestamp.asc()).all()
     else:
+        # For DMs: Get conversation between two people
+        # This simple logic assumes 'receiver' is the other person. 
+        # Ideally, you pass current_user too, but for this demo we fetch all involving 'receiver'
         messages = db.query(database.Message).filter(
             ((database.Message.sender == receiver) | (database.Message.receiver == receiver))
         ).order_by(database.Message.timestamp.asc()).all()
@@ -117,6 +119,7 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = Depends(get_db)):
     await manager.connect(username, websocket)
     
+    # Heartbeat to keep Render connection alive
     async def heartbeat():
         while True:
             await asyncio.sleep(20)
@@ -138,10 +141,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = 
                 receiver = message.get("receiver")
                 sender = message.get("sender")
                 
+                # Handle Image Upload
                 if content.startswith("data:image"):
                     res = cloudinary.uploader.upload(content, folder="chat_images")
                     content = res['secure_url']
 
+                # Save to DB
                 user_obj = db.query(database.User).filter(database.User.username == sender).first()
                 new_msg = database.Message(
                     sender=sender, 
@@ -162,9 +167,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = 
                     "timestamp": new_msg.timestamp.isoformat()
                 }
 
+                # Route Message
                 if receiver == "public":
+                    # Send to everyone including sender (so sender sees their own msg)
                     await manager.broadcast(payload)
                 else:
+                    # DM: Send to receiver AND back to sender
                     await manager.send_personal_message(payload, receiver)
                     await manager.send_personal_message(payload, sender)
 
