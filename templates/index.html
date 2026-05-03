@@ -48,8 +48,10 @@
         
         /* Chat Area */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); position: relative; }
-        header { padding: 15px 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; display: flex; align-items: center; gap: 15px; position: relative; }
+        header { padding: 15px 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; display: flex; align-items: center; justify-content: space-between; position: relative; }
         .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        .sync-btn { background: var(--accent); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .sync-btn:hover { background: #4752C4; }
         
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
         .message { display: flex; gap: 15px; animation: fadeIn 0.3s ease; }
@@ -76,7 +78,6 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Mobile Adjustments */
         @media (max-width: 768px) {
             .mobile-toggle { display: block; }
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
@@ -107,13 +108,16 @@
 
         <div class="chat-area" onclick="document.getElementById('sidebar').classList.remove('open')">
             <header>
-                <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
-                <span id="chat-header"># Public Channel</span>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                    <span id="chat-header"># Public Channel</span>
+                </div>
+                <button class="sync-btn" onclick="forceSync()">Sync History</button>
             </header>
             
             <div id="messages"></div>
             
-            <!-- NEW: Typing Indicator Element -->
+            <!-- Typing Indicator Element -->
             <div id="typing-indicator">Someone is typing<span class="typing-dots"></span></div>
 
             <div id="input-area">
@@ -132,22 +136,27 @@
         let heartbeat;
         let myUsername = "";
         let myPicBase64 = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-        let currentChat = localStorage.getItem("pro_last_chat") || "Public"; // Remember last chat
+        let currentChat = "Public"; 
         let userList = [];
         
-        // Typing indicator state
         let typingTimeout;
         let isTyping = false;
         let currentlyTypingUsers = new Set();
         let indicatorTimeout;
 
         window.onload = () => {
-            const savedName = localStorage.getItem("pro_chat_name");
-            const savedPic = localStorage.getItem("pro_chat_pic");
-            if (savedName) document.getElementById("username").value = savedName;
-            if (savedPic) { myPicBase64 = savedPic; document.getElementById("login-preview").src = savedPic; }
+            // BRAVE FIX: Wrap local storage in try/catch so aggressive shields don't crash the script
+            try {
+                const savedName = localStorage.getItem("pro_chat_name");
+                const savedPic = localStorage.getItem("pro_chat_pic");
+                const savedChat = localStorage.getItem("pro_last_chat");
+                if (savedName) document.getElementById("username").value = savedName;
+                if (savedPic) { myPicBase64 = savedPic; document.getElementById("login-preview").src = savedPic; }
+                if (savedChat) { currentChat = savedChat; }
+            } catch (e) {
+                console.log("Local storage blocked by browser shields.");
+            }
             
-            // Set up typing listener
             const inputField = document.getElementById("msgInput");
             inputField.addEventListener('input', handleTyping);
             inputField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
@@ -172,12 +181,14 @@
             myUsername = document.getElementById("username").value.trim();
             if (!myUsername) return alert("Please enter a username");
 
-            localStorage.setItem("pro_chat_name", myUsername);
-            localStorage.setItem("pro_chat_pic", myPicBase64);
+            try {
+                localStorage.setItem("pro_chat_name", myUsername);
+                localStorage.setItem("pro_chat_pic", myPicBase64);
+            } catch(e) {}
+
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("app-container").style.display = "flex";
 
-            // Update UI for the chat we are loading into
             document.getElementById("chat-header").innerText = currentChat === "Public" ? "# Public Channel" : `@ ${currentChat}`;
             document.getElementById("msgInput").placeholder = `Message ${currentChat}...`;
 
@@ -185,8 +196,11 @@
             ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
 
             ws.onopen = function() {
-                // Send profile pic AND the chat we want history for immediately
+                // Send profile pic AND request history immediately
                 this.send(JSON.stringify({ pic: myPicBase64, target: currentChat }));
+                
+                // Double-tap the history request to guarantee it loads
+                this.send(JSON.stringify({ type: "get_history", target: currentChat }));
                 
                 heartbeat = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
@@ -198,14 +212,24 @@
                 
                 if (data.type === "history") {
                     if (data.target === currentChat) {
-                        document.getElementById("messages").innerHTML = "";
-                        data.data.forEach(m => drawMessage(m.sender, m.profile_pic, m.content, m.timestamp));
-                        // Force scroll to bottom on initial load
                         const msgs = document.getElementById("messages");
-                        msgs.scrollTop = msgs.scrollHeight;
+                        msgs.innerHTML = "";
+                        
+                        // BRAVE FIX: Explicitly tell the user if the database is actually empty
+                        if (data.data.length === 0) {
+                            msgs.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:20px; font-style:italic;">No message history yet. Send a message to start!</div>`;
+                        } else {
+                            data.data.forEach(m => drawMessage(m.sender, m.profile_pic, m.content, m.timestamp));
+                            msgs.scrollTop = msgs.scrollHeight;
+                        }
                     }
                 } 
                 else if (data.type === "chat") {
+                    // Remove the "empty history" text if it's there
+                    if (document.getElementById("messages").innerHTML.includes("No message history yet")) {
+                        document.getElementById("messages").innerHTML = "";
+                    }
+
                     if (currentChat === "Public" && data.receiver === "Public") {
                         drawMessage(data.sender, data.profile_pic, data.content, data.timestamp);
                     } 
@@ -215,7 +239,6 @@
                         }
                     }
                     
-                    // Clear typing indicator when a message arrives from that person
                     if (currentlyTypingUsers.has(data.sender)) {
                          currentlyTypingUsers.delete(data.sender);
                          updateTypingUI();
@@ -225,14 +248,11 @@
                     userList = data.users;
                     renderSidebar();
                 }
-                // --- NEW: Receive Typing Event ---
                 else if (data.type === "typing") {
-                    // Only show if it's relevant to our current view
                     if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && data.sender === currentChat)) {
                         currentlyTypingUsers.add(data.sender);
                         updateTypingUI();
                         
-                        // Automatically clear the indicator after 3 seconds of no updates
                         clearTimeout(indicatorTimeout);
                         indicatorTimeout = setTimeout(() => {
                             currentlyTypingUsers.clear();
@@ -249,7 +269,15 @@
             };
         }
 
-        // --- NEW: Handle typing logic ---
+        function forceSync() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                document.getElementById("messages").innerHTML = `<div style="text-align:center; color:var(--accent); margin-top:20px;">Syncing...</div>`;
+                ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+            } else {
+                alert("Chat not connected yet!");
+            }
+        }
+
         function handleTyping() {
             if (!ws || ws.readyState !== WebSocket.OPEN) return;
             
@@ -261,7 +289,7 @@
             clearTimeout(typingTimeout);
             typingTimeout = setTimeout(() => {
                 isTyping = false;
-            }, 1000); // Reset typing status if we haven't typed in 1 second
+            }, 1000);
         }
 
         function updateTypingUI() {
@@ -307,21 +335,20 @@
         }
 
         function switchChat(target) {
-            if (currentChat === target) return; // Don't do anything if we click the same chat
+            if (currentChat === target) return; 
             
             currentChat = target;
-            localStorage.setItem("pro_last_chat", currentChat); // Remember this choice
+            try { localStorage.setItem("pro_last_chat", currentChat); } catch(e) {}
             
             document.getElementById("chat-header").innerText = target === "Public" ? "# Public Channel" : `@ ${target}`;
             document.getElementById("msgInput").placeholder = `Message ${target}...`;
             document.getElementById('sidebar').classList.remove('open');
             renderSidebar();
             
-            // Clear typing indicators when switching chats
             currentlyTypingUsers.clear();
             updateTypingUI();
             
-            document.getElementById("messages").innerHTML = "";
+            document.getElementById("messages").innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:20px;">Loading messages...</div>`;
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
             }
@@ -360,7 +387,6 @@
                 input.value = "";
                 input.focus(); 
                 
-                // Immediately clear typing status
                 isTyping = false;
                 clearTimeout(typingTimeout);
             }
