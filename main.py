@@ -70,9 +70,8 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def get(request: Request):
-    # FIXED: Modern standard format for TemplateResponse
-    return templates.TemplateResponse("index.html", {"request": request})
-
+    return templates.TemplateResponse(request=request, name="index.html")
+    
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket, username)
