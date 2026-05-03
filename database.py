@@ -1,9 +1,8 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, or_, and_
 from sqlalchemy.orm import declarative_base, sessionmaker
-import os
 
-# SECURE CONNECTION: Pulls from your Render Environment Variables!
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./local_chat.db")
+# Hardcoded database connection as requested
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

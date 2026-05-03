@@ -3,7 +3,19 @@ import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+import cloudinary
+import cloudinary.uploader
 import database
+
+# ==========================================
+# 1. CLOUDINARY CONFIGURATION
+# ==========================================
+cloudinary.config( 
+  cloud_name = "dvdfjknil", 
+  api_key = "452245293533251", 
+  api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
+  secure = True
+)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -16,12 +28,12 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket, username: str):
         await websocket.accept()
         self.active_connections[username] = websocket
-        await self.broadcast_user_list() # Tell everyone someone logged in
+        await self.broadcast_user_list()
 
     async def disconnect(self, username: str):
         if username in self.active_connections:
             del self.active_connections[username]
-            await self.broadcast_user_list() # Update sidebar for everyone
+            await self.broadcast_user_list()
 
     async def broadcast(self, message: dict):
         for connection in list(self.active_connections.values()):
@@ -62,6 +74,11 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             if msg_type == "chat":
                 content = data.get("content")
                 receiver = data.get("receiver", "Public") # Defaults to Public
+                
+                # Check if the message is actually a base64 image payload
+                if content.startswith("data:image/"):
+                    upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
+                    content = upload_result.get("secure_url")
                 
                 await asyncio.to_thread(database.save_message, username, receiver, content)
                 payload = {"type": "chat", "sender": username, "receiver": receiver, "content": content}

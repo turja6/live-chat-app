@@ -130,14 +130,12 @@
                 const data = JSON.parse(event.data);
                 
                 if (data.type === "history") {
-                    // Only render history if we are currently looking at that specific chat
                     if (data.target === currentChat) {
                         document.getElementById("messages").innerHTML = "";
                         data.data.forEach(m => drawMessage(m.sender, m.content));
                     }
                 } 
                 else if (data.type === "chat") {
-                    // Routing logic: Should this message appear on my screen right now?
                     if (currentChat === "Public" && data.receiver === "Public") {
                         drawMessage(data.sender, data.content);
                     } 
@@ -162,7 +160,6 @@
         function renderSidebar() {
             const container = document.getElementById("user-list-container");
             
-            // Render Public Channel First
             let html = `
                 <div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')">
                     <div class="status-dot" style="background:var(--accent);"></div>
@@ -170,9 +167,8 @@
                 </div>
             `;
             
-            // Render Online Users for DMs
             onlineUsers.forEach(user => {
-                if (user === myUsername) return; // Don't DM yourself
+                if (user === myUsername) return; 
                 html += `
                     <div class="user-item ${currentChat === user ? 'active' : ''}" onclick="switchChat('${user}')">
                         <div class="status-dot"></div>
@@ -187,14 +183,11 @@
         function switchChat(target) {
             currentChat = target;
             
-            // Update UI Header
             document.getElementById("chat-header").innerText = target === "Public" ? "# Public Channel" : `@ ${target}`;
             document.getElementById("msgInput").placeholder = `Message ${target}...`;
             
-            // Re-render sidebar to update the active highlight
             renderSidebar();
             
-            // Clear current messages and ask server for the new chat history
             document.getElementById("messages").innerHTML = "";
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
@@ -225,7 +218,7 @@
             if (text && ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ 
                     type: "chat", 
-                    receiver: currentChat, // Tells the backend if this is a DM or Public
+                    receiver: currentChat, 
                     content: text 
                 }));
                 input.value = "";
