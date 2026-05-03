@@ -1,89 +1,37 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, or_, and_
-from sqlalchemy.orm import declarative_base, sessionmaker
+# database.py
+from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-import os
 
-# Hardcoded database connection
-SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
+# Database URL (Neon PostgreSQL)
+DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Table to track Profiles and Online/Offline Status
 class User(Base):
-    __tablename__ = "app_users_v2"
-    username = Column(String, primary_key=True)
-    profile_pic = Column(Text)
-    status = Column(String, default="Offline")
+    __tablename__ = "users"
+    username = Column(String, primary_key=True, index=True)
+    profile_pic = Column(Text, nullable=True)
+    status = Column(String, default="offline") # 'online' or 'offline'
 
-# Table to save avatars and timestamps for history
 class Message(Base):
-    __tablename__ = "app_messages_v2"
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True, index=True)
     sender = Column(String, index=True)
-    receiver = Column(String, index=True) 
-    profile_pic = Column(Text)
+    receiver = Column(String, index=True) # 'public' for public channel, or username for DM
+    profile_pic = Column(Text, nullable=True)
     content = Column(Text)
-    timestamp = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
-    print("✅ Database with Profiles Ready")
+# Create tables
+Base.metadata.create_all(bind=engine)
 
-def update_user(username, profile_pic, status):
+def get_db():
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.username == username).first()
-        if user:
-            if profile_pic: user.profile_pic = profile_pic
-            user.status = status
-        else:
-            new_user = User(username=username, profile_pic=profile_pic, status=status)
-            db.add(new_user)
-        db.commit()
-    finally:
-        db.close()
-
-def get_all_users():
-    db = SessionLocal()
-    try:
-        users = db.query(User).all()
-        return [{"username": u.username, "profile_pic": u.profile_pic, "status": u.status} for u in users]
-    finally:
-        db.close()
-
-def save_message(sender, receiver, profile_pic, content):
-    db = SessionLocal()
-    try:
-        ts = datetime.now().strftime("%I:%M %p")
-        new_msg = Message(sender=sender, receiver=receiver, profile_pic=profile_pic, content=content, timestamp=ts)
-        db.add(new_msg)
-        db.commit()
-        return ts
-    finally:
-        db.close()
-
-def get_chat_history(user1, user2):
-    db = SessionLocal()
-    try:
-        if user2 == "Public":
-            # Change .limit(100) to .limit(500) or more
-            msgs = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(500).all() 
-        else:
-            # Change .limit(100) to .limit(500) for DMs too
-            msgs = db.query(Message).filter(
-                or_(
-                    and_(Message.sender == user1, Message.receiver == user2),
-                    and_(Message.sender == user2, Message.receiver == user1)
-                )
-            ).order_by(Message.id.desc()).limit(500).all()
-        
-        return [{
-            "sender": m.sender, 
-            "profile_pic": m.profile_pic, 
-            "content": m.content, 
-            "timestamp": m.timestamp
-        } for m in reversed(msgs)]
+        yield db
     finally:
         db.close()
