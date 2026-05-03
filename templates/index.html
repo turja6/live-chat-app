@@ -208,276 +208,292 @@
     </div>
 
     <script>
-        let ws;
-        let myUsername = localStorage.getItem("chat_username");
-        let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-        let currentChat = "Public";
-        let userProfiles = {};
-        let unreadCounts = {};
+let ws;
+let myUsername = localStorage.getItem("chat_username");
+let myPicBase64 = localStorage.getItem("chat_pic") || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+let currentChat = "Public";
+let userProfiles = {};
+let unreadCounts = {};
 
-        const chatSound = document.getElementById("chatSound"); 
-        if(chatSound) chatSound.volume = 0.2;
-        const ringSound = document.getElementById("ringSound"); 
-        if(ringSound) ringSound.volume = 0.5;
-        const dialSound = document.getElementById("dialSound"); 
-        if(dialSound) dialSound.volume = 0.4;
+// NEW: Variables to manage stability
+let heartbeatInterval; 
+let isReconnecting = false;
+
+const chatSound = document.getElementById("chatSound"); 
+if(chatSound) chatSound.volume = 0.2;
+const ringSound = document.getElementById("ringSound"); 
+if(ringSound) ringSound.volume = 0.5;
+const dialSound = document.getElementById("dialSound"); 
+if(dialSound) dialSound.volume = 0.4;
+
+function safePlayAudio(audioElement) { if(audioElement) audioElement.play().catch(e => console.log("Audio blocked.")); }
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+window.onload = () => {
+    if (myUsername && localStorage.getItem("chat_pic")) {
+        document.getElementById("usernameInput").value = myUsername;
+        startApp(); // Automatically log in if data exists
+    }
+};
+
+function processImage(e, targetId) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
+            if (width > 800) { height *= 800 / width; width = 800; }
+            canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+            const b64 = canvas.toDataURL('image/jpeg', 0.8); document.getElementById(targetId).src = b64;
+            if(targetId === 'login-preview') myPicBase64 = b64;
+        }; img.src = event.target.result;
+    }; reader.readAsDataURL(file);
+}
+
+function manualLogin() {
+    try {
+        if (window.location.protocol === "file:") {
+            alert("ERROR: You opened the HTML file directly. You must run 'uvicorn main:app' and open http://localhost:8000");
+            return;
+        }
+        myUsername = document.getElementById("usernameInput").value.trim();
+        if (!myUsername) return alert("Username required!");
         
-        function safePlayAudio(audioElement) { if(audioElement) audioElement.play().catch(e => console.log("Audio blocked.")); }
-        function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
-
-        window.onload = () => {
-            if (myUsername && localStorage.getItem("chat_pic")) {
-                document.getElementById("usernameInput").value = myUsername;
-            }
-        };
-
-        function processImage(e, targetId) {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
-                    if (width > 800) { height *= 800 / width; width = 800; }
-                    canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-                    const b64 = canvas.toDataURL('image/jpeg', 0.8); document.getElementById(targetId).src = b64;
-                    if(targetId === 'login-preview') myPicBase64 = b64;
-                }; img.src = event.target.result;
-            }; reader.readAsDataURL(file);
+        const btn = document.getElementById("mainConnectBtn");
+        if (btn) {
+            btn.innerText = "Connecting...";
+            btn.disabled = true;
         }
 
-        function manualLogin() {
-            try {
-                if (window.location.protocol === "file:") {
-                    alert("ERROR: You opened the HTML file directly. You must run 'uvicorn main:app' and open http://localhost:8000");
-                    return;
-                }
-                myUsername = document.getElementById("usernameInput").value.trim();
-                if (!myUsername) return alert("Username required!");
-                
-                // FIXED: Disable the button so you can't double-click and cause a race condition
-                const btn = document.getElementById("mainConnectBtn");
-                btn.innerText = "Connecting...";
-                btn.disabled = true;
-
-                localStorage.setItem("chat_username", myUsername);
-                localStorage.setItem("chat_pic", myPicBase64);
-                
-                if(chatSound) { chatSound.play().catch(e=>{}); chatSound.pause(); chatSound.currentTime = 0; }
-                startApp();
-            } catch (e) {
-                alert("Login script failed: " + e.message);
-                const btn = document.getElementById("mainConnectBtn");
-                if (btn) { btn.innerText = "Connect"; btn.disabled = false; }
-            }
-        }
-
-        function openSettings() { document.getElementById("settingsNameInput").value = myUsername; document.getElementById("settings-preview").src = myPicBase64; document.getElementById("settings-screen").style.display = "flex"; }
-        function saveSettings() { const newName = document.getElementById("settingsNameInput").value.trim(); if(newName) myUsername = newName; myPicBase64 = document.getElementById("settings-preview").src; localStorage.setItem("chat_username", myUsername); localStorage.setItem("chat_pic", myPicBase64); if(ws) ws.send(JSON.stringify({ type: "update_settings", pic: myPicBase64, new_name: myUsername })); window.location.reload(); }
-
-        function startApp() {
-            document.getElementById("login-screen").style.display = "none";
-            document.getElementById("app-container").style.display = "flex";
-            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") Notification.requestPermission();
-
-            const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-            ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
-            
-            // FIXED: Using 'this' guarantees the payload sends to the correct connection
-            ws.onopen = function() { 
-                this.send(JSON.stringify({ pic: myPicBase64 })); 
-            };
-            
-            ws.onerror = (error) => { console.error("WebSocket Error:", error); };
-            
-            ws.onclose = function(event) {
-                // FIXED: Only reset the UI if the currently active WebSocket is the one that closed
-                if (ws === this) {
-                    console.warn("WebSocket Closed", event);
-                    document.getElementById("app-container").style.display = "none";
-                    document.getElementById("login-screen").style.display = "flex";
-                    const btn = document.getElementById("mainConnectBtn");
-                    if (btn) { btn.innerText = "Connect"; btn.disabled = false; }
-                }
-            };
-            
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === "chat") {
-                    if (data.sender !== myUsername) { safePlayAudio(chatSound); if (document.visibilityState !== "visible") new Notification(`New message from ${data.sender}`, { body: data.message.startsWith("data:image") ? "Sent an image" : data.message, icon: myPicBase64 }); }
-                    
-                    if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) { 
-                        drawMessage(data.message, data.sender, data.profile_pic, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), data.preview); 
-                    } 
-                    else if (data.sender !== myUsername) { const trackTarget = data.receiver === "Public" ? "Public" : data.sender; unreadCounts[trackTarget] = (unreadCounts[trackTarget] || 0) + 1; updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status}))); }
-                }
-                else if (data.type === "call_offer") { handleIncomingCall(data); } else if (data.type === "call_answer") { handleAnswer(data.sdp); } else if (data.type === "ice_candidate") { handleIceCandidate(data.candidate); } else if (data.type === "call_end") { forceEndCall(); }
-                else if (data.type === "history") { document.getElementById('chat-stream').innerHTML = ""; data.data.forEach(msg => drawMessage(msg.message, msg.sender, msg.profile_pic, msg.timestamp || "", null)); }
-                else if (data.type === "user_list") { data.data.forEach(u => userProfiles[u.username] = {name: u.username, pic: u.profile_pic, status: u.status}); updateSidebar(data.data); }
-            };
-        }
-
-        function updateSidebar(users) {
-            const container = document.getElementById('user-list-container');
-            let pubBadge = unreadCounts["Public"] ? `<span class="unread-badge">${unreadCounts["Public"]}</span>` : "";
-            let html = `<div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')"><img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png" style="border-radius:0;"><span style="font-weight:bold;">Public Server</span>${pubBadge}</div>`;
-            users.forEach(user => { if (user.username === myUsername) return; let badge = unreadCounts[user.username] ? `<span class="unread-badge">${unreadCounts[user.username]}</span>` : ""; html += `<div class="user-item ${currentChat === user.username ? 'active' : ''}" onclick="switchChat('${user.username}')"><img src="${user.profile_pic}"><span>${user.username}</span>${badge}<div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div></div>`; });
-            container.innerHTML = html;
-        }
-
-        function switchChat(target) {
-            currentChat = target; unreadCounts[target] = 0;
-            document.getElementById("chatHeaderTitle").innerText = target; document.getElementById("msg-input").placeholder = `Message @${target}...`;
-            document.getElementById("call-buttons-container").style.display = target === "Public" ? "none" : "flex";
-            document.getElementById('chat-stream').innerHTML = ""; document.getElementById('sidebar').classList.remove('open');
-            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
-            updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status})));
-        }
-
-        function drawMessage(text, senderName, picUrl, time, preview = null) {
-            const stream = document.getElementById('chat-stream'); const msgDiv = document.createElement('div'); msgDiv.className = `message`;
-            let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-            let isImage = text && (text.startsWith("data:image/") || text.includes("res.cloudinary.com"));
-            
-            let previewHtml = "";
-            if (preview && preview.url && preview.title) {
-                previewHtml = `<div class="link-preview">🔗 <a href="${preview.url}" target="_blank">${preview.title}</a></div>`;
-            }
-
-            let contentHtml = isImage ? `<img src="${text}" class="msg-image-attachment" onclick="window.open(this.src, '_blank')">` : `<div class="msg-content">${text}</div>${previewHtml}`;
-            msgDiv.innerHTML = `<img src="${safePic}" class="msg-avatar"><div><div class="msg-header"><span class="msg-sender">${senderName}</span><span class="msg-time">${time}</span></div>${contentHtml}</div>`;
-            stream.appendChild(msgDiv); stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
-        }
-
-        function sendMyMessage() {
-            const input = document.getElementById("msg-input"); const val = input.value.trim();
-            if (ws && ws.readyState === WebSocket.OPEN && val) { ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: val })); input.value = ''; }
-        }
-        document.getElementById("msg-input").addEventListener("keypress", (e) => { if (e.key === "Enter") sendMyMessage(); });
-
-        function sendImage(e) {
-            const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
-                    if (width > 1200) { height *= 1200 / width; width = 1200; }
-                    canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-                    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: canvas.toDataURL('image/jpeg', 0.8) }));
-                }; img.src = event.target.result;
-            }; reader.readAsDataURL(file); e.target.value = '';
-        }
-
-        function toggleFullScreen() {
-            const callElem = document.getElementById("call-interface");
-            if (!document.fullscreenElement) { callElem.requestFullscreen().catch(err => { alert(`Fullscreen error: ${err.message}`); }); document.getElementById("fullscreenBtn").innerText = "🗗"; } 
-            else { document.exitFullscreen(); document.getElementById("fullscreenBtn").innerText = "⛶"; }
-        }
-
-        let peerConnection, localStream, screenStream, activeCallUser = null, incomingOfferData = null, iceCandidateQueue = [];
-        let isVideoOn = true, isAudioOn = true, isSharingScreen = false, currentFacingMode = "user";
-        const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+        localStorage.setItem("chat_username", myUsername);
+        localStorage.setItem("chat_pic", myPicBase64);
         
-        function updateCallStatus(msg) { document.getElementById("call-status").innerText = msg; }
+        if(chatSound) { chatSound.play().catch(e=>{}); chatSound.pause(); chatSound.currentTime = 0; }
+        startApp();
+    } catch (e) {
+        alert("Login script failed: " + e.message);
+        const btn = document.getElementById("mainConnectBtn");
+        if (btn) { btn.innerText = "Connect"; btn.disabled = false; }
+    }
+}
 
-        async function initMedia(videoReq) {
-            try {
-                const constraints = { video: videoReq ? { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } } : false, audio: { echoCancellation: true, noiseSuppression: true } };
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-                document.getElementById("localVideo").srcObject = localStream; isVideoOn = videoReq; isAudioOn = true;
-                document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn); document.getElementById("toggleAudioBtn").classList.toggle("active", isAudioOn);
-                return true;
-            } catch (e) { alert("Camera/Microphone access denied."); return false; }
+function openSettings() { document.getElementById("settingsNameInput").value = myUsername; document.getElementById("settings-preview").src = myPicBase64; document.getElementById("settings-screen").style.display = "flex"; }
+function saveSettings() { const newName = document.getElementById("settingsNameInput").value.trim(); if(newName) myUsername = newName; myPicBase64 = document.getElementById("settings-preview").src; localStorage.setItem("chat_username", myUsername); localStorage.setItem("chat_pic", myPicBase64); if(ws) ws.send(JSON.stringify({ type: "update_settings", pic: myPicBase64, new_name: myUsername })); window.location.reload(); }
+
+function startApp() {
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app-container").style.display = "flex";
+    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") Notification.requestPermission();
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
+    
+    ws.onopen = function() { 
+        isReconnecting = false;
+        this.send(JSON.stringify({ pic: myPicBase64 })); 
+
+        // NEW: Keep-Alive Heartbeat prevents Render from killing the connection
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "ping" }));
+            }
+        }, 20000); // Ping every 20 seconds
+    };
+    
+    ws.onerror = (error) => { console.error("WebSocket Error:", error); };
+    
+    ws.onclose = function(event) {
+        clearInterval(heartbeatInterval);
+        // NEW: Auto-Reconnect silently instead of trapping the user on the login screen
+        if (ws === this && !isReconnecting) {
+            isReconnecting = true;
+            console.warn("Connection dropped! Auto-reconnecting in the background...");
+            setTimeout(startApp, 3000); 
         }
+    };
+    
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        // Ignore the server's reflection of our heartbeat ping
+        if (data.type === "ping") return;
 
-        function createPeerConnection() {
-            peerConnection = new RTCPeerConnection(rtcConfig);
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            peerConnection.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; if(dialSound) dialSound.pause(); if(ringSound) ringSound.pause(); updateCallStatus("Connected"); };
-            peerConnection.onicecandidate = e => { if (e.candidate) ws.send(JSON.stringify({ type: "ice_candidate", target: activeCallUser, candidate: e.candidate })); };
+        if (data.type === "chat") {
+            if (data.sender !== myUsername) { safePlayAudio(chatSound); if (document.visibilityState !== "visible") new Notification(`New message from ${data.sender}`, { body: data.message.startsWith("data:image") ? "Sent an image" : data.message, icon: myPicBase64 }); }
+            
+            if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) { 
+                drawMessage(data.message, data.sender, data.profile_pic, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), data.preview); 
+            } 
+            else if (data.sender !== myUsername) { const trackTarget = data.receiver === "Public" ? "Public" : data.sender; unreadCounts[trackTarget] = (unreadCounts[trackTarget] || 0) + 1; updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status}))); }
         }
+        else if (data.type === "call_offer") { handleIncomingCall(data); } else if (data.type === "call_answer") { handleAnswer(data.sdp); } else if (data.type === "ice_candidate") { handleIceCandidate(data.candidate); } else if (data.type === "call_end") { forceEndCall(); }
+        else if (data.type === "history") { document.getElementById('chat-stream').innerHTML = ""; data.data.forEach(msg => drawMessage(msg.message, msg.sender, msg.profile_pic, msg.timestamp || "", null)); }
+        else if (data.type === "user_list") { data.data.forEach(u => userProfiles[u.username] = {name: u.username, pic: u.profile_pic, status: u.status}); updateSidebar(data.data); }
+    };
+}
 
-        async function startCall(videoReq) {
-            activeCallUser = currentChat; document.getElementById("call-interface").style.display = "flex"; updateCallStatus("Ringing..."); safePlayAudio(dialSound);
-            if (!await initMedia(videoReq)) { if(dialSound) dialSound.pause(); return forceEndCall(); }
-            createPeerConnection(); const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer);
-            ws.send(JSON.stringify({ type: "call_offer", target: activeCallUser, sdp: offer, video: videoReq }));
-        }
+function updateSidebar(users) {
+    const container = document.getElementById('user-list-container');
+    let pubBadge = unreadCounts["Public"] ? `<span class="unread-badge">${unreadCounts["Public"]}</span>` : "";
+    let html = `<div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')"><img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png" style="border-radius:0;"><span style="font-weight:bold;">Public Server</span>${pubBadge}</div>`;
+    users.forEach(user => { if (user.username === myUsername) return; let badge = unreadCounts[user.username] ? `<span class="unread-badge">${unreadCounts[user.username]}</span>` : ""; html += `<div class="user-item ${currentChat === user.username ? 'active' : ''}" onclick="switchChat('${user.username}')"><img src="${user.profile_pic}"><span>${user.username}</span>${badge}<div class="status-dot ${user.status === 'Online' ? 'online' : 'offline'}"></div></div>`; });
+    container.innerHTML = html;
+}
 
-        function handleIncomingCall(data) {
-            incomingOfferData = data; document.getElementById("incoming-caller-name").innerText = data.sender;
-            document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "/static/IC.png"; document.getElementById("incoming-call-modal").style.display = "flex";
-            safePlayAudio(ringSound); 
-        }
+function switchChat(target) {
+    currentChat = target; unreadCounts[target] = 0;
+    document.getElementById("chatHeaderTitle").innerText = target; document.getElementById("msg-input").placeholder = `Message @${target}...`;
+    document.getElementById("call-buttons-container").style.display = target === "Public" ? "none" : "flex";
+    document.getElementById('chat-stream').innerHTML = ""; document.getElementById('sidebar').classList.remove('open');
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+    updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status})));
+}
 
-        async function acceptCall() {
-            if(ringSound) ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none";
-            if (currentChat !== incomingOfferData.sender) switchChat(incomingOfferData.sender);
-            document.getElementById("call-interface").style.display = "flex"; updateCallStatus("Connecting..."); activeCallUser = incomingOfferData.sender;
-            if (!await initMedia(incomingOfferData.video)) return forceEndCall();
-            createPeerConnection(); await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOfferData.sdp));
-            while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{});
-            const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer);
-            ws.send(JSON.stringify({ type: "call_answer", target: activeCallUser, sdp: answer }));
-        }
+function drawMessage(text, senderName, picUrl, time, preview = null) {
+    const stream = document.getElementById('chat-stream'); const msgDiv = document.createElement('div'); msgDiv.className = `message`;
+    let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+    let isImage = text && (text.startsWith("data:image/") || text.includes("res.cloudinary.com"));
+    
+    let previewHtml = "";
+    if (preview && preview.url && preview.title) {
+        previewHtml = `<div class="link-preview">🔗 <a href="${preview.url}" target="_blank">${preview.title}</a></div>`;
+    }
 
-        function rejectCall() { if(ringSound) ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none"; if (incomingOfferData) ws.send(JSON.stringify({ type: "call_end", target: incomingOfferData.sender })); incomingOfferData = null; }
-        async function handleAnswer(sdp) { if(dialSound) dialSound.pause(); await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp)); while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{}); }
-        async function handleIceCandidate(c) { const rtcC = new RTCIceCandidate(c); if (peerConnection && peerConnection.remoteDescription) { try { await peerConnection.addIceCandidate(rtcC); } catch(e){} } else { iceCandidateQueue.push(rtcC); } }
+    let contentHtml = isImage ? `<img src="${text}" class="msg-image-attachment" onclick="window.open(this.src, '_blank')">` : `<div class="msg-content">${text}</div>${previewHtml}`;
+    msgDiv.innerHTML = `<img src="${safePic}" class="msg-avatar"><div><div class="msg-header"><span class="msg-sender">${senderName}</span><span class="msg-time">${time}</span></div>${contentHtml}</div>`;
+    stream.appendChild(msgDiv); stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
+}
 
-        function toggleAudio() { if (!localStream) return; isAudioOn = !isAudioOn; localStream.getAudioTracks()[0].enabled = isAudioOn; document.getElementById("toggleAudioBtn").classList.toggle("active", isAudioOn); }
-        async function toggleVideo() { if (!localStream) return; const videoTrack = localStream.getVideoTracks()[0]; if (videoTrack) { videoTrack.enabled = !videoTrack.enabled; isVideoOn = videoTrack.enabled; } document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn); }
+function sendMyMessage() {
+    const input = document.getElementById("msg-input"); const val = input.value.trim();
+    if (ws && ws.readyState === WebSocket.OPEN && val) { ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: val })); input.value = ''; }
+}
+document.getElementById("msg-input").addEventListener("keypress", (e) => { if (e.key === "Enter") sendMyMessage(); });
 
-        async function flipCamera() {
-            if (!localStream || isSharingScreen) return; currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
-            const oldT = localStream.getVideoTracks()[0]; if(oldT) oldT.stop();
-            try {
-                const newS = await navigator.mediaDevices.getUserMedia({ video: { facingMode: {exact: currentFacingMode}, width: {ideal: 1920}, height: {ideal: 1080} } });
-                const newT = newS.getVideoTracks()[0]; localStream.removeTrack(oldT); localStream.addTrack(newT); document.getElementById("localVideo").srcObject = localStream;
-                if(peerConnection) { const sender = peerConnection.getSenders().find(s=>s.track && s.track.kind==="video"); if(sender) sender.replaceTrack(newT); }
-            } catch(e) { currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; }
-        }
+function sendImage(e) {
+    const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
+            if (width > 1200) { height *= 1200 / width; width = 1200; }
+            canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "chat", msg_id: generateId(), receiver: currentChat, message: canvas.toDataURL('image/jpeg', 0.8) }));
+        }; img.src = event.target.result;
+    }; reader.readAsDataURL(file); e.target.value = '';
+}
 
-        async function toggleScreenShare() {
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); if (isMobile) { alert("Mobile browsers do not support screen sharing."); return; }
-            if (!peerConnection) return;
-            try {
-                if (!isSharingScreen) {
-                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: {ideal: 1920}, height: {ideal: 1080}, frameRate: {ideal: 30} }, audio: true });
-                    const screenTrack = screenStream.getVideoTracks()[0]; const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender) sender.replaceTrack(screenTrack); document.getElementById('localVideo').srcObject = screenStream;
-                    isSharingScreen = true; document.getElementById("shareScreenBtn").classList.add("active"); screenTrack.onended = stopScreenShare;
-                } else { stopScreenShare(); }
-            } catch (e) {}
-        }
+function toggleFullScreen() {
+    const callElem = document.getElementById("call-interface");
+    if (!document.fullscreenElement) { callElem.requestFullscreen().catch(err => { alert(`Fullscreen error: ${err.message}`); }); document.getElementById("fullscreenBtn").innerText = "🗗"; } 
+    else { document.exitFullscreen(); document.getElementById("fullscreenBtn").innerText = "⛶"; }
+}
 
-        function stopScreenShare() {
-            if (screenStream) screenStream.getTracks().forEach(t => t.stop());
-            const cameraTrack = localStream.getVideoTracks()[0]; const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-            if (sender && cameraTrack) sender.replaceTrack(cameraTrack); document.getElementById('localVideo').srcObject = localStream;
-            isSharingScreen = false; document.getElementById("shareScreenBtn").classList.remove("active");
-        }
+let peerConnection, localStream, screenStream, activeCallUser = null, incomingOfferData = null, iceCandidateQueue = [];
+let isVideoOn = true, isAudioOn = true, isSharingScreen = false, currentFacingMode = "user";
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-        function endCallBtnClicked() { if (activeCallUser) ws.send(JSON.stringify({ type: "call_end", target: activeCallUser })); forceEndCall(); }
+function updateCallStatus(msg) { document.getElementById("call-status").innerText = msg; }
 
-        function forceEndCall() {
-            if(dialSound) dialSound.pause(); if(ringSound) ringSound.pause();
-            if (peerConnection) { peerConnection.close(); peerConnection = null; }
-            if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-            if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
-            iceCandidateQueue = []; activeCallUser = null; incomingOfferData = null; isSharingScreen = false;
-            document.getElementById("shareScreenBtn").classList.remove("active");
-            if (document.fullscreenElement) { document.exitFullscreen(); document.getElementById("fullscreenBtn").innerText = "⛶"; }
-            document.getElementById("call-interface").style.display = "none"; document.getElementById("incoming-call-modal").style.display = "none";
-        }
+async function initMedia(videoReq) {
+    try {
+        const constraints = { video: videoReq ? { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } } : false, audio: { echoCancellation: true, noiseSuppression: true } };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        document.getElementById("localVideo").srcObject = localStream; isVideoOn = videoReq; isAudioOn = true;
+        document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn); document.getElementById("toggleAudioBtn").classList.toggle("active", isAudioOn);
+        return true;
+    } catch (e) { alert("Camera/Microphone access denied."); return false; }
+}
 
-        const dragItem = document.getElementById("localWrapper");
-        let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
-        function dragStart(e) { if(e.type==="touchstart"){initialX=e.touches[0].clientX-xOff;initialY=e.touches[0].clientY-yOff;}else{initialX=e.clientX-xOff;initialY=e.clientY-yOff;} if(dragItem.contains(e.target)){active=true;} }
-        function dragEnd() { initialX=currentX; initialY=currentY; active=false; }
-        function drag(e) { if(active) { e.preventDefault(); if(e.type==="touchmove"){currentX=e.touches[0].clientX-initialX;currentY=e.touches[0].clientY-initialY;}else{currentX=e.clientX-initialX;currentY=e.clientY-initialY;} xOff=currentX;yOff=currentY; dragItem.style.transform="translate3d("+currentX+"px, "+currentY+"px, 0)"; } }
-        document.addEventListener("touchstart", dragStart, {passive:false}); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag, {passive:false});
-        document.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);
-    </script>
+function createPeerConnection() {
+    peerConnection = new RTCPeerConnection(rtcConfig);
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+    peerConnection.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; if(dialSound) dialSound.pause(); if(ringSound) ringSound.pause(); updateCallStatus("Connected"); };
+    peerConnection.onicecandidate = e => { if (e.candidate) ws.send(JSON.stringify({ type: "ice_candidate", target: activeCallUser, candidate: e.candidate })); };
+}
+
+async function startCall(videoReq) {
+    activeCallUser = currentChat; document.getElementById("call-interface").style.display = "flex"; updateCallStatus("Ringing..."); safePlayAudio(dialSound);
+    if (!await initMedia(videoReq)) { if(dialSound) dialSound.pause(); return forceEndCall(); }
+    createPeerConnection(); const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer);
+    ws.send(JSON.stringify({ type: "call_offer", target: activeCallUser, sdp: offer, video: videoReq }));
+}
+
+function handleIncomingCall(data) {
+    incomingOfferData = data; document.getElementById("incoming-caller-name").innerText = data.sender;
+    document.getElementById("incoming-avatar").src = userProfiles[data.sender]?.pic || "/static/IC.png"; document.getElementById("incoming-call-modal").style.display = "flex";
+    safePlayAudio(ringSound); 
+}
+
+async function acceptCall() {
+    if(ringSound) ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none";
+    if (currentChat !== incomingOfferData.sender) switchChat(incomingOfferData.sender);
+    document.getElementById("call-interface").style.display = "flex"; updateCallStatus("Connecting..."); activeCallUser = incomingOfferData.sender;
+    if (!await initMedia(incomingOfferData.video)) return forceEndCall();
+    createPeerConnection(); await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOfferData.sdp));
+    while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{});
+    const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer);
+    ws.send(JSON.stringify({ type: "call_answer", target: activeCallUser, sdp: answer }));
+}
+
+function rejectCall() { if(ringSound) ringSound.pause(); document.getElementById("incoming-call-modal").style.display = "none"; if (incomingOfferData) ws.send(JSON.stringify({ type: "call_end", target: incomingOfferData.sender })); incomingOfferData = null; }
+async function handleAnswer(sdp) { if(dialSound) dialSound.pause(); await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp)); while (iceCandidateQueue.length > 0) peerConnection.addIceCandidate(iceCandidateQueue.shift()).catch(e=>{}); }
+async function handleIceCandidate(c) { const rtcC = new RTCIceCandidate(c); if (peerConnection && peerConnection.remoteDescription) { try { await peerConnection.addIceCandidate(rtcC); } catch(e){} } else { iceCandidateQueue.push(rtcC); } }
+
+function toggleAudio() { if (!localStream) return; isAudioOn = !isAudioOn; localStream.getAudioTracks()[0].enabled = isAudioOn; document.getElementById("toggleAudioBtn").classList.toggle("active", isAudioOn); }
+async function toggleVideo() { if (!localStream) return; const videoTrack = localStream.getVideoTracks()[0]; if (videoTrack) { videoTrack.enabled = !videoTrack.enabled; isVideoOn = videoTrack.enabled; } document.getElementById("toggleVideoBtn").classList.toggle("active", isVideoOn); }
+
+async function flipCamera() {
+    if (!localStream || isSharingScreen) return; currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+    const oldT = localStream.getVideoTracks()[0]; if(oldT) oldT.stop();
+    try {
+        const newS = await navigator.mediaDevices.getUserMedia({ video: { facingMode: {exact: currentFacingMode}, width: {ideal: 1920}, height: {ideal: 1080} } });
+        const newT = newS.getVideoTracks()[0]; localStream.removeTrack(oldT); localStream.addTrack(newT); document.getElementById("localVideo").srcObject = localStream;
+        if(peerConnection) { const sender = peerConnection.getSenders().find(s=>s.track && s.track.kind==="video"); if(sender) sender.replaceTrack(newT); }
+    } catch(e) { currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; }
+}
+
+async function toggleScreenShare() {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent); if (isMobile) { alert("Mobile browsers do not support screen sharing."); return; }
+    if (!peerConnection) return;
+    try {
+        if (!isSharingScreen) {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: {ideal: 1920}, height: {ideal: 1080}, frameRate: {ideal: 30} }, audio: true });
+            const screenTrack = screenStream.getVideoTracks()[0]; const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) sender.replaceTrack(screenTrack); document.getElementById('localVideo').srcObject = screenStream;
+            isSharingScreen = true; document.getElementById("shareScreenBtn").classList.add("active"); screenTrack.onended = stopScreenShare;
+        } else { stopScreenShare(); }
+    } catch (e) {}
+}
+
+function stopScreenShare() {
+    if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    const cameraTrack = localStream.getVideoTracks()[0]; const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+    if (sender && cameraTrack) sender.replaceTrack(cameraTrack); document.getElementById('localVideo').srcObject = localStream;
+    isSharingScreen = false; document.getElementById("shareScreenBtn").classList.remove("active");
+}
+
+function endCallBtnClicked() { if (activeCallUser) ws.send(JSON.stringify({ type: "call_end", target: activeCallUser })); forceEndCall(); }
+
+function forceEndCall() {
+    if(dialSound) dialSound.pause(); if(ringSound) ringSound.pause();
+    if (peerConnection) { peerConnection.close(); peerConnection = null; }
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
+    iceCandidateQueue = []; activeCallUser = null; incomingOfferData = null; isSharingScreen = false;
+    document.getElementById("shareScreenBtn").classList.remove("active");
+    if (document.fullscreenElement) { document.exitFullscreen(); document.getElementById("fullscreenBtn").innerText = "⛶"; }
+    document.getElementById("call-interface").style.display = "none"; document.getElementById("incoming-call-modal").style.display = "none";
+}
+
+const dragItem = document.getElementById("localWrapper");
+let active = false, currentX, currentY, initialX, initialY, xOff = 0, yOff = 0;
+function dragStart(e) { if(e.type==="touchstart"){initialX=e.touches[0].clientX-xOff;initialY=e.touches[0].clientY-yOff;}else{initialX=e.clientX-xOff;initialY=e.clientY-yOff;} if(dragItem.contains(e.target)){active=true;} }
+function dragEnd() { initialX=currentX; initialY=currentY; active=false; }
+function drag(e) { if(active) { e.preventDefault(); if(e.type==="touchmove"){currentX=e.touches[0].clientX-initialX;currentY=e.touches[0].clientY-initialY;}else{currentX=e.clientX-initialX;currentY=e.clientY-initialY;} xOff=currentX;yOff=currentY; dragItem.style.transform="translate3d("+currentX+"px, "+currentY+"px, 0)"; } }
+document.addEventListener("touchstart", dragStart, {passive:false}); document.addEventListener("touchend", dragEnd); document.addEventListener("touchmove", drag, {passive:false});
+document.addEventListener("mousedown", dragStart); document.addEventListener("mouseup", dragEnd); document.addEventListener("mousemove", drag);    </script>
 </body>
 </html>
