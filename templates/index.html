@@ -3,508 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NeonChat Pro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>IdlyCall - Ultimate</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        /* --- PROFESSIONAL THEME --- */
         :root {
-            --bg-dark: #1a1a1a; --bg-main: #2b2d31; --bg-sidebar: #1e1f22;
-            --bg-chat: #313338; --bg-input: #383a40; --accent: #5865f2;
-            --accent-hover: #4752c4; --text-main: #dbdee1; --text-muted: #949ba4;
-            --online: #23a55a; --danger: #da373c; --divider: #3f4147;
+            --bg-main: #202225;
+            --bg-sidebar: #2f3136;
+            --bg-chat: #36393f;
+            --bg-input: #40444b;
+            --accent: #5865F2;
+            --text-main: #dcddde;
+            --text-muted: #8e9297;
+            --bubble-other: #4f545c;
+            --online: #3ba55d;
+            --offline: #747f8d;
         }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; scrollbar-width: thin; scrollbar-color: var(--bg-input) transparent; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--bg-input); border-radius: 4px; }
-        
-        body { background: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; }
 
         /* Login Screen */
-        #login-screen {
-            position: fixed; inset: 0; background: var(--bg-dark); z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background-image: radial-gradient(circle at 50% 0%, #332d4f 0%, var(--bg-dark) 70%);
-        }
-        .login-box { background: var(--bg-main); padding: 40px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); width: 400px; text-align: center; }
-        .login-box h1 { margin-bottom: 10px; font-size: 24px; color: white; }
-        .login-box p { color: var(--text-muted); margin-bottom: 25px; font-size: 14px; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--text-muted); text-transform: uppercase; }
-        .input-group input { width: 100%; padding: 12px; background: var(--bg-dark); border: none; border-radius: 6px; color: white; outline: none; transition: 0.2s; }
-        .input-group input:focus { box-shadow: 0 0 0 2px var(--accent); }
-        .login-btn { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 10px; }
-        .login-btn:hover { background: var(--accent-hover); }
-        .file-label { display: block; padding: 20px; border: 2px dashed var(--bg-input); border-radius: 6px; margin-bottom: 15px; cursor: pointer; color: var(--text-muted); font-size: 13px; }
-        .file-label:hover { border-color: var(--accent); color: var(--text-main); }
+        #login-screen { background: var(--bg-sidebar); padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 90%; max-width: 350px; }
+        .logo-text { font-size: 1.8rem; font-weight: 600; color: white; margin-bottom: 20px; }
+        .logo-text span { color: var(--accent); }
+        .avatar-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid var(--accent); cursor: pointer; }
+        #login-screen input { width: 100%; padding: 14px; border-radius: 6px; border: none; background: var(--bg-input); color: white; font-size: 1rem; margin-bottom: 20px; outline: none; }
+        #login-screen button { width: 100%; padding: 14px; border: none; background: var(--accent); color: white; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        #login-screen button:hover { background: #4752C4; }
 
-        /* App Layout */
-        .app-container { display: flex; width: 100%; height: 100%; }
-
-        /* Sidebar */
-        .sidebar {
-            width: 260px; background: var(--bg-sidebar); display: flex; flex-direction: column;
-            border-right: 1px solid var(--bg-dark); flex-shrink: 0; transition: transform 0.3s ease; z-index: 100;
-        }
-        .sidebar-header { padding: 15px 20px; border-bottom: 1px solid var(--bg-dark); font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
-        .user-list-header { padding: 15px 20px 10px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
-        .channel-item {
-            padding: 10px 20px; display: flex; align-items: center; cursor: pointer; transition: 0.1s;
-            border-left: 3px solid transparent; color: var(--text-muted); font-weight: 500;
-        }
-        .channel-item:hover { background: var(--bg-main); color: var(--text-main); }
-        .channel-item.active { background: var(--bg-main); color: white; border-left-color: white; }
-        .channel-icon { margin-right: 10px; opacity: 0.6; }
+        /* App Container */
+        #app-container { display: none; width: 100%; height: 100%; max-width: 1200px; position: relative; }
         
-        .user-list { flex: 1; overflow-y: auto; padding: 10px 0; }
-        .user-item { padding: 8px 20px; display: flex; align-items: center; cursor: pointer; transition: 0.1s; margin: 2px 0; }
-        .user-item:hover { background: var(--bg-main); }
-        .user-item.active { background: var(--bg-main); border-radius: 6px; margin: 2px 10px; padding: 8px 10px; }
-        .avatar-wrapper { position: relative; margin-right: 12px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--bg-dark); }
-        .status-dot { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--bg-sidebar); }
-        .online { background: var(--online); } .offline { background: var(--text-muted); }
-        .user-info { display: flex; flex-direction: column; }
-        .username { font-size: 14px; font-weight: 500; }
-
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--bg-main); display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .sidebar-header { padding: 20px; font-weight: 600; color: white; border-bottom: 1px solid var(--bg-main); display: flex; justify-content: space-between; align-items: center; }
+        .user-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .user-item { padding: 8px 10px; border-radius: 4px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; margin-bottom: 2px; transition: 0.2s; }
+        .user-item:hover { background: var(--bg-chat); color: white; }
+        .user-item.active { background: var(--accent); color: white; }
+        .user-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
+        .status-online { background: var(--online); }
+        .status-offline { background: var(--offline); }
+        
         /* Chat Area */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); position: relative; }
-        .chat-header {
-            height: 60px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
-            background: var(--bg-main); border-bottom: 1px solid var(--bg-dark); flex-shrink: 0; z-index: 10;
-        }
-        .header-info h2 { font-size: 16px; font-weight: 600; }
-        .header-info span { font-size: 12px; color: var(--text-muted); }
-        .header-actions { display: flex; gap: 10px; }
-        .action-btn {
-            background: transparent; border: none; color: var(--text-muted); padding: 8px 12px;
-            border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: 0.2s;
-        }
-        .action-btn:hover { color: white; background: var(--bg-input); }
-        .action-btn.call { color: var(--online); }
-
-        /* Messages */
-        .messages-wrapper { flex: 1; overflow-y: auto; padding: 0 20px; }
-        .messages-container { display: flex; flex-direction: column; padding: 20px 0; gap: 15px; }
+        header { padding: 15px 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; display: flex; align-items: center; justify-content: space-between; position: relative; }
+        .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        .sync-btn { background: var(--accent); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .sync-btn:hover { background: #4752C4; }
         
-        .message { display: flex; padding: 2px 0; position: relative; }
-        .message:hover { background: rgba(0,0,0,0.1); }
-        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 20px; object-fit: cover; }
-        .msg-body { flex: 1; max-width: 80%; }
-        .msg-header { display: flex; align-items: baseline; margin-bottom: 5px; }
-        .msg-sender { font-weight: 600; margin-right: 10px; color: white; font-size: 14px; }
-        .msg-timestamp { font-size: 10px; color: var(--text-muted); }
-        .msg-content { color: var(--text-main); line-height: 1.6; word-break: break-word; }
-        .msg-content img { max-width: 100%; border-radius: 8px; margin-top: 10px; max-height: 400px; display: block; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+        .message { display: flex; gap: 15px; animation: fadeIn 0.3s ease; }
+        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .msg-body { display: flex; flex-direction: column; max-width: 80%; }
+        .msg-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+        .msg-name { font-weight: 600; color: white; }
+        .msg-time { font-size: 0.75rem; color: var(--text-muted); }
+        .msg-text { background: var(--bg-input); padding: 10px 15px; border-radius: 8px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; color: var(--text-main); }
+        .msg-image { max-width: 300px; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+
+        /* Typing Indicator */
+        #typing-indicator { position: absolute; bottom: 85px; left: 20px; font-size: 0.85rem; color: var(--text-muted); font-style: italic; display: none; background: rgba(54, 57, 63, 0.9); padding: 2px 8px; border-radius: 12px; }
+        .typing-dots::after { content: '...'; animation: typing 1.5s steps(4, end) infinite; }
+        @keyframes typing { 0%, 20% { content: '.'; } 40% { content: '..'; } 60%, 100% { content: '...'; } }
 
         /* Input Area */
-        .input-area { padding: 20px; background: var(--bg-chat); }
-        .input-wrapper {
-            background: var(--bg-input); border-radius: 8px; padding: 5px;
-            display: flex; align-items: center; box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-        .input-wrapper input { flex: 1; background: transparent; border: none; padding: 10px; color: white; outline: none; }
-        .input-icon { cursor: pointer; padding: 10px; color: var(--text-muted); transition: 0.2s; }
-        .input-icon:hover { color: white; }
-        .send-btn { background: var(--accent); border: none; color: white; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: 600; }
-        .typing-indicator { padding: 10px 20px; font-size: 12px; color: var(--text-muted); font-style: italic; height: 25px; }
+        #input-area { padding: 20px; background: var(--bg-chat); }
+        .input-box { display: flex; align-items: center; background: var(--bg-input); border-radius: 8px; overflow: hidden; padding: 5px 10px; }
+        .attach-btn { background: var(--bg-main); color: var(--text-muted); border-radius: 50%; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; margin-right: 10px; }
+        .attach-btn:hover { color: white; }
+        .input-box input { flex: 1; padding: 10px; border: none; background: transparent; color: white; outline: none; font-size: 0.95rem; }
+        .input-box button { padding: 0 15px; border: none; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer; }
 
-        /* Calling UI */
-        #calling-ui {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 50;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .call-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 90%; height: 70%; max-width: 1400px; }
-        .video-container { position: relative; background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-        .video-container video { width: 100%; height: 100%; object-fit: cover; }
-        .video-label { position: absolute; bottom: 10px; left: 10px; color: white; font-size: 14px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        .call-controls-bar { display: flex; gap: 20px; margin-top: 30px; }
-        .ctrl-btn {
-            width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px;
-            display: flex; align-items: center; justify-content: center; transition: 0.2s; background: #333; color: white;
-        }
-        .ctrl-btn.end { background: var(--danger); }
-        .ctrl-btn.end:hover { background: #a12d2f; }
-        .ctrl-btn:hover { background: #444; }
-
-        /* Mobile */
-        .menu-icon { display: none; font-size: 24px; cursor: pointer; margin-right: 15px; color: var(--text-muted); }
         @media (max-width: 768px) {
-            .sidebar { position: fixed; left: 0; top: 0; height: 100%; transform: translateX(-100%); width: 280px; }
-            .sidebar.active { transform: translateX(0); }
-            .menu-icon { display: block; }
-            .call-grid { grid-template-columns: 1fr; height: 50%; }
+            .mobile-toggle { display: block; }
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+            .sidebar.open { transform: translateX(0); }
+            .msg-image { max-width: 100%; }
         }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <div class="login-box">
-            <h1>Welcome to NeonChat</h1>
-            <p>The professional real-time communication platform</p>
-            <form onsubmit="event.preventDefault(); login()">
-                <div class="input-group">
-                    <label>Username</label>
-                    <input type="text" id="username-input" placeholder="Enter your name" required />
+        <div class="logo-text">Idly<span>Call</span></div>
+        <label for="login-file">
+            <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" title="Click to upload avatar">
+        </label>
+        <input type="file" id="login-file" accept="image/*" style="display:none;" onchange="processImage(event, 'login-preview')">
+        <input type="text" id="username" placeholder="Enter your username" autocomplete="off" onkeypress="if(event.key === 'Enter') connect()">
+        <button onclick="connect()">Join System</button>
+    </div>
+
+    <div id="app-container">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                Channels & DMs
+            </div>
+            <div class="user-list" id="user-list-container"></div>
+        </div>
+
+        <div class="chat-area" onclick="document.getElementById('sidebar').classList.remove('open')">
+            <header>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                    <span id="chat-header"># Public Channel</span>
                 </div>
-                <div class="input-group">
-                    <label>Profile Picture (Optional)</label>
-                    <label class="file-label">
-                        <span id="file-name">Click to upload image</span>
-                        <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="document.getElementById('file-name').innerText = this.files[0].name">
-                    </label>
+                <button class="sync-btn" onclick="forceSync()">Sync History</button>
+            </header>
+            
+            <div id="messages"></div>
+            
+            <!-- Typing Indicator Element -->
+            <div id="typing-indicator">Someone is typing<span class="typing-dots"></span></div>
+
+            <div id="input-area">
+                <div class="input-box">
+                    <label for="imageAttachInput" class="attach-btn">＋</label>
+                    <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
+                    <input type="text" id="msgInput" placeholder="Message..." autocomplete="off">
+                    <button onclick="sendMsg()">Send</button>
                 </div>
-                <button type="submit" class="login-btn">Join Server</button>
-            </form>
+            </div>
         </div>
     </div>
 
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <span>NeonChat</span>
-                <span style="color:var(--online)">●</span>
-            </div>
-            
-            <div class="user-list-header">Channels</div>
-            <div class="channel-item active" onclick="joinRoom('public')">
-                <span class="channel-icon">#</span> Public Server
-            </div>
-
-            <div class="user-list-header">Direct Messages</div>
-            <div class="user-list" id="user-list">
-                <!-- Users injected here -->
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="chat-area">
-            <header class="chat-header">
-                <div style="display:flex; align-items:center;">
-                    <span class="menu-icon" onclick="toggleSidebar()">☰</span>
-                    <div class="header-info">
-                        <h2 id="chat-title">Public Server</h2>
-                        <span id="chat-subtitle">Everyone can see messages here</span>
-                    </div>
-                </div>
-                <div class="header-actions">
-                    <button class="action-btn call" id="video-call-btn" onclick="startCall()" style="display:none">
-                        📹 Start Call
-                    </button>
-                </div>
-            </header>
-
-            <div class="messages-wrapper">
-                <div class="messages-container" id="messages-container"></div>
-            </div>
-            
-            <div class="typing-indicator" id="typing-indicator"></div>
-
-            <div class="input-area">
-                <div class="input-wrapper">
-                    <label class="input-icon">
-                        <input type="file" id="image-input" accept="image/*" onchange="handleImageSend(this)" style="display:none">
-                        ➕
-                    </label>
-                    <input type="text" id="message-input" placeholder="Message #public" onkeyup="handleTyping(event)" />
-                    <button class="send-btn" onclick="sendMessage()">Send</button>
-                </div>
-            </div>
-
-            <!-- Call Interface -->
-            <div id="calling-ui">
-                <h2 style="color:white; margin-bottom:20px;" id="call-status">Calling...</h2>
-                <div class="call-grid">
-                    <div class="video-container">
-                        <video id="remote-video" autoplay playsinline></video>
-                        <div class="video-label" id="remote-label">Remote</div>
-                    </div>
-                    <div class="video-container">
-                        <video id="local-video" autoplay muted playsinline></video>
-                        <div class="video-label">You</div>
-                    </div>
-                </div>
-                <div class="call-controls-bar">
-                    <button class="ctrl-btn" id="btn-mute" onclick="toggleMedia('audio')">🎤</button>
-                    <button class="ctrl-btn" id="btn-video" onclick="toggleMedia('video')">📹</button>
-                    <button class="ctrl-btn end" onclick="hangup()">📞</button>
-                </div>
-            </div>
-        </main>
-    </div>
-
     <script>
-        // --- State Management ---
-        let currentUser = null;
-        let currentChat = "public";
-        let socket = null;
-        let peerConnection = null;
-        let localStream = null;
-        let mediaState = { audio: true, video: true };
+        let ws;
+        let heartbeat;
+        let myUsername = "";
+        let myPicBase64 = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+        let currentChat = "Public"; 
+        let userList = [];
+        
+        let typingTimeout;
+        let isTyping = false;
+        let currentlyTypingUsers = new Set();
+        let indicatorTimeout;
 
-        // --- Core Logic ---
-        async function login() {
-            const username = document.getElementById('username-input').value;
-            const avatarFile = document.getElementById('avatar-input').files[0];
-            if (!username) return;
-
-            const formData = new FormData();
-            formData.append('username', username);
-            if (avatarFile) formData.append('file', avatarFile);
-
+        window.onload = () => {
+            // BRAVE FIX: Wrap local storage in try/catch so aggressive shields don't crash the script
             try {
-                const res = await fetch('/login', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (res.ok) {
-                    currentUser = data;
-                    document.getElementById('login-screen').style.display = 'none';
-                    initSocket();
-                    loadUsers();
-                } else { alert(data.detail); }
-            } catch (e) { alert('Connection error'); }
+                const savedName = localStorage.getItem("pro_chat_name");
+                const savedPic = localStorage.getItem("pro_chat_pic");
+                const savedChat = localStorage.getItem("pro_last_chat");
+                if (savedName) document.getElementById("username").value = savedName;
+                if (savedPic) { myPicBase64 = savedPic; document.getElementById("login-preview").src = savedPic; }
+                if (savedChat) { currentChat = savedChat; }
+            } catch (e) {
+                console.log("Local storage blocked by browser shields.");
+            }
+            
+            const inputField = document.getElementById("msgInput");
+            inputField.addEventListener('input', handleTyping);
+            inputField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
+        };
+
+        function processImage(e, targetId) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
+                    if (width > 800) { height *= 800 / width; width = 800; }
+                    canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    const b64 = canvas.toDataURL('image/jpeg', 0.8); document.getElementById(targetId).src = b64;
+                    if(targetId === 'login-preview') myPicBase64 = b64;
+                }; img.src = event.target.result;
+            }; reader.readAsDataURL(file);
         }
 
-        function initSocket() {
-            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            socket = new WebSocket(`${proto}//${location.host}/ws/${currentUser.username}`);
+        function connect() {
+            myUsername = document.getElementById("username").value.trim();
+            if (!myUsername) return alert("Please enter a username");
 
-            socket.onopen = () => { console.log("WS Connected"); };
-            
-            socket.onmessage = async (e) => {
-                const data = JSON.parse(e.data);
-                if (data.type === 'ping') return;
+            try {
+                localStorage.setItem("pro_chat_name", myUsername);
+                localStorage.setItem("pro_chat_pic", myPicBase64);
+            } catch(e) {}
 
-                // Messages
-                if (data.type === 'chat_message') {
-                    const isPublic = currentChat === 'public' && data.receiver === 'public';
-                    const isPrivate = (data.sender === currentChat || data.receiver === currentChat);
-                    
-                    // Only append if relevant to current view
-                    if ( (isPublic && currentChat === 'public') || (isPrivate && (data.sender === currentChat || data.receiver === currentChat)) ) {
-                        // Avoid duplicates if we are the sender (optimistic UI might have added it, but let's rely on server confirm for simplicity here)
-                        // Actually, for smoother UX we append immediately on send, so we might need a unique ID check. 
-                        // Simple fix: We will just append everything valid for now.
-                        appendMessage(data);
-                    }
-                }
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("app-container").style.display = "flex";
+
+            document.getElementById("chat-header").innerText = currentChat === "Public" ? "# Public Channel" : `@ ${currentChat}`;
+            document.getElementById("msgInput").placeholder = `Message ${currentChat}...`;
+
+            const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+            ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
+
+            ws.onopen = function() {
+                // Send profile pic AND request history immediately
+                this.send(JSON.stringify({ pic: myPicBase64, target: currentChat }));
                 
-                if (data.type === 'typing') {
-                    if (data.sender === currentChat) {
-                        showTyping();
-                    }
-                }
-                if (data.type === 'user_update') loadUsers();
+                // Double-tap the history request to guarantee it loads
+                this.send(JSON.stringify({ type: "get_history", target: currentChat }));
+                
+                heartbeat = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
+                }, 20000);
+            };
 
-                // WebRTC Signaling
-                if (data.type === 'call_offer') {
-                    if (confirm(`Video call from ${data.sender}?`)) {
-                        currentChat = data.sender; // Auto switch context
-                        updateHeader();
-                        await startCall(data.offer);
-                    } else {
-                        socket.send(JSON.stringify({type: 'call_hangup', target: data.sender}));
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === "history") {
+                    if (data.target === currentChat) {
+                        const msgs = document.getElementById("messages");
+                        msgs.innerHTML = "";
+                        
+                        // BRAVE FIX: Explicitly tell the user if the database is actually empty
+                        if (data.data.length === 0) {
+                            msgs.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:20px; font-style:italic;">No message history yet. Send a message to start!</div>`;
+                        } else {
+                            data.data.forEach(m => drawMessage(m.sender, m.profile_pic, m.content, m.timestamp));
+                            msgs.scrollTop = msgs.scrollHeight;
+                        }
+                    }
+                } 
+                else if (data.type === "chat") {
+                    // Remove the "empty history" text if it's there
+                    if (document.getElementById("messages").innerHTML.includes("No message history yet")) {
+                        document.getElementById("messages").innerHTML = "";
+                    }
+
+                    if (currentChat === "Public" && data.receiver === "Public") {
+                        drawMessage(data.sender, data.profile_pic, data.content, data.timestamp);
+                    } 
+                    else if (currentChat !== "Public") {
+                        if (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)) {
+                            drawMessage(data.sender, data.profile_pic, data.content, data.timestamp);
+                        }
+                    }
+                    
+                    if (currentlyTypingUsers.has(data.sender)) {
+                         currentlyTypingUsers.delete(data.sender);
+                         updateTypingUI();
+                    }
+                } 
+                else if (data.type === "user_list") {
+                    userList = data.users;
+                    renderSidebar();
+                }
+                else if (data.type === "typing") {
+                    if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && data.sender === currentChat)) {
+                        currentlyTypingUsers.add(data.sender);
+                        updateTypingUI();
+                        
+                        clearTimeout(indicatorTimeout);
+                        indicatorTimeout = setTimeout(() => {
+                            currentlyTypingUsers.clear();
+                            updateTypingUI();
+                        }, 3000);
                     }
                 }
-                if (data.type === 'call_answer') {
-                    document.getElementById('call-status').innerText = "Connected";
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-                }
-                if (data.type === 'ice_candidate') {
-                    if (peerConnection) await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                }
-                if (data.type === 'call_hangup') {
-                    hangup();
-                    alert("Call ended");
-                }
+            };
+
+            ws.onclose = () => {
+                clearInterval(heartbeat);
+                alert("Connection lost. Please refresh.");
+                window.location.reload();
             };
         }
 
-        // --- Messaging UI ---
-        async function loadUsers() {
-            const res = await fetch('/users');
-            const users = await res.json();
-            const list = document.getElementById('user-list');
-            list.innerHTML = '';
-            users.forEach(u => {
-                if (u.username === currentUser.username) return;
-                const el = document.createElement('div');
-                el.className = `user-item ${u.username === currentChat ? 'active' : ''}`;
-                el.onclick = () => joinRoom(u.username);
-                el.innerHTML = `
-                    <div class="avatar-wrapper">
-                        <img src="${u.profile_pic}" class="avatar">
-                        <div class="status-dot ${u.status === 'online' ? 'online' : 'offline'}"></div>
-                    </div>
-                    <div class="user-info"><span class="username">${u.username}</span></div>
-                `;
-                list.appendChild(el);
-            });
+        function forceSync() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                document.getElementById("messages").innerHTML = `<div style="text-align:center; color:var(--accent); margin-top:20px;">Syncing...</div>`;
+                ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+            } else {
+                alert("Chat not connected yet!");
+            }
         }
 
-        async function joinRoom(target) {
-            currentChat = target;
-            updateHeader();
-            if (window.innerWidth < 768) toggleSidebar(); // Close mobile menu
+        function handleTyping() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
             
-            // Clear and Load History
-            const container = document.getElementById('messages-container');
-            container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px;">Loading...</div>';
+            if (!isTyping) {
+                isTyping = true;
+                ws.send(JSON.stringify({ type: "typing", receiver: currentChat }));
+            }
             
-            // Pass current user to backend for correct DM history
-            const res = await fetch(`/messages/${target}?user=${currentUser.username}`);
-            const messages = await res.json();
-            
-            container.innerHTML = '';
-            messages.forEach(appendMessage);
-            scrollToBottom();
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                isTyping = false;
+            }, 1000);
         }
 
-        function updateHeader() {
-            const isPublic = currentChat === 'public';
-            document.getElementById('chat-title').innerText = isPublic ? 'Public Server' : currentChat;
-            document.getElementById('chat-subtitle').innerText = isPublic ? 'Everyone can see messages here' : 'Private Conversation';
-            document.getElementById('message-input').placeholder = `Message ${isPublic ? '#public' : '@' + currentChat}`;
-            document.getElementById('video-call-btn').style.display = isPublic ? 'none' : 'flex';
+        function updateTypingUI() {
+            const indicator = document.getElementById("typing-indicator");
+            if (currentlyTypingUsers.size > 0) {
+                const usersArray = Array.from(currentlyTypingUsers);
+                let text = "";
+                if (usersArray.length === 1) text = `${usersArray[0]} is typing`;
+                else if (usersArray.length === 2) text = `${usersArray[0]} and ${usersArray[1]} are typing`;
+                else text = "Several people are typing";
+                
+                indicator.innerHTML = `${text}<span class="typing-dots"></span>`;
+                indicator.style.display = "block";
+            } else {
+                indicator.style.display = "none";
+            }
         }
 
-        function appendMessage(msg) {
-            const container = document.getElementById('messages-container');
-            const div = document.createElement('div');
-            div.className = 'message';
+        function renderSidebar() {
+            const container = document.getElementById("user-list-container");
             
-            const time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            const isImg = msg.content.startsWith('http') && (msg.content.includes('.jpg') || msg.content.includes('.png') || msg.content.includes('cloudinary'));
-            
-            div.innerHTML = `
-                <img src="${msg.profile_pic || 'https://via.placeholder.com/150'}" class="msg-avatar">
-                <div class="msg-body">
-                    <div class="msg-header">
-                        <span class="msg-sender">${msg.sender}</span>
-                        <span class="msg-timestamp">${time}</span>
-                    </div>
-                    <div class="msg-content">
-                        ${isImg ? `<img src="${msg.content}" alt="img">` : escapeHtml(msg.content)}
-                    </div>
+            let html = `
+                <div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')">
+                    <img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png" style="border-radius:0;">
+                    <span>Public Server</span>
                 </div>
             `;
-            container.appendChild(div);
-            scrollToBottom();
-        }
-
-        function sendMessage() {
-            const input = document.getElementById('message-input');
-            const content = input.value.trim();
-            if (!content) return;
-
-            const payload = {
-                type: 'chat_message',
-                sender: currentUser.username,
-                receiver: currentChat,
-                content: content
-            };
             
-            socket.send(JSON.stringify(payload));
-            input.value = '';
-            
-            // Optimistic UI Append (Instant feedback)
-            appendMessage({
-                sender: currentUser.username, 
-                receiver: currentChat, 
-                content: content, 
-                profile_pic: currentUser.profile_pic,
-                timestamp: new Date().toISOString()
+            userList.forEach(user => {
+                if (user.username === myUsername) return; 
+                const statusClass = user.status === "Online" ? "status-online" : "status-offline";
+                const safePic = user.profile_pic || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+                html += `
+                    <div class="user-item ${currentChat === user.username ? 'active' : ''}" onclick="switchChat('${user.username}')">
+                        <img src="${safePic}">
+                        <span>${user.username}</span>
+                        <div class="status-dot ${statusClass}"></div>
+                    </div>
+                `;
             });
+            
+            container.innerHTML = html;
         }
 
-        function handleImageSend(input) {
-            if (input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    socket.send(JSON.stringify({
-                        type: 'chat_message',
-                        sender: currentUser.username,
-                        receiver: currentChat,
-                        content: e.target.result
-                    }));
-                };
-                reader.readAsDataURL(input.files[0]);
+        function switchChat(target) {
+            if (currentChat === target) return; 
+            
+            currentChat = target;
+            try { localStorage.setItem("pro_last_chat", currentChat); } catch(e) {}
+            
+            document.getElementById("chat-header").innerText = target === "Public" ? "# Public Channel" : `@ ${target}`;
+            document.getElementById("msgInput").placeholder = `Message ${target}...`;
+            document.getElementById('sidebar').classList.remove('open');
+            renderSidebar();
+            
+            currentlyTypingUsers.clear();
+            updateTypingUI();
+            
+            document.getElementById("messages").innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:20px;">Loading messages...</div>`;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
             }
         }
 
-        function handleTyping(e) {
-            if (e.key === 'Enter') sendMessage();
-            else socket.send(JSON.stringify({type: 'typing', receiver: currentChat}));
+        function drawMessage(sender, pic, text, timestamp) {
+            const msgs = document.getElementById("messages");
+            const safePic = pic || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+            const timeStr = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const isImage = text && (text.startsWith("data:image/") || text.includes("res.cloudinary.com"));
+            const contentHtml = isImage ? `<img src="${text}" class="msg-image" onclick="window.open(this.src, '_blank')">` : `<div class="msg-text">${text}</div>`;
+
+            const div = document.createElement("div");
+            div.className = "message";
+            div.innerHTML = `
+                <img src="${safePic}" class="msg-avatar">
+                <div class="msg-body">
+                    <div class="msg-header">
+                        <span class="msg-name">${sender}</span>
+                        <span class="msg-time">${timeStr}</span>
+                    </div>
+                    ${contentHtml}
+                </div>
+            `;
+            
+            msgs.appendChild(div);
+            msgs.scrollTop = msgs.scrollHeight;
         }
 
-        function showTyping() {
-            const el = document.getElementById('typing-indicator');
-            el.innerText = `${currentChat} is typing...`;
-            setTimeout(() => el.innerText = '', 1500);
-        }
-
-        // --- WebRTC Call System ---
-        async function startCall(offer=null) {
-            document.getElementById('calling-ui').style.display = 'flex';
-            document.getElementById('call-status').innerText = offer ? "Connecting..." : "Calling...";
-            document.getElementById('remote-label').innerText = currentChat;
-
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('local-video').srcObject = localStream;
+        function sendMsg() {
+            const input = document.getElementById("msgInput");
+            const text = input.value.trim();
+            if (text && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "chat", receiver: currentChat, pic: myPicBase64, content: text }));
+                input.value = "";
+                input.focus(); 
                 
-                peerConnection = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-                
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                
-                peerConnection.ontrack = (e) => { document.getElementById('remote-video').srcObject = e.streams[0]; };
-                peerConnection.onicecandidate = (e) => {
-                    if (e.candidate) socket.send(JSON.stringify({ type: 'ice_candidate', target: currentChat, candidate: e.candidate }));
-                };
-
-                if (offer) {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    socket.send(JSON.stringify({ type: 'call_answer', target: currentChat, answer }));
-                    document.getElementById('call-status').innerText = "Connected";
-                } else {
-                    const offerCreated = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offerCreated);
-                    socket.send(JSON.stringify({ type: 'call_offer', target: currentChat, offer: offerCreated }));
-                }
-            } catch (err) {
-                console.error(err);
-                alert("Camera/Mic access denied.");
-                hangup();
+                isTyping = false;
+                clearTimeout(typingTimeout);
             }
         }
 
-        function toggleMedia(type) {
-            if (localStream) {
-                const track = type === 'audio' ? localStream.getAudioTracks()[0] : localStream.getVideoTracks()[0];
-                track.enabled = !track.enabled;
-                const btn = document.getElementById(`btn-${type}`);
-                btn.style.background = track.enabled ? '#333' : 'var(--danger)';
-            }
+        function sendImage(e) {
+            const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
+                    if (width > 1200) { height *= 1200 / width; width = 1200; }
+                    canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "chat", receiver: currentChat, pic: myPicBase64, content: canvas.toDataURL('image/jpeg', 0.8) }));
+                    }
+                }; img.src = event.target.result;
+            }; reader.readAsDataURL(file); e.target.value = '';
         }
-
-        function hangup() {
-            if (peerConnection) peerConnection.close();
-            if (localStream) localStream.getTracks().forEach(t => t.stop());
-            peerConnection = null; localStream = null;
-            document.getElementById('calling-ui').style.display = 'none';
-            document.getElementById('local-video').srcObject = null;
-            document.getElementById('remote-video').srcObject = null;
-        }
-
-        // --- Utilities ---
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
-        function scrollToBottom() { document.getElementById('messages-wrapper').scrollTop = document.getElementById('messages-container').scrollHeight; }
-        function escapeHtml(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
     </script>
 </body>
 </html>
