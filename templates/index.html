@@ -181,7 +181,7 @@
     <script>
         // --- State ---
         let currentUser = null;
-        let currentChat = "public"; // 'public' or username
+        let currentChat = "public";
         let socket = null;
         let localStream = null;
         let peerConnection = null;
@@ -228,7 +228,7 @@
             socket.onmessage = async (event) => {
                 const data = JSON.parse(event.data);
                 
-                if (data.type === 'ping') return; // Heartbeat ignore
+                if (data.type === 'ping') return;
                 
                 if (data.type === 'chat_message') {
                     if (data.receiver === currentChat || 
@@ -253,11 +253,10 @@
 
                 // --- WebRTC Signaling ---
                 if (data.type === 'call_offer') {
-                    // Incoming Call
                     if (confirm(`Incoming call from ${data.sender}. Answer?`)) {
-                        currentChat = data.sender; // Switch context
+                        currentChat = data.sender;
                         updateHeader();
-                        await startCall(true, data.offer); // Answer logic
+                        await startCall(true, data.offer);
                     } else {
                         socket.send(JSON.stringify({type: 'call_hangup', target: data.sender}));
                     }
@@ -317,22 +316,17 @@
         async function joinRoom(target) {
             currentChat = target;
             updateHeader();
-            toggleSidebar(); // Close on mobile
+            toggleSidebar();
             
-            // Clear messages
             document.getElementById('messages-container').innerHTML = '';
             
-            // Load History
             const res = await fetch(`/messages/${target}`);
             const messages = await res.json();
             
             messages.forEach(msg => {
-                // Filter logic for DMs vs Public
                 if (target === 'public') {
                     if (msg.receiver === 'public') appendMessage(msg);
                 } else {
-                    // Show messages involving me and target
-                    // Note: Backend returns all messages involving target. Client filters for privacy in DM view
                     if ((msg.sender === target && msg.receiver === currentUser.username) || 
                         (msg.sender === currentUser.username && msg.receiver === target)) {
                         appendMessage(msg);
@@ -358,7 +352,6 @@
             const div = document.createElement('div');
             div.className = 'message';
             
-            // Check if content is image
             const isImage = msg.content.startsWith('http') && (msg.content.includes('.jpg') || msg.content.includes('.png') || msg.content.includes('.cloudinary'));
             const contentHtml = isImage 
                 ? `<div class="message-content"><img src="${msg.content}" alt="image" /></div>`
@@ -397,11 +390,10 @@
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    // Send base64 to backend (backend uploads to Cloudinary)
                     sendSocketMessage('chat_message', {
                         sender: currentUser.username,
                         receiver: currentChat,
-                        content: e.target.result // Base64 string
+                        content: e.target.result
                     });
                 };
                 reader.readAsDataURL(input.files[0]);
@@ -429,7 +421,6 @@
             document.getElementById('calling-ui').style.display = 'flex';
             document.getElementById('call-status').innerText = offer ? "Connecting..." : "Calling...";
             
-            // Show/Hide Flip Camera btn
             document.getElementById('flip-cam-btn').style.display = (isVideo && navigator.mediaDevices.enumerateDevices) ? 'inline-block' : 'none';
 
             try {
@@ -438,7 +429,6 @@
 
                 peerConnection = new RTCPeerConnection(config);
                 
-                // Add tracks
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
                 peerConnection.ontrack = (event) => {
@@ -452,14 +442,12 @@
                 };
 
                 if (offer) {
-                    // Answering
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
                     sendSocketMessage('call_answer', { target: currentChat, answer: answer });
                     document.getElementById('call-status').innerText = "Connected";
                 } else {
-                    // Calling
                     const offerCreated = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offerCreated);
                     sendSocketMessage('call_offer', { target: currentChat, offer: offerCreated });
@@ -474,23 +462,20 @@
         async function flipCamera() {
             if(!localStream) return;
             const videoTrack = localStream.getVideoTracks()[0];
-            // Simple flip implementation using facingMode if supported
             const constraints = { video: { facingMode: (videoTrack.getSettings().facingMode === 'user' ? 'environment' : 'user') } };
             
             try {
                 const newStream = await navigator.mediaDevices.getUserMedia(constraints);
                 const newTrack = newStream.getVideoTracks()[0];
                 
-                // Replace track
                 const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
                 if(sender) sender.replaceTrack(newTrack);
                 
-                // Update local view
                 localStream.removeTrack(videoTrack);
                 localStream.addTrack(newTrack);
                 document.getElementById('local-video').srcObject = localStream;
                 
-                videoTrack.stop(); // Stop old track
+                videoTrack.stop();
             } catch(e) { console.error("Flip failed", e); }
         }
 
@@ -508,3 +493,4 @@
         }
     </script>
 </body>
+</html>

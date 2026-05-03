@@ -1,7 +1,7 @@
 # main.py
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File, Form, Requestfrom fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List, Dict
 import cloudinary
@@ -24,16 +24,13 @@ app.add_middleware(
 )
 
 # Cloudinary Configuration
-# It is better to set these in Render Environment Variables, but hardcoding works for testing
+# Replace with your actual credentials or set as Environment Variables in Render
 cloudinary.config( 
-    cloud_name = "dvwec2kgx", # Replace with yours
+    cloud_name = "dvwec2kgx", 
     api_key = "YOUR_API_KEY", 
     api_secret = "YOUR_API_SECRET",
     secure=True
 )
-
-# Templates Setup
-templates = Jinja2Templates(directory="templates")
 
 # Dependency
 def get_db():
@@ -47,6 +44,7 @@ def get_db():
 
 @app.get("/")
 async def read_root():
+    # Serves the index.html from the templates folder
     return FileResponse("templates/index.html")
 
 @app.post("/login")
@@ -73,7 +71,7 @@ async def login(username: str = Form(None), file: UploadFile = File(None), db: S
     db.commit()
     db.refresh(user)
     return {"username": user.username, "profile_pic": user.profile_pic}
-    
+
 @app.get("/users")
 def get_users(db: Session = Depends(get_db)):
     users = db.query(database.User).all()
