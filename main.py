@@ -1,7 +1,7 @@
 # main.py
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List, Dict
@@ -47,9 +47,8 @@ def get_db():
 # --- HTTP Routes ---
 
 @app.get("/")
-async def read_root(request: Request):
-    # Serves the login/chat UI
-    return templates.TemplateResponse("index.html", {"request": request})
+async def read_root():
+    return FileResponse("templates/index.html")
 
 @app.post("/login")
 async def login(username: str = None, file: UploadFile = File(None), db: Session = Depends(get_db)):
