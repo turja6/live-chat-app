@@ -1,37 +1,114 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text
+from sqlalchemy import create_engine, Column, Integer, String, Text, or_, and_
 from sqlalchemy.orm import declarative_base, sessionmaker
+import json
+from datetime import datetime
 
-# Your existing Neon Database
 SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, 
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5
+    }
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+class User(Base):
+    __tablename__ = "users"
+    username = Column(String, primary_key=True, index=True)
+    profile_pic = Column(Text, default="/static/IC.png")
+    status = Column(String, default="Offline")
+
 class Message(Base):
-    __tablename__ = "simple_messages"
+    __tablename__ = "messages"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    sender = Column(String, index=True)
-    content = Column(Text)
+    msg_id = Column(String, unique=True, index=True)
+    sender = Column(String, nullable=False)
+    receiver = Column(String, nullable=False)
+    profile_pic = Column(Text)
+    message = Column(Text, nullable=False)
+    timestamp = Column(String)
+    reactions = Column(Text, default="{}")
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
-    print("✅ Simple DB Ready")
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables connected and verified.")
+    except Exception as e:
+        print(f"❌ FATAL DB ERROR: {e}")
 
-def save_message(sender, content):
+def update_user(username, profile_pic, status):
     db = SessionLocal()
     try:
-        new_msg = Message(sender=sender, content=content)
+        user = db.query(User).filter(User.username == username).first()
+        if user:
+            user.profile_pic = profile_pic
+            user.status = status
+        else:
+            new_user = User(username=username, profile_pic=profile_pic, status=status)
+            db.add(new_user)
+        db.commit()
+    finally:
+        db.close()
+
+def update_status_only(username, status):
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if user:
+            user.status = status
+            db.commit()
+    finally:
+        db.close()
+
+def get_all_users():
+    db = SessionLocal()
+    try:
+        users = db.query(User).all()
+        return [{"username": u.username, "profile_pic": u.profile_pic, "status": u.status} for u in users]
+    finally:
+        db.close()
+
+def save_message(msg_id, sender, receiver, profile_pic, message):
+    db = SessionLocal()
+    try:
+        ts = datetime.now().strftime("%I:%M %p")
+        new_msg = Message(
+            msg_id=msg_id, sender=sender, receiver=receiver,
+            profile_pic=profile_pic, message=message,
+            timestamp=ts, reactions="{}"
+        )
         db.add(new_msg)
         db.commit()
     finally:
         db.close()
 
-def get_recent_messages():
+def get_history(user1, user2="Public"):
     db = SessionLocal()
     try:
-        # Get last 50 messages
-        msgs = db.query(Message).order_by(Message.id.desc()).limit(50).all()
-        return [{"sender": m.sender, "content": m.content} for m in reversed(msgs)]
+        if user2 == "Public":
+            messages = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(50).all()
+        else:
+            messages = db.query(Message).filter(
+                or_(
+                    and_(Message.sender == user1, Message.receiver == user2),
+                    and_(Message.sender == user2, Message.receiver == user1)
+                )
+            ).order_by(Message.id.desc()).limit(50).all()
+        
+        return [{
+            "msg_id": msg.msg_id, "sender": msg.sender, "profile_pic": msg.profile_pic, 
+            "message": msg.message, "timestamp": msg.timestamp, 
+            "reactions": json.loads(msg.reactions) if msg.reactions else {}
+        } for msg in reversed(messages)]
+    except Exception as e:
+        print(f"DB Error: {e}")
+        return []
     finally:
         db.close()
