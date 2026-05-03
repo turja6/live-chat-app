@@ -3,83 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>IdlyCall Ultimate</title>
+    <title>IdlyCall Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #202225; --side: #2f3136; --chat: #36393f; --accent: #5865F2; --text: #dcddde; --muted: #8e9297; }
+        :root {
+            --bg-main: #0b141a;
+            --bg-sidebar: #111b21;
+            --bg-chat: #0b141a;
+            --bg-input: #202c33;
+            --accent: #00a884; /* WhatsApp Green */
+            --text-main: #e9edef;
+            --text-muted: #8696a0;
+            --danger: #ea0038;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+        body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; display: flex; overflow: hidden; }
 
-        /* Sidebar & Mobile Toggle */
-        .sidebar { width: 260px; background: var(--side); display: flex; flex-direction: column; transition: transform 0.3s ease; z-index: 100; border-right: 1px solid #202225; }
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--chat); position: relative; }
-        header { padding: 15px; background: var(--side); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #202225; }
-        .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        /* Sidebar */
+        .sidebar { width: 300px; background: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid #222d34; transition: transform 0.3s ease; z-index: 100; }
+        .sidebar-header { padding: 15px; font-weight: 600; font-size: 1.2rem; display: flex; justify-content: space-between; align-items: center; background: #202c33; }
 
-        /* Message Styles */
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .message { display: flex; gap: 15px; animation: fadeIn 0.3s ease; }
-        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .msg-name { font-weight: 600; color: white; margin-right: 10px; }
-        .msg-time { font-size: 0.75rem; color: var(--muted); }
-        .msg-text { background: #40444b; padding: 10px; border-radius: 8px; margin-top: 5px; word-wrap: break-word; }
-        .msg-img { max-width: 300px; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+        /* Chat Area */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); position: relative; }
+        header { padding: 10px 20px; background: #202c33; display: flex; justify-content: space-between; align-items: center; min-height: 60px; }
+        
+        .header-info { display: flex; align-items: center; gap: 12px; }
+        .header-pfp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        
+        .call-icons { display: flex; gap: 20px; }
+        .call-icons button { background: none; border: none; color: var(--accent); font-size: 1.4rem; cursor: pointer; opacity: 0.9; }
+        .call-icons button:hover { opacity: 1; }
 
-        /* Call UI */
-        #call-screen { display: none; position: fixed; inset: 0; background: #000; z-index: 2000; }
-        #remote-video { width: 100%; height: 100%; object-fit: contain; }
-        #local-video { position: absolute; bottom: 100px; right: 20px; width: 120px; height: 160px; border: 2px solid var(--accent); border-radius: 8px; }
-        .call-tools { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; }
-        .call-btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; font-size: 1.5rem; background: #4f545c; color: white; }
-        .btn-hangup { background: #ed4245; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat; }
 
-        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .avatar-preview { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--accent); margin-bottom: 15px; object-fit: cover; }
+        /* WhatsApp-Style Message Bubbles */
+        .message { display: flex; flex-direction: column; max-width: 65%; padding: 8px 12px; border-radius: 8px; position: relative; font-size: 0.95rem; line-height: 1.4; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); }
+        .msg-me { align-self: flex-end; background: #005c4b; border-top-right-radius: 0; }
+        .msg-other { align-self: flex-start; background: #202c33; border-top-left-radius: 0; }
+        .msg-time { font-size: 0.7rem; color: rgba(255,255,255,0.6); align-self: flex-end; margin-top: 4px; }
 
+        /* Input Area */
+        .input-container { padding: 10px 15px; background: #202c33; display: flex; align-items: center; gap: 10px; }
+        .input-container input { flex: 1; padding: 10px 15px; background: #2a3942; border: none; border-radius: 8px; color: white; outline: none; }
+
+        /* FULL SCREEN CALL OVERLAY */
+        #call-overlay { display: none; position: fixed; inset: 0; background: #111b21; z-index: 5000; flex-direction: column; align-items: center; justify-content: center; }
+        #remote-video { width: 100%; height: 100%; object-fit: cover; }
+        #local-video-container { position: absolute; top: 20px; right: 20px; width: 100px; height: 150px; border-radius: 12px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
+        #local-video { width: 100%; height: 100%; object-fit: cover; }
+
+        .call-user-info { position: absolute; top: 15%; text-align: center; z-index: 5001; }
+        .call-user-info img { width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px; }
+
+        .call-actions { position: absolute; bottom: 40px; display: flex; gap: 20px; background: rgba(32, 44, 51, 0.9); padding: 15px 30px; border-radius: 40px; z-index: 5001; }
+        .call-btn { width: 50px; height: 50px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; background: #3b4a54; color: white; }
+        .btn-hangup { background: var(--danger); width: 65px; border-radius: 30px; }
+        .btn-active { background: white; color: black; }
+
+        /* Login */
+        #login-screen { position: fixed; inset: 0; background: var(--bg-main); z-index: 9000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
         @media (max-width: 768px) {
-            .mobile-toggle { display: block; }
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
+            .message { max-width: 85%; }
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <label for="pfp-input"><img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png"></label>
+        <label for="pfp-input"><img id="login-preview" style="width:100px; height:100px; border-radius:50%; border:3px solid var(--accent); margin-bottom:20px; cursor:pointer;" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"></label>
         <input type="file" id="pfp-input" style="display:none;" onchange="previewImg(event)">
-        <input type="text" id="username" placeholder="Username" style="padding:12px; border-radius:4px; border:none; margin-bottom:10px; width:250px;">
-        <button onclick="connect()" style="padding:12px 25px; background:var(--accent); color:white; border:none; border-radius:4px; font-weight:600;">Connect</button>
+        <input type="text" id="username" placeholder="Enter name" style="padding:12px; width:260px; border-radius:8px; border:none; margin-bottom:15px; background:#202c33; color:white;">
+        <button onclick="connect()" style="padding:12px 40px; background:var(--accent); color:white; border:none; border-radius:25px; font-weight:bold; cursor:pointer;">Start Chatting</button>
     </div>
 
     <div class="sidebar" id="sidebar">
-        <div style="padding:20px; font-weight:600; border-bottom:1px solid #202225;">Channels</div>
-        <div id="user-list" style="flex:1; overflow-y:auto; padding:10px;"></div>
+        <div class="sidebar-header">Chats</div>
+        <div id="user-list" style="flex:1; overflow-y:auto;"></div>
     </div>
 
     <div class="chat-area" onclick="document.getElementById('sidebar').classList.remove('open')">
         <header>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
-                <span id="chat-header"># Public Server</span>
+            <div class="header-info">
+                <button onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; margin-right:5px;">☰</button>
+                <img id="header-pfp" class="header-pfp" src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png">
+                <div>
+                    <div id="chat-title" style="font-weight:600;">Public Server</div>
+                    <div id="typing-status" style="font-size:0.75rem; color:var(--accent); height:15px;"></div>
+                </div>
             </div>
-            <div id="call-btns" style="display:none;">
-                <button onclick="startCall(true)" title="Video" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">🎥</button>
-                <button onclick="startCall(false)" title="Voice" style="background:none; border:none; font-size:1.5rem; cursor:pointer; margin-left:15px;">📞</button>
+            <div class="call-icons" id="call-btns" style="display:none;">
+                <button onclick="startCall(true)">🎥</button>
+                <button onclick="startCall(false)">📞</button>
             </div>
         </header>
+
         <div id="messages"></div>
-        <div style="padding:20px; display:flex; align-items:center; background:var(--side);">
-            <label for="img-send" style="cursor:pointer; font-size:1.5rem; margin-right:15px;">＋</label>
+
+        <div class="input-container">
+            <label for="img-send" style="cursor:pointer; font-size:1.5rem;">＋</label>
             <input type="file" id="img-send" style="display:none;" onchange="sendImage(event)">
-            <input type="text" id="msgInput" placeholder="Message..." style="flex:1; padding:12px; background:#40444b; border:none; border-radius:8px; color:white;" onkeypress="if(event.key==='Enter') sendMsg()">
+            <input type="text" id="msgInput" placeholder="Type a message" onkeypress="if(event.key==='Enter') sendMsg()">
+            <button onclick="sendMsg()" style="background:none; border:none; color:var(--accent); font-size:1.5rem; cursor:pointer;">➤</button>
         </div>
     </div>
 
-    <div id="call-screen">
+    <!-- CALL OVERLAY -->
+    <div id="call-overlay">
+        <div class="call-user-info" id="call-init-info">
+            <img id="call-pfp" src="">
+            <h2 id="call-name">Username</h2>
+            <p id="call-status">Calling...</p>
+        </div>
         <video id="remote-video" autoplay playsinline></video>
-        <video id="local-video" autoplay playsinline muted></video>
-        <div class="call-tools">
+        <div id="local-video-container">
+            <video id="local-video" autoplay playsinline muted></video>
+        </div>
+        <div class="call-actions">
+            <button class="call-btn" id="btn-mic" onclick="toggleMic()">🎤</button>
+            <button class="call-btn" id="btn-vid" onclick="toggleVid()">📷</button>
             <button class="call-btn" onclick="flipCam()">🔄</button>
             <button class="call-btn btn-hangup" onclick="endCall()">☎️</button>
         </div>
@@ -87,7 +132,15 @@
 
     <script>
         let ws, myUser, myPic = "", currentChat = "Public", localStream, peerConn;
-        const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+        let isMicOn = true, isVidOn = true;
+
+        // Better RTC Config for Quality
+        const rtcConfig = { 
+            iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" }
+            ] 
+        };
 
         function previewImg(e) {
             const reader = new FileReader();
@@ -113,67 +166,133 @@
             };
         }
 
-        async function startCall(vid) {
-            document.getElementById("call-screen").style.display = "block";
-            localStream = await navigator.mediaDevices.getUserMedia({video: vid, audio: true});
-            document.getElementById("local-video").srcObject = localStream;
-            peerConn = new RTCPeerConnection(rtcConfig);
-            localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
-            peerConn.onicecandidate = (e) => e.candidate && ws.send(JSON.stringify({type:"ice_candidate", target: currentChat, candidate: e.candidate}));
-            peerConn.ontrack = (e) => document.getElementById("remote-video").srcObject = e.streams[0];
-            const offer = await peerConn.createOffer();
-            await peerConn.setLocalDescription(offer);
-            ws.send(JSON.stringify({type:"call_offer", target: currentChat, sdp: offer, video: vid}));
+        async function startCall(video) {
+            document.getElementById("call-overlay").style.display = "flex";
+            document.getElementById("call-name").innerText = currentChat;
+            document.getElementById("call-status").innerText = "Ringing...";
+            
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({video: video, audio: true});
+                document.getElementById("local-video").srcObject = localStream;
+                
+                peerConn = new RTCPeerConnection(rtcConfig);
+                localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
+                
+                peerConn.onicecandidate = (e) => e.candidate && ws.send(JSON.stringify({type:"ice_candidate", target: currentChat, candidate: e.candidate}));
+                peerConn.ontrack = (e) => {
+                    document.getElementById("remote-video").srcObject = e.streams[0];
+                    document.getElementById("call-init-info").style.display = "none"; // Hide pfp when video starts
+                };
+
+                const offer = await peerConn.createOffer();
+                await peerConn.setLocalDescription(offer);
+                ws.send(JSON.stringify({type:"call_offer", target: currentChat, sdp: offer, video: video}));
+            } catch(err) { alert("Camera access denied"); resetCall(); }
         }
 
         async function handleOffer(d) {
-            if(!confirm(`Call from ${d.sender}. Accept?`)) return;
-            document.getElementById("call-screen").style.display = "block";
+            if(!confirm(`Incoming call from ${d.sender}. Accept?`)) {
+                ws.send(JSON.stringify({type:"call_end", target: d.sender}));
+                return;
+            }
+            document.getElementById("call-overlay").style.display = "flex";
+            document.getElementById("call-name").innerText = d.sender;
+            
             localStream = await navigator.mediaDevices.getUserMedia({video: d.video, audio: true});
             document.getElementById("local-video").srcObject = localStream;
+
             peerConn = new RTCPeerConnection(rtcConfig);
             localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
             peerConn.onicecandidate = (e) => e.candidate && ws.send(JSON.stringify({type:"ice_candidate", target: d.sender, candidate: e.candidate}));
-            peerConn.ontrack = (e) => document.getElementById("remote-video").srcObject = e.streams[0];
+            peerConn.ontrack = (e) => {
+                document.getElementById("remote-video").srcObject = e.streams[0];
+                document.getElementById("call-init-info").style.display = "none";
+            };
+
             await peerConn.setRemoteDescription(new RTCSessionDescription(d.sdp));
             const ans = await peerConn.createAnswer();
             await peerConn.setLocalDescription(ans);
             ws.send(JSON.stringify({type:"call_answer", target: d.sender, sdp: ans}));
         }
 
+        function toggleMic() {
+            isMicOn = !isMicOn;
+            localStream.getAudioTracks()[0].enabled = isMicOn;
+            document.getElementById("btn-mic").classList.toggle("btn-active", !isMicOn);
+        }
+
+        function toggleVid() {
+            isVidOn = !isVidOn;
+            localStream.getVideoTracks()[0].enabled = isVidOn;
+            document.getElementById("btn-vid").classList.toggle("btn-active", !isVidOn);
+        }
+
+        async function flipCam() {
+            const videoTrack = localStream.getVideoTracks()[0];
+            const caps = videoTrack.getSettings();
+            const facing = caps.facingMode === 'user' ? 'environment' : 'user';
+            
+            videoTrack.stop();
+            const newStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: facing}});
+            const newTrack = newStream.getVideoTracks()[0];
+            localStream.removeTrack(videoTrack);
+            localStream.addTrack(newTrack);
+            document.getElementById("local-video").srcObject = localStream;
+            
+            const sender = peerConn.getSenders().find(s => s.track.kind === 'video');
+            sender.replaceTrack(newTrack);
+        }
+
+        function endCall() {
+            ws.send(JSON.stringify({type:"call_end", target: currentChat}));
+            resetCall();
+        }
+
+        function resetCall() {
+            if(localStream) localStream.getTracks().forEach(t=>t.stop());
+            document.getElementById("call-overlay").style.display = "none";
+            document.getElementById("call-init-info").style.display = "block";
+            if(peerConn) peerConn.close();
+        }
+
         function drawMsg(d) {
             const m = document.getElementById("messages");
+            const isMe = d.sender === myUser;
             const isImg = d.content.includes("res.cloudinary.com");
-            const content = isImg ? `<img src="${d.content}" class="msg-img" onclick="window.open(this.src)">` : `<div class="msg-text">${d.content}</div>`;
+            const content = isImg ? `<img src="${d.content}" style="max-width:100%; border-radius:8px; cursor:pointer;" onclick="window.open(this.src)">` : d.content;
+            
             m.innerHTML += `
-                <div class="message">
-                    <img src="${d.profile_pic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="msg-avatar">
-                    <div class="msg-body">
-                        <div class="msg-header"><span class="msg-name">${d.sender}</span><span class="msg-time">${d.timestamp || ''}</span></div>
-                        ${content}
-                    </div>
+                <div class="message ${isMe ? 'msg-me' : 'msg-other'}">
+                    <span style="font-size:0.75rem; font-weight:bold; color:var(--accent);">${isMe ? '' : d.sender}</span>
+                    <div>${content}</div>
+                    <span class="msg-time">${d.timestamp || ''}</span>
                 </div>`;
             m.scrollTop = m.scrollHeight;
         }
 
         function renderUsers(users) {
             const list = document.getElementById("user-list");
-            list.innerHTML = `<div style="padding:10px; border-radius:4px; cursor:pointer;" onclick="switchChat('Public')"># Public Server</div>`;
+            list.innerHTML = `<div class="user-item" style="border-bottom:1px solid #222d34;" onclick="switchChat('Public')">
+                <img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png">
+                <span>Public Server</span>
+            </div>`;
             users.forEach(u => {
                 if(u.username === myUser) return;
                 list.innerHTML += `
-                    <div style="display:flex; align-items:center; padding:10px; cursor:pointer;" onclick="switchChat('${u.username}')">
-                        <img src="${u.profile_pic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width:30px; height:30px; border-radius:50%; margin-right:10px;">
+                    <div class="user-item" onclick="switchChat('${u.username}', '${u.profile_pic}')">
+                        <img src="${u.profile_pic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
                         <span>${u.username}</span>
-                        <div style="width:8px; height:8px; border-radius:50%; margin-left:auto; background:${u.status==='Online'?'#3ba55d':'#747f8d'}"></div>
+                        <div class="status ${u.status==='Online'?'online':''}"></div>
                     </div>`;
             });
         }
 
-        function switchChat(u) {
+        function switchChat(u, pic) {
             currentChat = u;
-            document.getElementById("chat-header").innerText = u === "Public" ? "# Public Server" : "@ " + u;
+            document.getElementById("chat-title").innerText = u === "Public" ? "Public Server" : u;
+            document.getElementById("header-pfp").src = pic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
             document.getElementById("call-btns").style.display = u === "Public" ? "none" : "flex";
+            document.getElementById("sidebar").classList.remove("open");
             ws.send(JSON.stringify({type: "get_history", target: u}));
         }
 
@@ -184,14 +303,12 @@
             i.value = "";
         }
 
-        function sendImage(e) {
-            const r = new FileReader();
-            r.onload = () => ws.send(JSON.stringify({type:"chat", receiver: currentChat, content: r.result, pic: myPic}));
-            r.readAsDataURL(e.target.files[0]);
+        function sendImage(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => ws.send(JSON.stringify({type:"chat", receiver: currentChat, content: reader.result, pic: myPic}));
+            reader.readAsDataURL(file);
         }
-
-        function endCall() { ws.send(JSON.stringify({type:"call_end", target: currentChat})); resetCall(); }
-        function resetCall() { if(localStream) localStream.getTracks().forEach(t=>t.stop()); document.getElementById("call-screen").style.display="none"; }
     </script>
 </body>
 </html>
