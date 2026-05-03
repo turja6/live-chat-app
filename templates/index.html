@@ -3,96 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IdlyCall - Chat</title>
+    <title>IdlyCall - Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #36393f;
-            --bg-chat: #32353b;
+            --bg-main: #202225;
+            --bg-sidebar: #2f3136;
+            --bg-chat: #36393f;
             --bg-input: #40444b;
             --accent: #5865F2;
-            --accent-hover: #4752C4;
             --text-main: #dcddde;
             --text-muted: #8e9297;
             --bubble-other: #4f545c;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background-color: var(--bg-main); color: var(--text-main); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; }
 
         /* Login Screen */
-        #login-screen { background: #2f3136; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 90%; max-width: 350px; transition: opacity 0.3s ease; }
+        #login-screen { background: var(--bg-sidebar); padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 90%; max-width: 350px; }
         .logo-text { font-size: 1.8rem; font-weight: 600; color: white; margin-bottom: 25px; }
         .logo-text span { color: var(--accent); }
-        #login-screen input { width: 100%; padding: 14px; border-radius: 6px; border: none; background: var(--bg-input); color: white; font-size: 1rem; margin-bottom: 20px; outline: none; transition: box-shadow 0.2s; }
-        #login-screen input:focus { box-shadow: 0 0 0 2px var(--accent); }
-        #login-screen button { width: 100%; padding: 14px; border: none; background: var(--accent); color: white; font-size: 1rem; font-weight: 600; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-        #login-screen button:hover { background: var(--accent-hover); }
+        #login-screen input { width: 100%; padding: 14px; border-radius: 6px; border: none; background: var(--bg-input); color: white; font-size: 1rem; margin-bottom: 20px; outline: none; }
+        #login-screen button { width: 100%; padding: 14px; border: none; background: var(--accent); color: white; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        #login-screen button:hover { background: #4752C4; }
 
-        /* Chat Screen */
-        #chat-screen { display: none; width: 100%; max-width: 800px; height: 90vh; background: var(--bg-chat); border-radius: 12px; flex-direction: column; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        /* App Container (Sidebar + Chat) */
+        #app-container { display: none; width: 100%; height: 100%; max-width: 1200px; }
         
-        header { background: #2f3136; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #202225; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 10; }
-        .header-title { font-weight: 600; font-size: 1.1rem; color: white; }
-        .user-badge { background: #202225; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
-        .status-dot { width: 8px; height: 8px; background: #3ba55d; border-radius: 50%; }
-
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--bg-main); display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px; font-weight: 600; color: white; border-bottom: 1px solid var(--bg-main); }
+        .user-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .user-item { padding: 10px; border-radius: 4px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; margin-bottom: 2px; transition: 0.2s; }
+        .user-item:hover { background: var(--bg-chat); color: white; }
+        .user-item.active { background: var(--accent); color: white; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #3ba55d; margin-right: 10px; }
+        
+        /* Chat Area */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); }
+        header { padding: 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; }
+        
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
-        #messages::-webkit-scrollbar { width: 8px; }
-        #messages::-webkit-scrollbar-thumb { background: #202225; border-radius: 4px; }
-
-        /* Message Bubbles */
         .msg-wrapper { display: flex; flex-direction: column; max-width: 75%; animation: fadeIn 0.3s ease; }
         .msg-wrapper.me { align-self: flex-end; align-items: flex-end; }
         .msg-wrapper.other { align-self: flex-start; align-items: flex-start; }
-        
-        .msg-info { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; margin-left: 4px; margin-right: 4px; }
-        .msg-bubble { padding: 10px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        
+        .msg-info { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; }
+        .msg-bubble { padding: 10px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
         .me .msg-bubble { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
         .other .msg-bubble { background: var(--bubble-other); color: white; border-bottom-left-radius: 4px; }
-        
-        .sys-msg { align-self: center; background: #202225; padding: 6px 12px; border-radius: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin: 10px 0; }
 
         /* Input Area */
-        #input-area { padding: 20px; background: #2f3136; }
-        .input-box { display: flex; background: var(--bg-input); border-radius: 8px; overflow: hidden; padding: 5px; }
-        .input-box input { flex: 1; padding: 12px 15px; border: none; background: transparent; color: white; outline: none; font-size: 0.95rem; }
-        .input-box input::placeholder { color: var(--text-muted); }
-        .input-box button { padding: 0 20px; border: none; background: transparent; color: var(--accent); font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: color 0.2s; }
+        #input-area { padding: 20px; background: var(--bg-sidebar); }
+        .input-box { display: flex; background: var(--bg-input); border-radius: 8px; overflow: hidden; }
+        .input-box input { flex: 1; padding: 15px; border: none; background: transparent; color: white; outline: none; font-size: 0.95rem; }
+        .input-box button { padding: 0 20px; border: none; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer; }
         .input-box button:hover { color: white; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        @media (max-width: 600px) {
-            #chat-screen { height: 100vh; border-radius: 0; }
-            .msg-wrapper { max-width: 85%; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Mobile adjustment */
+        @media (max-width: 768px) {
+            .sidebar { width: 80px; }
+            .user-item span { display: none; }
+            .user-item { justify-content: center; }
+            .status-dot { margin-right: 0; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Modern Login -->
     <div id="login-screen">
         <div class="logo-text">Idly<span>Call</span></div>
         <input type="text" id="username" placeholder="Enter your username" autocomplete="off" onkeypress="if(event.key === 'Enter') connect()">
-        <button id="connectBtn" onclick="connect()">Join Chat</button>
+        <button onclick="connect()">Join System</button>
     </div>
 
-    <!-- Modern Chat UI -->
-    <div id="chat-screen">
-        <header>
-            <div class="header-title">Public Channel</div>
-            <div class="user-badge">
-                <div class="status-dot"></div>
-                <span id="display-name">User</span>
-            </div>
-        </header>
-        <div id="messages"></div>
-        <div id="input-area">
-            <div class="input-box">
-                <input type="text" id="msgInput" placeholder="Message the channel..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
-                <button onclick="sendMsg()">Send</button>
+    <div id="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">Channels & DMs</div>
+            <div class="user-list" id="user-list-container"></div>
+        </div>
+
+        <div class="chat-area">
+            <header id="chat-header"># Public Channel</header>
+            <div id="messages"></div>
+            <div id="input-area">
+                <div class="input-box">
+                    <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
+                    <button onclick="sendMsg()">Send</button>
+                </div>
             </div>
         </div>
     </div>
@@ -101,10 +101,11 @@
         let ws;
         let heartbeat;
         let myUsername = "";
+        let currentChat = "Public"; 
+        let onlineUsers = [];
 
-        // Check local storage so users don't have to re-type their name every time
         window.onload = () => {
-            const savedName = localStorage.getItem("simple_chat_name");
+            const savedName = localStorage.getItem("pro_chat_name");
             if (savedName) document.getElementById("username").value = savedName;
         };
 
@@ -112,23 +113,14 @@
             myUsername = document.getElementById("username").value.trim();
             if (!myUsername) return alert("Please enter a username");
 
-            // Save for next time
-            localStorage.setItem("simple_chat_name", myUsername);
-            document.getElementById("display-name").innerText = myUsername;
+            localStorage.setItem("pro_chat_name", myUsername);
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("app-container").style.display = "flex";
 
-            // Swap Screens
-            document.getElementById("login-screen").style.opacity = "0";
-            setTimeout(() => {
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("chat-screen").style.display = "flex";
-            }, 300);
-
-            // Connect WebSocket
             const protocol = window.location.protocol === "https:" ? "wss" : "ws";
             ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
 
             ws.onopen = () => {
-                // Keep Render connection alive
                 heartbeat = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
                 }, 20000);
@@ -136,38 +128,86 @@
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                const msgs = document.getElementById("messages");
                 
                 if (data.type === "history") {
-                    msgs.innerHTML = "";
-                    // History comes from DB, we render it
-                    data.data.forEach(m => drawMessage(m.sender, m.content));
-                } else if (data.type === "chat") {
-                    drawMessage(data.sender, data.content);
-                } else if (data.type === "system") {
-                    msgs.innerHTML += `<div class="sys-msg">${data.content}</div>`;
-                    msgs.scrollTop = msgs.scrollHeight;
+                    // Only render history if we are currently looking at that specific chat
+                    if (data.target === currentChat) {
+                        document.getElementById("messages").innerHTML = "";
+                        data.data.forEach(m => drawMessage(m.sender, m.content));
+                    }
+                } 
+                else if (data.type === "chat") {
+                    // Routing logic: Should this message appear on my screen right now?
+                    if (currentChat === "Public" && data.receiver === "Public") {
+                        drawMessage(data.sender, data.content);
+                    } 
+                    else if (currentChat !== "Public") {
+                        if (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)) {
+                            drawMessage(data.sender, data.content);
+                        }
+                    }
+                } 
+                else if (data.type === "user_list") {
+                    onlineUsers = data.users;
+                    renderSidebar();
                 }
             };
 
             ws.onclose = () => {
                 clearInterval(heartbeat);
-                alert("Connection lost. Please refresh the page.");
-                window.location.reload();
+                alert("Connection lost. Please refresh.");
             };
+        }
+
+        function renderSidebar() {
+            const container = document.getElementById("user-list-container");
+            
+            // Render Public Channel First
+            let html = `
+                <div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')">
+                    <div class="status-dot" style="background:var(--accent);"></div>
+                    <span>Public Channel</span>
+                </div>
+            `;
+            
+            // Render Online Users for DMs
+            onlineUsers.forEach(user => {
+                if (user === myUsername) return; // Don't DM yourself
+                html += `
+                    <div class="user-item ${currentChat === user ? 'active' : ''}" onclick="switchChat('${user}')">
+                        <div class="status-dot"></div>
+                        <span>${user}</span>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function switchChat(target) {
+            currentChat = target;
+            
+            // Update UI Header
+            document.getElementById("chat-header").innerText = target === "Public" ? "# Public Channel" : `@ ${target}`;
+            document.getElementById("msgInput").placeholder = `Message ${target}...`;
+            
+            // Re-render sidebar to update the active highlight
+            renderSidebar();
+            
+            // Clear current messages and ask server for the new chat history
+            document.getElementById("messages").innerHTML = "";
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+            }
         }
 
         function drawMessage(sender, text) {
             const msgs = document.getElementById("messages");
             const isMe = sender === myUsername;
-            
-            // Generate a local timestamp (e.g., "10:45 AM")
             const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             const div = document.createElement("div");
             div.className = `msg-wrapper ${isMe ? 'me' : 'other'}`;
-            
-            // If it's me, only show the time. If it's them, show "Name • Time"
             const infoText = isMe ? timeString : `${sender} • ${timeString}`;
 
             div.innerHTML = `
@@ -183,9 +223,12 @@
             const input = document.getElementById("msgInput");
             const text = input.value.trim();
             if (text && ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "chat", content: text }));
+                ws.send(JSON.stringify({ 
+                    type: "chat", 
+                    receiver: currentChat, // Tells the backend if this is a DM or Public
+                    content: text 
+                }));
                 input.value = "";
-                // Refocus input for continuous typing
                 input.focus(); 
             }
         }
