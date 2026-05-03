@@ -49,7 +49,7 @@ def init_db():
 def update_user(username, profile_pic, status):
     db = None
     try:
-        db = SessionLocal() # NOW SAFELY INSIDE THE SHIELD
+        db = SessionLocal()
         user = db.query(User).filter(User.username == username).first()
         if user:
             user.profile_pic = profile_pic
@@ -145,6 +145,6 @@ def get_history(user1, user2="Public"):
         } for msg in reversed(messages)]
     except Exception as e:
         print(f"❌ DB ERROR (get_history): {e}")
-        return [] # If DB fails, it returns an empty chat history instead of crashing!
+        return [] 
     finally:
         if db: db.close()

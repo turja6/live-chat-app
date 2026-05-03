@@ -69,6 +69,12 @@
         .msg-time { font-size: 0.75rem; color: var(--text-muted); }
         .msg-content { color: var(--text-main); font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
         .msg-image-attachment { max-width: 350px; max-height: 350px; border-radius: 8px; margin-top: 8px; object-fit: cover; cursor: pointer; }
+        
+        /* NEW: Link Preview Styles */
+        .link-preview { background: var(--bg-dark); border-left: 4px solid var(--accent); padding: 10px; margin-top: 8px; border-radius: 4px; font-size: 0.85rem; max-width: 400px; }
+        .link-preview a { color: var(--accent); text-decoration: none; font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .link-preview a:hover { text-decoration: underline; }
+
         .input-wrapper { padding: 0 20px 20px 20px; position: relative; }
         .input-box { display: flex; align-items: center; background: var(--input-bg); border-radius: 8px; padding: 10px 15px; }
         .input-box input { flex: 1; background: transparent; border: none; color: white; font-size: 1rem; outline: none; }
@@ -208,7 +214,6 @@
         let userProfiles = {};
         let unreadCounts = {};
 
-        // Added safety checks so it never crashes if an element is missing
         const chatSound = document.getElementById("chatSound"); 
         if(chatSound) chatSound.volume = 0.2;
         const ringSound = document.getElementById("ringSound"); 
@@ -285,11 +290,17 @@
                 const data = JSON.parse(event.data);
                 if (data.type === "chat") {
                     if (data.sender !== myUsername) { safePlayAudio(chatSound); if (document.visibilityState !== "visible") new Notification(`New message from ${data.sender}`, { body: data.message.startsWith("data:image") ? "Sent an image" : data.message, icon: myPicBase64 }); }
-                    if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) { drawMessage(data.message, data.sender, data.profile_pic, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})); } 
+                    
+                    // FIXED: Pass preview data to drawMessage
+                    if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) { 
+                        drawMessage(data.message, data.sender, data.profile_pic, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), data.preview); 
+                    } 
                     else if (data.sender !== myUsername) { const trackTarget = data.receiver === "Public" ? "Public" : data.sender; unreadCounts[trackTarget] = (unreadCounts[trackTarget] || 0) + 1; updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status}))); }
                 }
                 else if (data.type === "call_offer") { handleIncomingCall(data); } else if (data.type === "call_answer") { handleAnswer(data.sdp); } else if (data.type === "ice_candidate") { handleIceCandidate(data.candidate); } else if (data.type === "call_end") { forceEndCall(); }
-                else if (data.type === "history") { document.getElementById('chat-stream').innerHTML = ""; data.data.forEach(msg => drawMessage(msg.message, msg.sender, msg.profile_pic, msg.timestamp || "")); }
+                
+                // FIXED: History array might not contain previews, fallback gracefully
+                else if (data.type === "history") { document.getElementById('chat-stream').innerHTML = ""; data.data.forEach(msg => drawMessage(msg.message, msg.sender, msg.profile_pic, msg.timestamp || "", null)); }
                 else if (data.type === "user_list") { data.data.forEach(u => userProfiles[u.username] = {name: u.username, pic: u.profile_pic, status: u.status}); updateSidebar(data.data); }
             };
         }
@@ -311,11 +322,18 @@
             updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status})));
         }
 
-        function drawMessage(text, senderName, picUrl, time) {
+        // FIXED: Added preview argument and preview UI generation
+        function drawMessage(text, senderName, picUrl, time, preview = null) {
             const stream = document.getElementById('chat-stream'); const msgDiv = document.createElement('div'); msgDiv.className = `message`;
             let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
             let isImage = text.startsWith("data:image/") || text.includes("res.cloudinary.com");
-            let contentHtml = isImage ? `<img src="${text}" class="msg-image-attachment" onclick="window.open(this.src, '_blank')">` : `<div class="msg-content">${text}</div>`;
+            
+            let previewHtml = "";
+            if (preview && preview.url && preview.title) {
+                previewHtml = `<div class="link-preview">🔗 <a href="${preview.url}" target="_blank">${preview.title}</a></div>`;
+            }
+
+            let contentHtml = isImage ? `<img src="${text}" class="msg-image-attachment" onclick="window.open(this.src, '_blank')">` : `<div class="msg-content">${text}</div>${previewHtml}`;
             msgDiv.innerHTML = `<img src="${safePic}" class="msg-avatar"><div><div class="msg-header"><span class="msg-sender">${senderName}</span><span class="msg-time">${time}</span></div>${contentHtml}</div>`;
             stream.appendChild(msgDiv); stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
         }

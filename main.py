@@ -16,9 +16,12 @@ import database
 os.makedirs("static", exist_ok=True)
 os.makedirs("templates", exist_ok=True)
 
+# Using os.getenv so it works out of the box, but you should move these to a .env file later!
 cloudinary.config( 
-  cloud_name = "dvdfjknil", api_key = "452245293533251", 
-  api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4", secure = True
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "dvdfjknil"), 
+    api_key = os.getenv("CLOUDINARY_API_KEY", "452245293533251"), 
+    api_secret = os.getenv("CLOUDINARY_API_SECRET", "WPLiRjhMyG4GVKFBDjrz0zFrEf4"), 
+    secure = True
 )
 
 app = FastAPI()
@@ -67,7 +70,8 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def get(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+    # FIXED: Modern standard format for TemplateResponse
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
@@ -87,7 +91,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         
         while True:
             try:
-                # NEW: If anything in this loop fails, it suppresses the error instead of killing the WebSocket!
                 data_str = await websocket.receive_text()
                 data = json.loads(data_str)
                 msg_type = data.get("type")
@@ -132,16 +135,13 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     await manager.send_personal_message(data, target_user)
 
             except WebSocketDisconnect:
-                # The user literally closed their browser tab. Break the loop cleanly.
                 break
             except Exception as e:
-                # A backend glitch happened, but the loop SURVIVES!
                 print(f"⚠️ GLITCH CAUGHT: {e}")
 
     except Exception as e:
         print(f"❌ FATAL ERROR: {e}")
     finally:
-        # This cleanup only runs when the user actually leaves or closes the tab
         manager.disconnect(username)
         await asyncio.to_thread(database.update_status_only, username, "Offline")
         users = await asyncio.to_thread(database.get_all_users)
