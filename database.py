@@ -19,8 +19,10 @@ class User(Base):
 
 # Table to save avatars and timestamps for history
 class Message(Base):
-    __tablename__ = "app_messages_v2"
+    # Change "app_messages_v2" to the name of your old table (e.g., "messages")
+    __tablename__ = "messages" 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    # ... keep the rest the same
     sender = Column(String, index=True)
     receiver = Column(String, index=True) 
     profile_pic = Column(Text)
