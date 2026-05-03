@@ -4,5 +4,3 @@ websockets
 jinja2
 sqlalchemy
 psycopg2-binary
-cloudinary
-python-multipart
