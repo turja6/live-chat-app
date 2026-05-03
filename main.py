@@ -6,9 +6,14 @@ import cloudinary
 import cloudinary.uploader
 import database
 
+# ==========================================
+# 1. CLOUDINARY CONFIGURATION
+# ==========================================
 cloudinary.config( 
-  cloud_name = "dvdfjknil", api_key = "452245293533251", 
-  api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4", secure = True
+  cloud_name = "dvdfjknil", 
+  api_key = "452245293533251", 
+  api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
+  secure = True
 )
 
 app = FastAPI()
@@ -20,12 +25,13 @@ class ConnectionManager:
         self.active_connections = {}
 
     async def connect(self, websocket: WebSocket, username: str):
-        await websocket.accept()
+        # The websocket is already accepted in the endpoint function
         self.active_connections[username] = websocket
 
     async def disconnect(self, username: str):
         if username in self.active_connections:
             del self.active_connections[username]
+            # Set user to offline in DB
             await asyncio.to_thread(database.update_user, username, None, "Offline")
             await self.broadcast_user_list()
 
@@ -47,38 +53,55 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def get(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
-    await manager.connect(websocket, username)
+    await websocket.accept()
+    
     try:
-        init_data = json.loads(await websocket.receive_text())
-        pic = init_json.get("pic", "")
+        # Handshake: Receive profile data
+        init_data_str = await websocket.receive_text()
+        init_data = json.loads(init_data_str)
+        pic = init_data.get("pic", "")
+
+        await manager.connect(websocket, username)
         await asyncio.to_thread(database.update_user, username, pic, "Online")
         await manager.broadcast_user_list()
         
-        # Auto-send initial Public history
+        # Send initial history
         history = await asyncio.to_thread(database.get_chat_history, username, "Public")
         await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
         
         while True:
-            data = json.loads(await websocket.receive_text())
+            data_str = await websocket.receive_text()
+            data = json.loads(data_str)
             m_type = data.get("type")
 
             if m_type == "chat":
-                receiver = data.get("receiver")
-                content = data.get("content")
+                receiver = data.get("receiver", "Public")
+                content = data.get("content", "")
+                
                 if content.startswith("data:image/"):
-                    content = (await asyncio.to_thread(cloudinary.uploader.upload, content)).get("secure_url")
+                    upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
+                    content = upload_result.get("secure_url")
                 
-                ts = await asyncio.to_thread(database.save_message, username, receiver, data.get("pic"), content)
-                payload = {"type": "chat", "sender": username, "receiver": receiver, "content": content, "timestamp": ts, "profile_pic": data.get("pic")}
+                ts = await asyncio.to_thread(database.save_message, username, receiver, pic, content)
+                payload = {
+                    "type": "chat", 
+                    "sender": username, 
+                    "receiver": receiver, 
+                    "content": content, 
+                    "timestamp": ts, 
+                    "profile_pic": pic
+                }
                 
-                if receiver == "Public": await manager.broadcast(payload)
+                if receiver == "Public":
+                    await manager.broadcast(payload)
                 else:
                     await manager.send_personal(payload, receiver)
-                    await manager.send_personal(payload, username)
+                    if username != receiver:
+                        await manager.send_personal(payload, username)
 
             elif m_type in ["call_offer", "call_answer", "ice_candidate", "call_end"]:
                 target = data.get("target")
@@ -86,7 +109,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 await manager.send_personal(data, target)
 
             elif m_type == "get_history":
-                hist = await asyncio.to_thread(database.get_chat_history, username, data.get("target"))
-                await websocket.send_text(json.dumps({"type": "history", "target": data.get("target"), "data": hist}))
+                target = data.get("target", "Public")
+                hist = await asyncio.to_thread(database.get_chat_history, username, target)
+                await websocket.send_text(json.dumps({"type": "history", "target": target, "data": hist}))
 
-    except WebSocketDisconnect: await manager.disconnect(username)
+    except WebSocketDisconnect:
+        await manager.disconnect(username)
+    except Exception as e:
+        print(f"Error: {e}")
+        await manager.disconnect(username)
