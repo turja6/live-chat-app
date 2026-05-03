@@ -47,16 +47,20 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def get(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await manager.connect(websocket, username)
     try:
-        init_data = await websocket.receive_text()
-        init_json = json.loads(init_data)
-        await asyncio.to_thread(database.update_user, username, init_json.get("pic", ""), "Online")
+        init_data = json.loads(await websocket.receive_text())
+        pic = init_json.get("pic", "")
+        await asyncio.to_thread(database.update_user, username, pic, "Online")
         await manager.broadcast_user_list()
+        
+        # Auto-send initial Public history
+        history = await asyncio.to_thread(database.get_chat_history, username, "Public")
+        await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
         
         while True:
             data = json.loads(await websocket.receive_text())
@@ -77,7 +81,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     await manager.send_personal(payload, username)
 
             elif m_type in ["call_offer", "call_answer", "ice_candidate", "call_end"]:
-                # ROUTE SIGNALING DATA TO THE TARGET USER
                 target = data.get("target")
                 data["sender"] = username
                 await manager.send_personal(data, target)
