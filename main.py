@@ -1,6 +1,5 @@
 # main.py
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File, Form, Requestfrom fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -51,7 +50,7 @@ async def read_root():
     return FileResponse("templates/index.html")
 
 @app.post("/login")
-async def login(username: str = None, file: UploadFile = File(None), db: Session = Depends(get_db)):
+async def login(username: str = Form(None), file: UploadFile = File(None), db: Session = Depends(get_db)):
     if not username:
         raise HTTPException(status_code=400, detail="Username required")
     
@@ -74,7 +73,7 @@ async def login(username: str = None, file: UploadFile = File(None), db: Session
     db.commit()
     db.refresh(user)
     return {"username": user.username, "profile_pic": user.profile_pic}
-
+    
 @app.get("/users")
 def get_users(db: Session = Depends(get_db)):
     users = db.query(database.User).all()
