@@ -25,14 +25,11 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections = {}
 
-    async def connect(self, websocket: WebSocket, username: str):
-        await websocket.accept()
-        self.active_connections[username] = websocket
-        await self.broadcast_user_list()
-
     async def disconnect(self, username: str):
         if username in self.active_connections:
             del self.active_connections[username]
+            # Set user to offline in DB
+            await asyncio.to_thread(database.update_user, username, None, "Offline")
             await self.broadcast_user_list()
 
     async def broadcast(self, message: dict):
@@ -46,7 +43,8 @@ class ConnectionManager:
             except: pass
 
     async def broadcast_user_list(self):
-        users = list(self.active_connections.keys())
+        # Pulls from database to show both online AND offline users
+        users = await asyncio.to_thread(database.get_all_users)
         await self.broadcast({"type": "user_list", "users": users})
 
 manager = ConnectionManager()
@@ -57,9 +55,18 @@ async def get(request: Request):
 
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
-    await manager.connect(websocket, username)
+    await websocket.accept()
     
-    # Send Public history immediately
+    # Wait for the frontend to send the profile picture before fully connecting
+    init_data = await websocket.receive_text()
+    init_json = json.loads(init_data)
+    pic = init_json.get("pic", "")
+
+    manager.active_connections[username] = websocket
+    await asyncio.to_thread(database.update_user, username, pic, "Online")
+    await manager.broadcast_user_list()
+    
+    # Send history
     history = await asyncio.to_thread(database.get_chat_history, username, "Public")
     await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
     
@@ -73,21 +80,26 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 
             if msg_type == "chat":
                 content = data.get("content")
-                receiver = data.get("receiver", "Public") # Defaults to Public
+                receiver = data.get("receiver", "Public")
+                current_pic = data.get("pic", pic)
                 
-                # Check if the message is actually a base64 image payload
+                # Process Image Uploads via Cloudinary
                 if content.startswith("data:image/"):
                     upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
                     content = upload_result.get("secure_url")
                 
-                await asyncio.to_thread(database.save_message, username, receiver, content)
-                payload = {"type": "chat", "sender": username, "receiver": receiver, "content": content}
+                # Save to Database
+                ts = await asyncio.to_thread(database.save_message, username, receiver, current_pic, content)
+                
+                payload = {
+                    "type": "chat", "sender": username, "receiver": receiver, 
+                    "profile_pic": current_pic, "content": content, "timestamp": ts
+                }
                 
                 if receiver == "Public":
                     await manager.broadcast(payload)
                 else:
                     await manager.send_personal_message(payload, receiver)
-                    # Send a copy to the sender so they see their own message
                     if username != receiver: 
                         await manager.send_personal_message(payload, username)
 
@@ -95,6 +107,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 target = data.get("target")
                 hist = await asyncio.to_thread(database.get_chat_history, username, target)
                 await websocket.send_text(json.dumps({"type": "history", "target": target, "data": hist}))
+
+            elif msg_type == "update_profile":
+                new_pic = data.get("pic")
+                pic = new_pic
+                await asyncio.to_thread(database.update_user, username, new_pic, "Online")
+                await manager.broadcast_user_list()
 
     except WebSocketDisconnect:
         await manager.disconnect(username)

@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IdlyCall - Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IdlyCall - Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -15,59 +15,68 @@
             --text-main: #dcddde;
             --text-muted: #8e9297;
             --bubble-other: #4f545c;
+            --online: #3ba55d;
+            --offline: #747f8d;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; }
 
         /* Login Screen */
         #login-screen { background: var(--bg-sidebar); padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 90%; max-width: 350px; }
-        .logo-text { font-size: 1.8rem; font-weight: 600; color: white; margin-bottom: 25px; }
+        .logo-text { font-size: 1.8rem; font-weight: 600; color: white; margin-bottom: 20px; }
         .logo-text span { color: var(--accent); }
+        .avatar-preview { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid var(--accent); cursor: pointer; }
         #login-screen input { width: 100%; padding: 14px; border-radius: 6px; border: none; background: var(--bg-input); color: white; font-size: 1rem; margin-bottom: 20px; outline: none; }
         #login-screen button { width: 100%; padding: 14px; border: none; background: var(--accent); color: white; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.2s; }
         #login-screen button:hover { background: #4752C4; }
 
-        /* App Container (Sidebar + Chat) */
-        #app-container { display: none; width: 100%; height: 100%; max-width: 1200px; }
+        /* App Container */
+        #app-container { display: none; width: 100%; height: 100%; max-width: 1200px; position: relative; }
         
         /* Sidebar */
-        .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--bg-main); display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; font-weight: 600; color: white; border-bottom: 1px solid var(--bg-main); }
+        .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--bg-main); display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .sidebar-header { padding: 20px; font-weight: 600; color: white; border-bottom: 1px solid var(--bg-main); display: flex; justify-content: space-between; align-items: center; }
         .user-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .user-item { padding: 10px; border-radius: 4px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; margin-bottom: 2px; transition: 0.2s; }
+        .user-item { padding: 8px 10px; border-radius: 4px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; margin-bottom: 2px; transition: 0.2s; }
         .user-item:hover { background: var(--bg-chat); color: white; }
         .user-item.active { background: var(--accent); color: white; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #3ba55d; margin-right: 10px; }
+        .user-item img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-left: auto; }
+        .status-online { background: var(--online); }
+        .status-offline { background: var(--offline); }
         
         /* Chat Area */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); }
-        header { padding: 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); position: relative; }
+        header { padding: 15px 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; display: flex; align-items: center; gap: 15px; }
+        .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
         
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
-        .msg-wrapper { display: flex; flex-direction: column; max-width: 75%; animation: fadeIn 0.3s ease; }
-        .msg-wrapper.me { align-self: flex-end; align-items: flex-end; }
-        .msg-wrapper.other { align-self: flex-start; align-items: flex-start; }
-        .msg-info { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; }
-        .msg-bubble { padding: 10px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
-        .me .msg-bubble { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
-        .other .msg-bubble { background: var(--bubble-other); color: white; border-bottom-left-radius: 4px; }
+        .message { display: flex; gap: 15px; animation: fadeIn 0.3s ease; }
+        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .msg-body { display: flex; flex-direction: column; max-width: 80%; }
+        .msg-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+        .msg-name { font-weight: 600; color: white; }
+        .msg-time { font-size: 0.75rem; color: var(--text-muted); }
+        .msg-text { background: var(--bg-input); padding: 10px 15px; border-radius: 8px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; color: var(--text-main); }
+        .msg-image { max-width: 300px; border-radius: 8px; margin-top: 5px; cursor: pointer; }
 
         /* Input Area */
-        #input-area { padding: 20px; background: var(--bg-sidebar); }
-        .input-box { display: flex; background: var(--bg-input); border-radius: 8px; overflow: hidden; }
-        .input-box input { flex: 1; padding: 15px; border: none; background: transparent; color: white; outline: none; font-size: 0.95rem; }
-        .input-box button { padding: 0 20px; border: none; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer; }
-        .input-box button:hover { color: white; }
+        #input-area { padding: 20px; background: var(--bg-chat); }
+        .input-box { display: flex; align-items: center; background: var(--bg-input); border-radius: 8px; overflow: hidden; padding: 5px 10px; }
+        .attach-btn { background: var(--bg-main); color: var(--text-muted); border-radius: 50%; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-weight: bold; margin-right: 10px; }
+        .attach-btn:hover { color: white; }
+        .input-box input { flex: 1; padding: 10px; border: none; background: transparent; color: white; outline: none; font-size: 0.95rem; }
+        .input-box button { padding: 0 15px; border: none; background: transparent; color: var(--accent); font-weight: 600; cursor: pointer; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Mobile adjustment */
+        /* Mobile Adjustments */
         @media (max-width: 768px) {
-            .sidebar { width: 80px; }
-            .user-item span { display: none; }
-            .user-item { justify-content: center; }
-            .status-dot { margin-right: 0; }
+            .mobile-toggle { display: block; }
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+            .sidebar.open { transform: translateX(0); }
+            .msg-image { max-width: 100%; }
         }
     </style>
 </head>
@@ -75,21 +84,32 @@
 
     <div id="login-screen">
         <div class="logo-text">Idly<span>Call</span></div>
+        <label for="login-file">
+            <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" title="Click to upload avatar">
+        </label>
+        <input type="file" id="login-file" accept="image/*" style="display:none;" onchange="processImage(event, 'login-preview')">
         <input type="text" id="username" placeholder="Enter your username" autocomplete="off" onkeypress="if(event.key === 'Enter') connect()">
         <button onclick="connect()">Join System</button>
     </div>
 
     <div id="app-container">
-        <div class="sidebar">
-            <div class="sidebar-header">Channels & DMs</div>
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                Channels & DMs
+            </div>
             <div class="user-list" id="user-list-container"></div>
         </div>
 
-        <div class="chat-area">
-            <header id="chat-header"># Public Channel</header>
+        <div class="chat-area" onclick="document.getElementById('sidebar').classList.remove('open')">
+            <header>
+                <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                <span id="chat-header"># Public Channel</span>
+            </header>
             <div id="messages"></div>
             <div id="input-area">
                 <div class="input-box">
+                    <label for="imageAttachInput" class="attach-btn">＋</label>
+                    <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
                     <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
                     <button onclick="sendMsg()">Send</button>
                 </div>
@@ -101,26 +121,48 @@
         let ws;
         let heartbeat;
         let myUsername = "";
+        let myPicBase64 = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
         let currentChat = "Public"; 
-        let onlineUsers = [];
+        let userList = [];
 
         window.onload = () => {
             const savedName = localStorage.getItem("pro_chat_name");
+            const savedPic = localStorage.getItem("pro_chat_pic");
             if (savedName) document.getElementById("username").value = savedName;
+            if (savedPic) { myPicBase64 = savedPic; document.getElementById("login-preview").src = savedPic; }
         };
+
+        function processImage(e, targetId) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
+                    if (width > 800) { height *= 800 / width; width = 800; }
+                    canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    const b64 = canvas.toDataURL('image/jpeg', 0.8); document.getElementById(targetId).src = b64;
+                    if(targetId === 'login-preview') myPicBase64 = b64;
+                }; img.src = event.target.result;
+            }; reader.readAsDataURL(file);
+        }
 
         function connect() {
             myUsername = document.getElementById("username").value.trim();
             if (!myUsername) return alert("Please enter a username");
 
             localStorage.setItem("pro_chat_name", myUsername);
+            localStorage.setItem("pro_chat_pic", myPicBase64);
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("app-container").style.display = "flex";
 
             const protocol = window.location.protocol === "https:" ? "wss" : "ws";
             ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
 
-            ws.onopen = () => {
+            ws.onopen = function() {
+                // Handshake to send profile pic
+                this.send(JSON.stringify({ pic: myPicBase64 }));
+                
                 heartbeat = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
                 }, 20000);
@@ -132,21 +174,21 @@
                 if (data.type === "history") {
                     if (data.target === currentChat) {
                         document.getElementById("messages").innerHTML = "";
-                        data.data.forEach(m => drawMessage(m.sender, m.content));
+                        data.data.forEach(m => drawMessage(m.sender, m.profile_pic, m.content, m.timestamp));
                     }
                 } 
                 else if (data.type === "chat") {
                     if (currentChat === "Public" && data.receiver === "Public") {
-                        drawMessage(data.sender, data.content);
+                        drawMessage(data.sender, data.profile_pic, data.content, data.timestamp);
                     } 
                     else if (currentChat !== "Public") {
                         if (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)) {
-                            drawMessage(data.sender, data.content);
+                            drawMessage(data.sender, data.profile_pic, data.content, data.timestamp);
                         }
                     }
                 } 
                 else if (data.type === "user_list") {
-                    onlineUsers = data.users;
+                    userList = data.users;
                     renderSidebar();
                 }
             };
@@ -154,6 +196,7 @@
             ws.onclose = () => {
                 clearInterval(heartbeat);
                 alert("Connection lost. Please refresh.");
+                window.location.reload();
             };
         }
 
@@ -162,17 +205,20 @@
             
             let html = `
                 <div class="user-item ${currentChat === 'Public' ? 'active' : ''}" onclick="switchChat('Public')">
-                    <div class="status-dot" style="background:var(--accent);"></div>
-                    <span>Public Channel</span>
+                    <img src="https://cdn-icons-png.flaticon.com/512/1256/1256650.png" style="border-radius:0;">
+                    <span>Public Server</span>
                 </div>
             `;
             
-            onlineUsers.forEach(user => {
-                if (user === myUsername) return; 
+            userList.forEach(user => {
+                if (user.username === myUsername) return; 
+                const statusClass = user.status === "Online" ? "status-online" : "status-offline";
+                const safePic = user.profile_pic || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
                 html += `
-                    <div class="user-item ${currentChat === user ? 'active' : ''}" onclick="switchChat('${user}')">
-                        <div class="status-dot"></div>
-                        <span>${user}</span>
+                    <div class="user-item ${currentChat === user.username ? 'active' : ''}" onclick="switchChat('${user.username}')">
+                        <img src="${safePic}">
+                        <span>${user.username}</span>
+                        <div class="status-dot ${statusClass}"></div>
                     </div>
                 `;
             });
@@ -182,10 +228,9 @@
 
         function switchChat(target) {
             currentChat = target;
-            
             document.getElementById("chat-header").innerText = target === "Public" ? "# Public Channel" : `@ ${target}`;
             document.getElementById("msgInput").placeholder = `Message ${target}...`;
-            
+            document.getElementById('sidebar').classList.remove('open');
             renderSidebar();
             
             document.getElementById("messages").innerHTML = "";
@@ -194,18 +239,25 @@
             }
         }
 
-        function drawMessage(sender, text) {
+        function drawMessage(sender, pic, text, timestamp) {
             const msgs = document.getElementById("messages");
-            const isMe = sender === myUsername;
-            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const safePic = pic || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+            const timeStr = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const isImage = text && (text.startsWith("data:image/") || text.includes("res.cloudinary.com"));
+            const contentHtml = isImage ? `<img src="${text}" class="msg-image" onclick="window.open(this.src, '_blank')">` : `<div class="msg-text">${text}</div>`;
 
             const div = document.createElement("div");
-            div.className = `msg-wrapper ${isMe ? 'me' : 'other'}`;
-            const infoText = isMe ? timeString : `${sender} • ${timeString}`;
-
+            div.className = "message";
             div.innerHTML = `
-                <div class="msg-info">${infoText}</div>
-                <div class="msg-bubble">${text}</div>
+                <img src="${safePic}" class="msg-avatar">
+                <div class="msg-body">
+                    <div class="msg-header">
+                        <span class="msg-name">${sender}</span>
+                        <span class="msg-time">${timeStr}</span>
+                    </div>
+                    ${contentHtml}
+                </div>
             `;
             
             msgs.appendChild(div);
@@ -216,14 +268,25 @@
             const input = document.getElementById("msgInput");
             const text = input.value.trim();
             if (text && ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ 
-                    type: "chat", 
-                    receiver: currentChat, 
-                    content: text 
-                }));
+                ws.send(JSON.stringify({ type: "chat", receiver: currentChat, pic: myPicBase64, content: text }));
                 input.value = "";
                 input.focus(); 
             }
+        }
+
+        function sendImage(e) {
+            const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
+                    if (width > 1200) { height *= 1200 / width; width = 1200; }
+                    canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "chat", receiver: currentChat, pic: myPicBase64, content: canvas.toDataURL('image/jpeg', 0.8) }));
+                    }
+                }; img.src = event.target.result;
+            }; reader.readAsDataURL(file); e.target.value = '';
         }
     </script>
 </body>
