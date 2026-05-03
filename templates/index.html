@@ -27,7 +27,8 @@
         .modal-box { background: var(--bg-light); border: 1px solid var(--bg-dark); padding: 30px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
         .modal-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 4px; border: none; background: var(--bg-dark); color: white; outline: none; font-size: 1rem; }
         .modal-box button { width: 100%; padding: 12px; border-radius: 4px; border: none; font-weight: bold; background: var(--accent); color: white; font-size: 1rem; cursor: pointer; transition: 0.2s; margin-bottom: 10px; }
-        .modal-box button:hover { background: var(--accent-hover); }
+        .modal-box button:hover:not(:disabled) { background: var(--accent-hover); }
+        .modal-box button:disabled { opacity: 0.6; cursor: not-allowed; }
         .modal-box button.cancel { background: transparent; color: var(--text-main); border: 1px solid var(--bg-mid); }
         .modal-box button.cancel:hover { background: var(--bg-mid); }
         .modal-box button.danger { background: var(--danger); color: white; }
@@ -70,7 +71,6 @@
         .msg-content { color: var(--text-main); font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
         .msg-image-attachment { max-width: 350px; max-height: 350px; border-radius: 8px; margin-top: 8px; object-fit: cover; cursor: pointer; }
         
-        /* NEW: Link Preview Styles */
         .link-preview { background: var(--bg-dark); border-left: 4px solid var(--accent); padding: 10px; margin-top: 8px; border-radius: 4px; font-size: 0.85rem; max-width: 400px; }
         .link-preview a { color: var(--accent); text-decoration: none; font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .link-preview a:hover { text-decoration: underline; }
@@ -111,19 +111,20 @@
 </head>
 <body>
 
-    <audio id="chatSound" src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3" preload="auto"></audio>
-    <audio id="ringSound" src="https://cdn.pixabay.com/audio/2022/01/18/audio_511d1796d4.mp3" loop preload="auto"></audio>
-    <audio id="dialSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_78ec79524c.mp3" loop preload="auto"></audio>
+    <!-- FIXED: Using Google's safe, open-source audio files to prevent 403 errors -->
+    <audio id="chatSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+    <audio id="ringSound" src="https://actions.google.com/sounds/v1/alarms/phone_ringing.ogg" loop preload="auto"></audio>
+    <audio id="dialSound" src="https://actions.google.com/sounds/v1/communications/dial_tone.ogg" loop preload="auto"></audio>
 
     <div id="login-screen" class="modal-overlay">
         <div class="modal-box">
-            <img src="/static/IC.png" alt="IdlyCall Logo" class="app-logo">
+            <img src="/static/IC.png" alt="IdlyCall Logo" class="app-logo" onerror="this.style.display='none'">
             <h2 style="margin-bottom: 20px; color: white;">Welcome Back</h2>
             <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
             <label for="login-file" style="display: block; color: var(--accent); cursor: pointer; margin-bottom: 15px;">📷 Upload Avatar</label>
             <input type="file" id="login-file" accept="image/*" style="display:none;" onchange="processImage(event, 'login-preview')">
             <input type="text" id="usernameInput" placeholder="Enter Username" autocomplete="off">
-            <button onclick="manualLogin()">Connect</button>
+            <button id="mainConnectBtn" onclick="manualLogin()">Connect</button>
         </div>
     </div>
 
@@ -227,7 +228,6 @@
         window.onload = () => {
             if (myUsername && localStorage.getItem("chat_pic")) {
                 document.getElementById("usernameInput").value = myUsername;
-                startApp();
             }
         };
 
@@ -255,6 +255,11 @@
                 myUsername = document.getElementById("usernameInput").value.trim();
                 if (!myUsername) return alert("Username required!");
                 
+                // FIXED: Disable the button so you can't double-click and cause a race condition
+                const btn = document.getElementById("mainConnectBtn");
+                btn.innerText = "Connecting...";
+                btn.disabled = true;
+
                 localStorage.setItem("chat_username", myUsername);
                 localStorage.setItem("chat_pic", myPicBase64);
                 
@@ -262,6 +267,8 @@
                 startApp();
             } catch (e) {
                 alert("Login script failed: " + e.message);
+                const btn = document.getElementById("mainConnectBtn");
+                if (btn) { btn.innerText = "Connect"; btn.disabled = false; }
             }
         }
 
@@ -276,14 +283,22 @@
             const protocol = window.location.protocol === "https:" ? "wss" : "ws";
             ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
             
-            ws.onopen = () => { ws.send(JSON.stringify({ pic: myPicBase64 })); };
+            // FIXED: Using 'this' guarantees the payload sends to the correct connection
+            ws.onopen = function() { 
+                this.send(JSON.stringify({ pic: myPicBase64 })); 
+            };
             
             ws.onerror = (error) => { console.error("WebSocket Error:", error); };
-            ws.onclose = (event) => {
-                console.warn("WebSocket Closed", event);
-                alert("Connection to the server lost! Check your Render logs for details.");
-                document.getElementById("app-container").style.display = "none";
-                document.getElementById("login-screen").style.display = "flex";
+            
+            ws.onclose = function(event) {
+                // FIXED: Only reset the UI if the currently active WebSocket is the one that closed
+                if (ws === this) {
+                    console.warn("WebSocket Closed", event);
+                    document.getElementById("app-container").style.display = "none";
+                    document.getElementById("login-screen").style.display = "flex";
+                    const btn = document.getElementById("mainConnectBtn");
+                    if (btn) { btn.innerText = "Connect"; btn.disabled = false; }
+                }
             };
             
             ws.onmessage = (event) => {
@@ -291,15 +306,12 @@
                 if (data.type === "chat") {
                     if (data.sender !== myUsername) { safePlayAudio(chatSound); if (document.visibilityState !== "visible") new Notification(`New message from ${data.sender}`, { body: data.message.startsWith("data:image") ? "Sent an image" : data.message, icon: myPicBase64 }); }
                     
-                    // FIXED: Pass preview data to drawMessage
                     if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && (data.sender === currentChat || (data.sender === myUsername && data.receiver === currentChat)))) { 
                         drawMessage(data.message, data.sender, data.profile_pic, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), data.preview); 
                     } 
                     else if (data.sender !== myUsername) { const trackTarget = data.receiver === "Public" ? "Public" : data.sender; unreadCounts[trackTarget] = (unreadCounts[trackTarget] || 0) + 1; updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status}))); }
                 }
                 else if (data.type === "call_offer") { handleIncomingCall(data); } else if (data.type === "call_answer") { handleAnswer(data.sdp); } else if (data.type === "ice_candidate") { handleIceCandidate(data.candidate); } else if (data.type === "call_end") { forceEndCall(); }
-                
-                // FIXED: History array might not contain previews, fallback gracefully
                 else if (data.type === "history") { document.getElementById('chat-stream').innerHTML = ""; data.data.forEach(msg => drawMessage(msg.message, msg.sender, msg.profile_pic, msg.timestamp || "", null)); }
                 else if (data.type === "user_list") { data.data.forEach(u => userProfiles[u.username] = {name: u.username, pic: u.profile_pic, status: u.status}); updateSidebar(data.data); }
             };
@@ -322,11 +334,10 @@
             updateSidebar(Object.values(userProfiles).map(p => ({username: p.name, profile_pic: p.pic, status: p.status})));
         }
 
-        // FIXED: Added preview argument and preview UI generation
         function drawMessage(text, senderName, picUrl, time, preview = null) {
             const stream = document.getElementById('chat-stream'); const msgDiv = document.createElement('div'); msgDiv.className = `message`;
             let safePic = picUrl || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-            let isImage = text.startsWith("data:image/") || text.includes("res.cloudinary.com");
+            let isImage = text && (text.startsWith("data:image/") || text.includes("res.cloudinary.com"));
             
             let previewHtml = "";
             if (preview && preview.url && preview.title) {
