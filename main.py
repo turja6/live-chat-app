@@ -1,20 +1,29 @@
 # main.py
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
-from sqlalchemy.orm import Session
-from typing import List, Dict
-import cloudinary
-import cloudinary.uploader
 import json
 import asyncio
 from datetime import datetime
+from typing import Dict, List, Optional
 
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, FileResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
+
+import cloudinary
+import cloudinary.uploader
 import database
 
+# --- Config ---
 app = FastAPI()
+cloudinary.config( 
+    cloud_name = "dvdfjknil", 
+    api_key = "452245293533251", 
+    api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
+    secure=True
+)
 
-# CORS Middleware
+# --- Middleware ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,15 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cloudinary Configuration
-cloudinary.config( 
-    cloud_name = "dvdfjknil", 
-    api_key = "452245293533251", 
-    api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
-    secure=True
-)
-
-# Dependency
+# --- Database Dependency ---
 def get_db():
     db = database.SessionLocal()
     try:
@@ -46,12 +47,8 @@ async def read_root():
     return FileResponse("templates/index.html")
 
 @app.post("/login")
-async def login(username: str = Form(None), file: UploadFile = File(None), db: Session = Depends(get_db)):
-    if not username:
-        raise HTTPException(status_code=400, detail="Username required")
-    
+async def login(username: str = Form(...), file: UploadFile = File(None), db: Session = Depends(get_db)):
     user = db.query(database.User).filter(database.User.username == username).first()
-    
     pic_url = "https://via.placeholder.com/150"
     
     if file:
@@ -72,22 +69,21 @@ async def login(username: str = Form(None), file: UploadFile = File(None), db: S
 
 @app.get("/users")
 def get_users(db: Session = Depends(get_db)):
-    users = db.query(database.User).all()
-    return users
+    return db.query(database.User).all()
 
-@app.get("/messages/{receiver}")
-def get_messages(receiver: str, db: Session = Depends(get_db)):
-    # For public channel
-    if receiver == "public":
+@app.get("/messages/{target}")
+def get_messages(target: str, user: str = Query(None), db: Session = Depends(get_db)):
+    """Fetch chat history. 'target' is the other user. 'user' is current user."""
+    if target == "public":
         messages = db.query(database.Message).filter(database.Message.receiver == "public").order_by(database.Message.timestamp.asc()).all()
     else:
-        # For DMs: Get conversation between two people
-        # This simple logic assumes 'receiver' is the other person. 
-        # Ideally, you pass current_user too, but for this demo we fetch all involving 'receiver'
+        # Crucial Fix: Query specific conversation between User A and User B
         messages = db.query(database.Message).filter(
-            ((database.Message.sender == receiver) | (database.Message.receiver == receiver))
+            or_(
+                and_(database.Message.sender == user, database.Message.receiver == target),
+                and_(database.Message.sender == target, database.Message.receiver == user)
+            )
         ).order_by(database.Message.timestamp.asc()).all()
-    
     return messages
 
 # --- WebSocket Manager ---
@@ -101,17 +97,16 @@ class ConnectionManager:
         self.active_connections[username] = websocket
 
     def disconnect(self, username: str):
-        if username in self.active_connections:
-            del self.active_connections[username]
+        self.active_connections.pop(username, None)
 
-    async def send_personal_message(self, message: dict, username: str):
+    async def send_personal(self, message: dict, username: str):
         if username in self.active_connections:
             await self.active_connections[username].send_text(json.dumps(message))
 
     async def broadcast(self, message: dict, exclude: str = None):
-        for user, connection in self.active_connections.items():
+        for user, conn in self.active_connections.items():
             if user != exclude:
-                await connection.send_text(json.dumps(message))
+                await conn.send_text(json.dumps(message))
 
 manager = ConnectionManager()
 
@@ -119,29 +114,21 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = Depends(get_db)):
     await manager.connect(username, websocket)
     
-    # Heartbeat to keep Render connection alive
-    async def heartbeat():
-        while True:
-            await asyncio.sleep(20)
-            try:
-                await websocket.send_text(json.dumps({"type": "ping"}))
-            except:
-                break
-
-    asyncio.create_task(heartbeat())
+    # Heartbeat
+    asyncio.create_task(heartbeat(websocket))
 
     try:
         while True:
             data = await websocket.receive_text()
-            message = json.loads(data)
-            msg_type = message.get("type")
+            msg = json.loads(data)
+            msg_type = msg.get("type")
 
             if msg_type == "chat_message":
-                content = message.get("content")
-                receiver = message.get("receiver")
-                sender = message.get("sender")
-                
-                # Handle Image Upload
+                sender = msg.get("sender")
+                receiver = msg.get("receiver")
+                content = msg.get("content")
+
+                # Handle Image
                 if content.startswith("data:image"):
                     res = cloudinary.uploader.upload(content, folder="chat_images")
                     content = res['secure_url']
@@ -149,9 +136,7 @@ async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = 
                 # Save to DB
                 user_obj = db.query(database.User).filter(database.User.username == sender).first()
                 new_msg = database.Message(
-                    sender=sender, 
-                    receiver=receiver, 
-                    content=content, 
+                    sender=sender, receiver=receiver, content=content,
                     profile_pic=user_obj.profile_pic if user_obj else None,
                     timestamp=datetime.utcnow()
                 )
@@ -159,33 +144,24 @@ async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = 
                 db.commit()
 
                 payload = {
-                    "type": "chat_message",
-                    "sender": sender,
-                    "receiver": receiver,
-                    "content": content,
-                    "profile_pic": user_obj.profile_pic if user_obj else None,
+                    "type": "chat_message", "sender": sender, "receiver": receiver,
+                    "content": content, "profile_pic": user_obj.profile_pic if user_obj else None,
                     "timestamp": new_msg.timestamp.isoformat()
                 }
 
-                # Route Message
                 if receiver == "public":
-                    # Send to everyone including sender (so sender sees their own msg)
                     await manager.broadcast(payload)
                 else:
-                    # DM: Send to receiver AND back to sender
-                    await manager.send_personal_message(payload, receiver)
-                    await manager.send_personal_message(payload, sender)
+                    await manager.send_personal(payload, receiver)
+                    await manager.send_personal(payload, sender) # Echo back
 
             elif msg_type == "typing":
-                target = message.get("receiver")
-                await manager.send_personal_message({"type": "typing", "sender": username}, target)
+                await manager.send_personal({"type": "typing", "sender": username}, msg.get("receiver"))
 
             elif msg_type in ["call_offer", "call_answer", "ice_candidate", "call_hangup"]:
-                target = message.get("target")
-                if target:
-                    payload = message
-                    payload["sender"] = username
-                    await manager.send_personal_message(payload, target)
+                target = msg.get("target")
+                msg["sender"] = username
+                await manager.send_personal(msg, target)
 
     except WebSocketDisconnect:
         manager.disconnect(username)
@@ -194,3 +170,11 @@ async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = 
             user.status = "offline"
             db.commit()
         await manager.broadcast({"type": "user_update", "username": username, "status": "offline"})
+
+async def heartbeat(ws):
+    while True:
+        await asyncio.sleep(20)
+        try:
+            await ws.send_text(json.dumps({"type": "ping"}))
+        except:
+            break
