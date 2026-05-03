@@ -1,198 +1,132 @@
-# main.py
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
-from typing import List, Dict
-import cloudinary
-import cloudinary.uploader
 import json
 import asyncio
-from datetime import datetime
-
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+import cloudinary
+import cloudinary.uploader
 import database
 
-app = FastAPI()
-
-# CORS Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Cloudinary Configuration (Replace with your credentials if needed, or use defaults if env set)
+# ==========================================
+# 1. CLOUDINARY CONFIGURATION
+# ==========================================
 cloudinary.config( 
-    cloud_name = "dvwec2kgx", # Example cloud name, replace with yours
-    api_key = "YOUR_API_KEY", 
-    api_secret = "YOUR_API_SECRET",
-    secure=True
+  cloud_name = "dvdfjknil", 
+  api_key = "452245293533251", 
+  api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
+  secure = True
 )
 
-# Dependency
-def get_db():
-    db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# --- HTTP Routes ---
-
-@app.post("/login")
-async def login(username: str = None, file: UploadFile = File(None), db: Session = Depends(get_db)):
-    if not username:
-        raise HTTPException(status_code=400, detail="Username required")
-    
-    user = db.query(database.User).filter(database.User.username == username).first()
-    
-    pic_url = "https://via.placeholder.com/150" # Default avatar
-    
-    if file:
-        # Upload avatar to Cloudinary
-        contents = await file.read()
-        res = cloudinary.uploader.upload(contents, folder="avatars")
-        pic_url = res['secure_url']
-    
-    if not user:
-        # Create new user
-        user = database.User(username=username, profile_pic=pic_url, status="online")
-        db.add(user)
-    else:
-        # Update existing user
-        user.profile_pic = pic_url if file else user.profile_pic
-        user.status = "online"
-    
-    db.commit()
-    db.refresh(user)
-    return {"username": user.username, "profile_pic": user.profile_pic}
-
-@app.get("/users")
-def get_users(db: Session = Depends(get_db)):
-    users = db.query(database.User).all()
-    return users
-
-@app.get("/messages/{receiver}")
-def get_messages(receiver: str, db: Session = Depends(get_db)):
-    # Get chat history for Public Channel or DMs
-    if receiver == "public":
-        messages = db.query(database.Message).filter(database.Message.receiver == "public").order_by(database.Message.timestamp.asc()).all()
-    else:
-        # DMs: Get messages where (sender=me & receiver=them) OR (sender=them & receiver=me)
-        # Note: For simplicity, this endpoint expects the client to request history for a specific user.
-        # We assume the client passes the 'other' user as receiver, but we need the current user context.
-        # Ideally, pass current_user in header. Here we will return all messages involving 'receiver' for demo.
-        messages = db.query(database.Message).filter(
-            ((database.Message.sender == receiver) | (database.Message.receiver == receiver))
-        ).order_by(database.Message.timestamp.asc()).all()
-    
-    return messages
-
-# --- WebSocket Manager ---
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+database.init_db()
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[str, WebSocket] = {}
+        self.active_connections = {}
 
-    async def connect(self, username: str, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections[username] = websocket
-
-    def disconnect(self, username: str):
+    async def disconnect(self, username: str):
         if username in self.active_connections:
             del self.active_connections[username]
+            await asyncio.to_thread(database.update_user, username, None, "Offline")
+            await self.broadcast_user_list()
+
+    async def broadcast(self, message: dict):
+        for connection in list(self.active_connections.values()):
+            try: await connection.send_text(json.dumps(message))
+            except: pass
 
     async def send_personal_message(self, message: dict, username: str):
         if username in self.active_connections:
-            await self.active_connections[username].send_text(json.dumps(message))
+            try: await self.active_connections[username].send_text(json.dumps(message))
+            except: pass
 
-    async def broadcast(self, message: dict, exclude: str = None):
-        for user, connection in self.active_connections.items():
-            if user != exclude:
-                await connection.send_text(json.dumps(message))
+    async def broadcast_user_list(self):
+        users = await asyncio.to_thread(database.get_all_users)
+        await self.broadcast({"type": "user_list", "users": users})
 
 manager = ConnectionManager()
 
+@app.get("/")
+async def get(request: Request):
+    return templates.TemplateResponse(request=request, name="index.html")
+
 @app.websocket("/ws/{username}")
-async def websocket_endpoint(websocket: WebSocket, username: str, db: Session = Depends(get_db)):
-    await manager.connect(username, websocket)
+async def websocket_endpoint(websocket: WebSocket, username: str):
+    await websocket.accept()
     
-    # Heartbeat Task
-    async def heartbeat():
-        while True:
-            await asyncio.sleep(20) # Ping every 20 seconds
-            try:
-                await websocket.send_text(json.dumps({"type": "ping"}))
-            except:
-                break
+    # Wait for the frontend to send the profile picture before fully connecting
+    init_data = await websocket.receive_text()
+    init_json = json.loads(init_data)
+    pic = init_json.get("pic", "")
+    target_chat = init_json.get("target", "Public") # Let frontend request initial chat
 
-    asyncio.create_task(heartbeat())
-
+    manager.active_connections[username] = websocket
+    await asyncio.to_thread(database.update_user, username, pic, "Online")
+    await manager.broadcast_user_list()
+    
+    # Send history for the requested chat immediately upon connection
+    history = await asyncio.to_thread(database.get_chat_history, username, target_chat)
+    await websocket.send_text(json.dumps({"type": "history", "target": target_chat, "data": history}))
+    
     try:
         while True:
-            data = await websocket.receive_text()
-            message = json.loads(data)
-            msg_type = message.get("type")
-
-            if msg_type == "chat_message":
-                content = message.get("content")
-                receiver = message.get("receiver")
-                sender = message.get("sender")
+            data_str = await websocket.receive_text()
+            data = json.loads(data_str)
+            msg_type = data.get("type")
+            
+            if msg_type == "ping": continue
+            
+            # --- NEW: Handle Typing Indicator ---
+            if msg_type == "typing":
+                receiver = data.get("receiver", "Public")
+                payload = {"type": "typing", "sender": username, "receiver": receiver}
+                if receiver == "Public":
+                    # Broadcast typing to everyone in Public (except sender)
+                    for user, conn in manager.active_connections.items():
+                        if user != username:
+                            try: await conn.send_text(json.dumps(payload))
+                            except: pass
+                else:
+                    await manager.send_personal_message(payload, receiver)
+                continue # Skip the rest of the loop for typing events
                 
-                # Image Upload Check
-                if content.startswith("data:image"):
-                    res = cloudinary.uploader.upload(content, folder="chat_images")
-                    content = res['secure_url']
-
-                # Save to DB
-                user_obj = db.query(database.User).filter(database.User.username == sender).first()
-                new_msg = database.Message(
-                    sender=sender, 
-                    receiver=receiver, 
-                    content=content, 
-                    profile_pic=user_obj.profile_pic if user_obj else None,
-                    timestamp=datetime.utcnow()
-                )
-                db.add(new_msg)
-                db.commit()
-
-                # Prepare payload
+            if msg_type == "chat":
+                content = data.get("content")
+                receiver = data.get("receiver", "Public")
+                current_pic = data.get("pic", pic)
+                
+                if content.startswith("data:image/"):
+                    upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
+                    content = upload_result.get("secure_url")
+                
+                ts = await asyncio.to_thread(database.save_message, username, receiver, current_pic, content)
+                
                 payload = {
-                    "type": "chat_message",
-                    "sender": sender,
-                    "receiver": receiver,
-                    "content": content,
-                    "profile_pic": user_obj.profile_pic if user_obj else None,
-                    "timestamp": new_msg.timestamp.isoformat()
+                    "type": "chat", "sender": username, "receiver": receiver, 
+                    "profile_pic": current_pic, "content": content, "timestamp": ts
                 }
-
-                # Route Message
-                if receiver == "public":
+                
+                if receiver == "Public":
                     await manager.broadcast(payload)
                 else:
-                    # DM: Send to receiver and back to sender (for echo/multi-device)
                     await manager.send_personal_message(payload, receiver)
-                    await manager.send_personal_message(payload, sender)
+                    if username != receiver: 
+                        await manager.send_personal_message(payload, username)
 
-            elif msg_type == "typing":
-                # Relay typing indicator
-                target = message.get("receiver")
-                await manager.send_personal_message({"type": "typing", "sender": username}, target)
+            elif msg_type == "get_history":
+                target = data.get("target")
+                hist = await asyncio.to_thread(database.get_chat_history, username, target)
+                await websocket.send_text(json.dumps({"type": "history", "target": target, "data": hist}))
 
-            elif msg_type in ["call_offer", "call_answer", "ice_candidate", "call_hangup"]:
-                # WebRTC Signaling Relay
-                target = message.get("target")
-                if target:
-                    payload = message
-                    payload["sender"] = username
-                    await manager.send_personal_message(payload, target)
+            elif msg_type == "update_profile":
+                new_pic = data.get("pic")
+                pic = new_pic
+                await asyncio.to_thread(database.update_user, username, new_pic, "Online")
+                await manager.broadcast_user_list()
 
     except WebSocketDisconnect:
-        manager.disconnect(username)
-        user = db.query(database.User).filter(database.User.username == username).first()
-        if user:
-            user.status = "offline"
-            db.commit()
-        await manager.broadcast({"type": "user_update", "username": username, "status": "offline"})
+        await manager.disconnect(username)
+    except Exception as e:
+        await manager.disconnect(username)
+        print(f"Socket Error: {e}")
