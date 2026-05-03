@@ -48,7 +48,7 @@
         
         /* Chat Area */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); position: relative; }
-        header { padding: 15px 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; display: flex; align-items: center; gap: 15px; }
+        header { padding: 15px 20px; border-bottom: 1px solid var(--bg-main); font-weight: 600; color: white; display: flex; align-items: center; gap: 15px; position: relative; }
         .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
         
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
@@ -60,6 +60,11 @@
         .msg-time { font-size: 0.75rem; color: var(--text-muted); }
         .msg-text { background: var(--bg-input); padding: 10px 15px; border-radius: 8px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; color: var(--text-main); }
         .msg-image { max-width: 300px; border-radius: 8px; margin-top: 5px; cursor: pointer; }
+
+        /* Typing Indicator */
+        #typing-indicator { position: absolute; bottom: 85px; left: 20px; font-size: 0.85rem; color: var(--text-muted); font-style: italic; display: none; background: rgba(54, 57, 63, 0.9); padding: 2px 8px; border-radius: 12px; }
+        .typing-dots::after { content: '...'; animation: typing 1.5s steps(4, end) infinite; }
+        @keyframes typing { 0%, 20% { content: '.'; } 40% { content: '..'; } 60%, 100% { content: '...'; } }
 
         /* Input Area */
         #input-area { padding: 20px; background: var(--bg-chat); }
@@ -105,12 +110,17 @@
                 <button class="mobile-toggle" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('open')">☰</button>
                 <span id="chat-header"># Public Channel</span>
             </header>
+            
             <div id="messages"></div>
+            
+            <!-- NEW: Typing Indicator Element -->
+            <div id="typing-indicator">Someone is typing<span class="typing-dots"></span></div>
+
             <div id="input-area">
                 <div class="input-box">
                     <label for="imageAttachInput" class="attach-btn">＋</label>
                     <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
-                    <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
+                    <input type="text" id="msgInput" placeholder="Message..." autocomplete="off">
                     <button onclick="sendMsg()">Send</button>
                 </div>
             </div>
@@ -122,14 +132,25 @@
         let heartbeat;
         let myUsername = "";
         let myPicBase64 = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-        let currentChat = "Public"; 
+        let currentChat = localStorage.getItem("pro_last_chat") || "Public"; // Remember last chat
         let userList = [];
+        
+        // Typing indicator state
+        let typingTimeout;
+        let isTyping = false;
+        let currentlyTypingUsers = new Set();
+        let indicatorTimeout;
 
         window.onload = () => {
             const savedName = localStorage.getItem("pro_chat_name");
             const savedPic = localStorage.getItem("pro_chat_pic");
             if (savedName) document.getElementById("username").value = savedName;
             if (savedPic) { myPicBase64 = savedPic; document.getElementById("login-preview").src = savedPic; }
+            
+            // Set up typing listener
+            const inputField = document.getElementById("msgInput");
+            inputField.addEventListener('input', handleTyping);
+            inputField.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
         };
 
         function processImage(e, targetId) {
@@ -156,12 +177,16 @@
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("app-container").style.display = "flex";
 
+            // Update UI for the chat we are loading into
+            document.getElementById("chat-header").innerText = currentChat === "Public" ? "# Public Channel" : `@ ${currentChat}`;
+            document.getElementById("msgInput").placeholder = `Message ${currentChat}...`;
+
             const protocol = window.location.protocol === "https:" ? "wss" : "ws";
             ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
 
             ws.onopen = function() {
-                // Handshake to send profile pic
-                this.send(JSON.stringify({ pic: myPicBase64 }));
+                // Send profile pic AND the chat we want history for immediately
+                this.send(JSON.stringify({ pic: myPicBase64, target: currentChat }));
                 
                 heartbeat = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
@@ -175,6 +200,9 @@
                     if (data.target === currentChat) {
                         document.getElementById("messages").innerHTML = "";
                         data.data.forEach(m => drawMessage(m.sender, m.profile_pic, m.content, m.timestamp));
+                        // Force scroll to bottom on initial load
+                        const msgs = document.getElementById("messages");
+                        msgs.scrollTop = msgs.scrollHeight;
                     }
                 } 
                 else if (data.type === "chat") {
@@ -186,10 +214,31 @@
                             drawMessage(data.sender, data.profile_pic, data.content, data.timestamp);
                         }
                     }
+                    
+                    // Clear typing indicator when a message arrives from that person
+                    if (currentlyTypingUsers.has(data.sender)) {
+                         currentlyTypingUsers.delete(data.sender);
+                         updateTypingUI();
+                    }
                 } 
                 else if (data.type === "user_list") {
                     userList = data.users;
                     renderSidebar();
+                }
+                // --- NEW: Receive Typing Event ---
+                else if (data.type === "typing") {
+                    // Only show if it's relevant to our current view
+                    if ((currentChat === "Public" && data.receiver === "Public") || (currentChat !== "Public" && data.sender === currentChat)) {
+                        currentlyTypingUsers.add(data.sender);
+                        updateTypingUI();
+                        
+                        // Automatically clear the indicator after 3 seconds of no updates
+                        clearTimeout(indicatorTimeout);
+                        indicatorTimeout = setTimeout(() => {
+                            currentlyTypingUsers.clear();
+                            updateTypingUI();
+                        }, 3000);
+                    }
                 }
             };
 
@@ -198,6 +247,37 @@
                 alert("Connection lost. Please refresh.");
                 window.location.reload();
             };
+        }
+
+        // --- NEW: Handle typing logic ---
+        function handleTyping() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            
+            if (!isTyping) {
+                isTyping = true;
+                ws.send(JSON.stringify({ type: "typing", receiver: currentChat }));
+            }
+            
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                isTyping = false;
+            }, 1000); // Reset typing status if we haven't typed in 1 second
+        }
+
+        function updateTypingUI() {
+            const indicator = document.getElementById("typing-indicator");
+            if (currentlyTypingUsers.size > 0) {
+                const usersArray = Array.from(currentlyTypingUsers);
+                let text = "";
+                if (usersArray.length === 1) text = `${usersArray[0]} is typing`;
+                else if (usersArray.length === 2) text = `${usersArray[0]} and ${usersArray[1]} are typing`;
+                else text = "Several people are typing";
+                
+                indicator.innerHTML = `${text}<span class="typing-dots"></span>`;
+                indicator.style.display = "block";
+            } else {
+                indicator.style.display = "none";
+            }
         }
 
         function renderSidebar() {
@@ -227,11 +307,19 @@
         }
 
         function switchChat(target) {
+            if (currentChat === target) return; // Don't do anything if we click the same chat
+            
             currentChat = target;
+            localStorage.setItem("pro_last_chat", currentChat); // Remember this choice
+            
             document.getElementById("chat-header").innerText = target === "Public" ? "# Public Channel" : `@ ${target}`;
             document.getElementById("msgInput").placeholder = `Message ${target}...`;
             document.getElementById('sidebar').classList.remove('open');
             renderSidebar();
+            
+            // Clear typing indicators when switching chats
+            currentlyTypingUsers.clear();
+            updateTypingUI();
             
             document.getElementById("messages").innerHTML = "";
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -271,6 +359,10 @@
                 ws.send(JSON.stringify({ type: "chat", receiver: currentChat, pic: myPicBase64, content: text }));
                 input.value = "";
                 input.focus(); 
+                
+                // Immediately clear typing status
+                isTyping = false;
+                clearTimeout(typingTimeout);
             }
         }
 

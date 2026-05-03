@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, or_, and_
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
+import os
 
 # Hardcoded database connection
 SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
@@ -9,14 +10,14 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# New Table to track Profiles and Online/Offline Status
+# Table to track Profiles and Online/Offline Status
 class User(Base):
     __tablename__ = "app_users_v2"
     username = Column(String, primary_key=True)
     profile_pic = Column(Text)
     status = Column(String, default="Offline")
 
-# Updated Table to save avatars and timestamps for history
+# Table to save avatars and timestamps for history
 class Message(Base):
     __tablename__ = "app_messages_v2"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -67,14 +68,14 @@ def get_chat_history(user1, user2):
     db = SessionLocal()
     try:
         if user2 == "Public":
-            msgs = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(50).all()
+            msgs = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(100).all() # Increased limit
         else:
             msgs = db.query(Message).filter(
                 or_(
                     and_(Message.sender == user1, Message.receiver == user2),
                     and_(Message.sender == user2, Message.receiver == user1)
                 )
-            ).order_by(Message.id.desc()).limit(50).all()
+            ).order_by(Message.id.desc()).limit(100).all()
         
         return [{
             "sender": m.sender, 

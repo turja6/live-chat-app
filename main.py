@@ -28,7 +28,6 @@ class ConnectionManager:
     async def disconnect(self, username: str):
         if username in self.active_connections:
             del self.active_connections[username]
-            # Set user to offline in DB
             await asyncio.to_thread(database.update_user, username, None, "Offline")
             await self.broadcast_user_list()
 
@@ -43,7 +42,6 @@ class ConnectionManager:
             except: pass
 
     async def broadcast_user_list(self):
-        # Pulls from database to show both online AND offline users
         users = await asyncio.to_thread(database.get_all_users)
         await self.broadcast({"type": "user_list", "users": users})
 
@@ -61,14 +59,15 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
     init_data = await websocket.receive_text()
     init_json = json.loads(init_data)
     pic = init_json.get("pic", "")
+    target_chat = init_json.get("target", "Public") # Let frontend request initial chat
 
     manager.active_connections[username] = websocket
     await asyncio.to_thread(database.update_user, username, pic, "Online")
     await manager.broadcast_user_list()
     
-    # Send history
-    history = await asyncio.to_thread(database.get_chat_history, username, "Public")
-    await websocket.send_text(json.dumps({"type": "history", "target": "Public", "data": history}))
+    # Send history for the requested chat immediately upon connection
+    history = await asyncio.to_thread(database.get_chat_history, username, target_chat)
+    await websocket.send_text(json.dumps({"type": "history", "target": target_chat, "data": history}))
     
     try:
         while True:
@@ -77,18 +76,30 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             msg_type = data.get("type")
             
             if msg_type == "ping": continue
+            
+            # --- NEW: Handle Typing Indicator ---
+            if msg_type == "typing":
+                receiver = data.get("receiver", "Public")
+                payload = {"type": "typing", "sender": username, "receiver": receiver}
+                if receiver == "Public":
+                    # Broadcast typing to everyone in Public (except sender)
+                    for user, conn in manager.active_connections.items():
+                        if user != username:
+                            try: await conn.send_text(json.dumps(payload))
+                            except: pass
+                else:
+                    await manager.send_personal_message(payload, receiver)
+                continue # Skip the rest of the loop for typing events
                 
             if msg_type == "chat":
                 content = data.get("content")
                 receiver = data.get("receiver", "Public")
                 current_pic = data.get("pic", pic)
                 
-                # Process Image Uploads via Cloudinary
                 if content.startswith("data:image/"):
                     upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
                     content = upload_result.get("secure_url")
                 
-                # Save to Database
                 ts = await asyncio.to_thread(database.save_message, username, receiver, current_pic, content)
                 
                 payload = {
