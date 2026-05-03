@@ -68,14 +68,16 @@ def get_chat_history(user1, user2):
     db = SessionLocal()
     try:
         if user2 == "Public":
-            msgs = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(100).all() # Increased limit
+            # Change .limit(100) to .limit(500) or more
+            msgs = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(500).all() 
         else:
+            # Change .limit(100) to .limit(500) for DMs too
             msgs = db.query(Message).filter(
                 or_(
                     and_(Message.sender == user1, Message.receiver == user2),
                     and_(Message.sender == user2, Message.receiver == user1)
                 )
-            ).order_by(Message.id.desc()).limit(100).all()
+            ).order_by(Message.id.desc()).limit(500).all()
         
         return [{
             "sender": m.sender, 
