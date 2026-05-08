@@ -974,16 +974,25 @@
                 border-radius: var(--radius-md);
             }
 
-            /* Mobile specific toggle button */
+            /* Mobile specific toggle button - 3 lines */
             .mobile-toggle {
-                display: block !important;
+                display: flex !important; /* Make it visible on mobile */
                 background: none;
                 border: none;
                 color: var(--text-primary);
-                font-size: 1.5rem;
                 cursor: pointer;
                 margin-right: 10px;
                 padding: 5px;
+                width: 44px;
+                height: 44px;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .mobile-toggle svg {
+                width: 24px;
+                height: 24px;
+                fill: currentColor;
             }
 
             /* Chat area takes full height on mobile */
@@ -1089,21 +1098,6 @@
             height: 1px;
             background: var(--border-color);
             margin: 0 15px;
-        }
-
-        /* Unread badge for user items */
-        .unread-badge {
-            background: var(--accent-primary);
-            color: white;
-            font-size: 0.7rem;
-            font-weight: 700;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
         }
 
         /* Connection status indicator at top of sidebar */
@@ -1238,15 +1232,6 @@
             opacity: 1;
         }
 
-        /* System message in chat */
-        .system-message {
-            text-align: center;
-            padding: 8px 0;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            font-style: italic;
-        }
-
         /* Notification toast */
         .toast-container {
             position: fixed;
@@ -1275,35 +1260,6 @@
         }
         .toast.error { border-left-color: var(--danger); }
         .toast.success { border-left-color: var(--online); }
-
-        /* Message hover action bar */
-        .message-group .msg-hover-actions {
-            position: absolute;
-            top: -10px;
-            right: 10px;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            display: none;
-            box-shadow: var(--shadow-soft);
-            overflow: hidden;
-        }
-        .message-group:hover .msg-hover-actions {
-            display: flex;
-        }
-        .msg-hover-actions button {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: background 0.15s, color 0.15s;
-        }
-        .msg-hover-actions button:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
 
         /* Fix: Ensure avatar images in all contexts are constrained */
         img.msg-avatar,
@@ -1457,16 +1413,16 @@
             <div class="chat-area" onclick="closeSidebarMobile()">
                 <header class="chat-header">
                     <div class="chat-header-info">
-                        <button class="mobile-toggle hidden" onclick="event.stopPropagation(); toggleSidebar()">☰</button>
+                        <!-- 3-line Hamburger Menu for Mobile -->
+                        <button class="mobile-toggle hidden" onclick="event.stopPropagation(); toggleSidebar()">
+                            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                        </button>
                         <h2 id="chat-header-title"># Public Lobby</h2>
                         <span id="chat-header-subtitle">General Chat</span>
                     </div>
                     <div class="chat-header-actions">
                         <button class="icon-btn desktop-only" onclick="forceSync()" title="Sync" data-tooltip="Sync">
                             <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                        </button>
-                        <button class="icon-btn" onclick="clearChatUI()" title="Clear View" data-tooltip="Clear">
-                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                         </button>
                     </div>
                 </header>
@@ -2261,7 +2217,7 @@
 
         /**
          * Show context menu on right-click for a message
-         * FIX: Only allow Delete option for the user's own messages
+         * RESTRICTION: Only allow Delete option for the user's own messages
          */
         function showMessageContext(e, id, content, sender) {
             e.preventDefault();
@@ -2331,6 +2287,7 @@
          * Context menu action: Delete (Local UI only, restricted to own messages)
          */
         function contextDelete() {
+            // Double-check ownership before allowing deletion
             if (contextMenuTarget && contextMenuTarget.sender === myUsername) {
                 const msgEl = document.querySelector(`[data-msg-id="${contextMenuTarget.id}"]`);
                 if (msgEl) {
@@ -2345,6 +2302,7 @@
                     }
                 }
             } else {
+                // This should theoretically never trigger if the button is hidden properly
                 showToast("You can only delete your own messages", "error");
             }
             document.getElementById('context-menu').classList.remove('active');
@@ -2548,14 +2506,6 @@
                 ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
                 showToast("Syncing...", "success");
             }
-        }
-
-        /**
-         * Clear the chat UI locally (does not delete from server)
-         */
-        function clearChatUI() {
-            document.getElementById("messages").innerHTML = "";
-            messageStore = [];
         }
 
         /* =========================================
