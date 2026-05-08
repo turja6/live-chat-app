@@ -28,7 +28,13 @@
             --online: #10b981;
             --offline: #4b5563;
             --danger: #ef4444;
-            
+
+            /* Own message bubble color */
+            --msg-own-bg: #4f46e5;
+            --msg-own-text: #ffffff;
+            --msg-other-bg: var(--bg-secondary);
+            --msg-other-text: var(--text-primary);
+
             /* Sizing */
             --sidebar-width: 280px;
             --input-height: 60px;
@@ -50,23 +56,27 @@
             --text-muted: #94a3b8;
             --border-color: rgba(0, 0, 0, 0.08);
             --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --msg-own-bg: #6366f1;
+            --msg-own-text: #ffffff;
+            --msg-other-bg: #e2e8f0;
+            --msg-other-text: #1e293b;
         }
 
-        * { 
-            box-sizing: border-box; 
-            margin: 0; 
-            padding: 0; 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
-        body { 
+        body {
             background-color: var(--bg-primary);
             color: var(--text-primary);
-            height: 100vh; 
-            overflow: hidden; 
-            display: flex; 
-            justify-content: center; 
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
             align-items: center;
             transition: background-color var(--transition-speed) ease;
         }
@@ -90,7 +100,7 @@
            2. TYPOGRAPHY & SCROLLBAR
            ========================================= */
         h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
-        
+
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
@@ -105,10 +115,10 @@
             -webkit-backdrop-filter: blur(20px);
             padding: 50px 40px;
             border-radius: var(--radius-lg);
-            text-align: center; 
+            text-align: center;
             box-shadow: var(--shadow-glow), var(--shadow-soft);
             border: 1px solid var(--border-color);
-            width: 90%; 
+            width: 90%;
             max-width: 400px;
             position: relative;
             z-index: 10;
@@ -118,10 +128,10 @@
         .logo-container {
             margin-bottom: 30px;
         }
-        
-        .logo-text { 
-            font-size: 2.2rem; 
-            font-weight: 700; 
+
+        .logo-text {
+            font-size: 2.2rem;
+            font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 8px;
             background: var(--accent-gradient);
@@ -129,7 +139,7 @@
             -webkit-text-fill-color: transparent;
             display: inline-block;
         }
-        
+
         .logo-sub { font-size: 0.9rem; color: var(--text-secondary); }
 
         .avatar-upload-container {
@@ -139,20 +149,21 @@
             margin: 0 auto 25px;
         }
 
-        .avatar-preview { 
-            width: 100px; 
-            height: 100px; 
-            border-radius: 50%; 
-            object-fit: cover; 
-            border: 3px solid var(--accent-primary); 
-            cursor: pointer; 
+        .avatar-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent-primary);
+            cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             box-shadow: var(--shadow-glow);
             background-color: var(--bg-tertiary);
+            display: block;
         }
 
-        .avatar-preview:hover { 
-            transform: scale(1.05); 
+        .avatar-preview:hover {
+            transform: scale(1.05);
         }
 
         .avatar-overlay {
@@ -170,47 +181,47 @@
             transition: opacity 0.2s;
             pointer-events: none;
         }
-        
+
         .avatar-upload-container:hover .avatar-overlay { opacity: 1; }
         .avatar-overlay svg { width: 24px; height: 24px; fill: white; }
 
         .input-group { margin-bottom: 20px; position: relative; }
-        
-        #login-screen input[type="text"] { 
-            width: 100%; 
-            padding: 16px 20px; 
-            border-radius: var(--radius-md); 
-            border: 1px solid var(--border-color); 
-            background: var(--bg-input); 
-            color: var(--text-primary); 
-            font-size: 1rem; 
-            outline: none; 
+
+        #login-screen input[type="text"] {
+            width: 100%;
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         #login-screen input[type="text"]::placeholder { color: var(--text-muted); }
-        #login-screen input[type="text"]:focus { 
-            border-color: var(--accent-primary); 
+        #login-screen input[type="text"]:focus {
+            border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
         }
 
-        .btn-primary { 
-            width: 100%; 
-            padding: 16px; 
-            border: none; 
-            background: var(--accent-gradient); 
-            color: white; 
-            font-weight: 600; 
-            border-radius: var(--radius-md); 
-            cursor: pointer; 
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            background: var(--accent-gradient);
+            color: white;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             font-size: 1rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        .btn-primary:hover { 
-            transform: translateY(-2px); 
+        .btn-primary:hover {
+            transform: translateY(-2px);
             box-shadow: var(--shadow-glow);
         }
 
@@ -219,10 +230,10 @@
         /* =========================================
            4. APP LAYOUT (GRID)
            ========================================= */
-        #app-container { 
-            display: none; 
-            width: 100%; 
-            height: 100%; 
+        #app-container {
+            display: none;
+            width: 100%;
+            height: 100%;
             position: relative;
         }
 
@@ -238,26 +249,26 @@
         /* =========================================
            5. SIDEBAR
            ========================================= */
-        .sidebar { 
-            width: var(--sidebar-width); 
-            background: var(--bg-secondary); 
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
             border-right: 1px solid var(--border-color);
-            display: flex; 
-            flex-direction: column; 
-            z-index: 100; 
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
             transition: transform var(--transition-speed) ease;
             flex-shrink: 0;
         }
 
-        .sidebar-header { 
-            padding: 20px; 
-            font-weight: 700; 
+        .sidebar-header {
+            padding: 20px;
+            font-weight: 700;
             font-size: 1.1rem;
-            color: var(--text-primary); 
-            border-bottom: 1px solid var(--border-color); 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             height: 70px;
         }
 
@@ -289,10 +300,10 @@
         }
         .search-box input:focus { border-color: var(--accent-primary); }
 
-        .user-list { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 10px; 
+        .user-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
         }
 
         .list-header {
@@ -305,49 +316,51 @@
             letter-spacing: 0.05em;
         }
 
-        .user-item { 
-            padding: 10px 12px; 
-            border-radius: var(--radius-sm); 
-            cursor: pointer; 
-            color: var(--text-secondary); 
-            display: flex; 
-            align-items: center; 
-            margin-bottom: 2px; 
-            transition: background 0.15s, color 0.15s; 
+        .user-item {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            margin-bottom: 2px;
+            transition: background 0.15s, color 0.15s;
         }
 
-        .user-item:hover { 
-            background: var(--bg-tertiary); 
-            color: var(--text-primary); 
+        .user-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
         }
 
-        .user-item.active { 
-            background: var(--accent-primary); 
-            color: white; 
+        .user-item.active {
+            background: var(--accent-primary);
+            color: white;
             box-shadow: var(--shadow-glow);
         }
 
         .user-avatar-wrapper {
             position: relative;
             margin-right: 12px;
+            flex-shrink: 0;
         }
 
-        .user-item img { 
-            width: 36px; 
-            height: 36px; 
-            border-radius: 50%; 
-            object-fit: cover; 
+        .user-item img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
             background: var(--bg-primary);
+            display: block;
         }
 
         .user-info { flex: 1; overflow: hidden; }
         .user-info .name { font-weight: 500; font-size: 0.95rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
         .user-info .status-text { font-size: 0.75rem; color: var(--text-muted); }
 
-        .status-indicator { 
-            width: 10px; 
-            height: 10px; 
-            border-radius: 50%; 
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
             border: 2px solid var(--bg-secondary);
             position: absolute;
             bottom: 0;
@@ -357,7 +370,7 @@
         .status-online { background: var(--online); }
         .status-offline { background: var(--offline); }
 
-        /* My Profile Footer */
+        /* My Profile Footer - FIXED: explicit avatar sizing */
         .my-profile {
             padding: 15px 20px;
             background: var(--bg-tertiary);
@@ -369,25 +382,37 @@
         }
         .my-profile:hover { background: var(--bg-input); }
 
+        /* FIX: Footer avatar must have explicit constrained size */
+        .my-profile .user-avatar-wrapper img,
+        #my-avatar-footer {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            background: var(--bg-primary);
+            flex-shrink: 0;
+        }
+
         /* =========================================
            6. CHAT AREA
            ========================================= */
-        .chat-area { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            background: var(--bg-primary); 
-            position: relative; 
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+            position: relative;
             background-image: radial-gradient(circle at 50% 0%, var(--bg-secondary) 0%, transparent 60%);
         }
 
-        .chat-header { 
-            padding: 0 25px; 
+        .chat-header {
+            padding: 0 25px;
             height: 70px;
-            border-bottom: 1px solid var(--border-color); 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             background: var(--bg-glass);
             backdrop-filter: blur(10px);
             z-index: 10;
@@ -415,13 +440,13 @@
         .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
 
         /* Messages */
-        #messages { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 25px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .message-group {
@@ -432,9 +457,12 @@
         }
         .message-group:hover { background: rgba(255,255,255,0.02); }
 
-        .message { 
-            display: flex; 
-            gap: 15px; 
+        /* =========================================
+           6A. MESSAGE - OTHER USER (LEFT SIDE)
+           ========================================= */
+        .message {
+            display: flex;
+            gap: 15px;
             width: 100%;
             animation: msgSlide 0.3s ease-out;
         }
@@ -445,66 +473,118 @@
             display: flex;
             justify-content: center;
         }
-        .msg-avatar { 
-            width: 40px; 
-            height: 40px; 
-            border-radius: 50%; 
+
+        .msg-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             object-fit: cover;
             margin-top: 2px;
             cursor: pointer;
             transition: transform 0.2s;
+            display: block;
+            flex-shrink: 0;
         }
         .msg-avatar:hover { transform: scale(1.1); }
 
-        .msg-content { 
+        .msg-content {
             flex: 1;
             max-width: calc(100% - 60px);
         }
 
-        .msg-header { 
-            display: flex; 
-            align-items: baseline; 
-            gap: 10px; 
-            margin-bottom: 4px; 
+        .msg-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 4px;
         }
 
-        .msg-name { 
-            font-weight: 600; 
-            color: var(--text-primary); 
+        .msg-name {
+            font-weight: 600;
+            color: var(--text-primary);
             font-size: 0.95rem;
             cursor: pointer;
         }
         .msg-name:hover { text-decoration: underline; }
 
-        .msg-time { 
-            font-size: 0.7rem; 
-            color: var(--text-muted); 
+        .msg-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
             font-weight: 400;
         }
 
+        /* Other user's bubble (left side) */
         .msg-bubble {
-            background: var(--bg-secondary);
+            background: var(--msg-other-bg);
             padding: 10px 15px;
             border-radius: 0 12px 12px 12px;
             display: inline-block;
-            font-size: 0.95rem; 
-            line-height: 1.5; 
-            word-wrap: break-word; 
-            color: var(--text-primary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+            color: var(--msg-other-text);
             position: relative;
             border-top-left-radius: 4px;
-        }
-        
-        /* Message from "me" (optional styling, currently uniform) */
-        .message[data-me="true"] .msg-bubble {
-            background: var(--bg-tertiary);
+            max-width: 100%;
         }
 
-        .msg-image { 
-            max-width: 300px; 
-            border-radius: var(--radius-md); 
-            margin-top: 5px; 
-            cursor: pointer; 
+        /* =========================================
+           6B. MESSAGE - OWN USER (RIGHT SIDE)
+           ========================================= */
+        .message-group.own-message {
+            justify-content: flex-end;
+        }
+
+        .message-group.own-message .message {
+            flex-direction: row-reverse;
+            justify-content: flex-start;
+        }
+
+        .message-group.own-message .msg-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            max-width: calc(100% - 60px);
+        }
+
+        .message-group.own-message .msg-header {
+            flex-direction: row-reverse;
+        }
+
+        .message-group.own-message .msg-bubble {
+            background: var(--msg-own-bg);
+            color: var(--msg-own-text);
+            border-radius: 12px 0 12px 12px;
+            border-top-right-radius: 4px;
+        }
+
+        .message-group.own-message .msg-bubble:hover {
+            background: #5b50e0;
+        }
+
+        /* Own message reply context styling */
+        .message-group.own-message .msg-reply-context {
+            border-left: none;
+            border-right: 2px solid var(--accent-secondary);
+            padding-left: 0;
+            padding-right: 10px;
+            text-align: right;
+        }
+
+        /* Own message image styling */
+        .message-group.own-message .msg-image {
+            border-radius: 12px 0 12px 12px;
+            border-top-right-radius: 4px;
+        }
+
+        /* =========================================
+           6C. MESSAGE IMAGE SHARED
+           ========================================= */
+        .msg-image {
+            max-width: 300px;
+            border-radius: var(--radius-md);
+            margin-top: 5px;
+            cursor: pointer;
             transition: transform 0.2s;
             display: block;
         }
@@ -522,12 +602,12 @@
         .msg-reply-context strong { color: var(--text-primary); }
 
         /* Typing Indicator */
-        #typing-indicator { 
-            position: absolute; 
-            bottom: 90px; 
-            left: 20px; 
-            font-size: 0.85rem; 
-            color: var(--text-muted); 
+        #typing-indicator {
+            position: absolute;
+            bottom: 90px;
+            left: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -538,9 +618,10 @@
             opacity: 0;
             transform: translateY(10px);
             transition: opacity 0.2s, transform 0.2s;
+            z-index: 5;
         }
         #typing-indicator.visible { opacity: 1; transform: translateY(0); }
-        
+
         .typing-dots span {
             display: inline-block;
             width: 6px;
@@ -553,9 +634,9 @@
         .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
 
         /* Input Area */
-        #input-area { 
-            padding: 15px 25px 20px 25px; 
-            background: var(--bg-primary); 
+        #input-area {
+            padding: 15px 25px 20px 25px;
+            background: var(--bg-primary);
         }
 
         .reply-preview {
@@ -575,16 +656,16 @@
             cursor: pointer;
         }
 
-        .input-wrapper { 
-            display: flex; 
-            align-items: center; 
-            background: var(--bg-secondary); 
-            border-radius: var(--radius-full); 
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
             border: 1px solid var(--border-color);
             transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .input-wrapper:focus-within { 
-            border-color: var(--accent-primary); 
+        .input-wrapper:focus-within {
+            border-color: var(--accent-primary);
             box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
         }
 
@@ -602,14 +683,14 @@
         .input-action-btn:hover { color: var(--text-primary); }
         .input-action-btn svg { width: 22px; height: 22px; fill: currentColor; }
 
-        #msgInput { 
-            flex: 1; 
-            padding: 14px 5px; 
-            border: none; 
-            background: transparent; 
-            color: var(--text-primary); 
-            outline: none; 
-            font-size: 0.95rem; 
+        #msgInput {
+            flex: 1;
+            padding: 14px 5px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.95rem;
         }
         #msgInput::placeholder { color: var(--text-muted); }
 
@@ -774,49 +855,383 @@
         /* =========================================
            8. ANIMATIONS
            ========================================= */
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes msgSlide { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes msgSlide {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes msgSlideRight {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
         @keyframes bounce {
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1.0); }
         }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); }
+            100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.3); }
+        }
+
+        /* Own message animation from right */
+        .message-group.own-message .message {
+            animation: msgSlideRight 0.3s ease-out;
+        }
 
         /* =========================================
            9. MOBILE RESPONSIVENESS
            ========================================= */
         @media (max-width: 768px) {
             .bg-decoration { display: none; }
-            
-            .sidebar { 
-                position: fixed; 
-                left: 0; top: 0; bottom: 0; 
-                transform: translateX(-100%); 
-                box-shadow: 5px 0 20px rgba(0,0,0,0.5); 
+
+            .sidebar {
+                position: fixed;
+                left: 0; top: 0; bottom: 0;
+                transform: translateX(-100%);
+                box-shadow: 5px 0 20px rgba(0,0,0,0.5);
                 z-index: 200;
             }
             .sidebar.open { transform: translateX(0); }
 
             .chat-header-actions .desktop-only { display: none; }
-            
+
             .msg-image { max-width: 100%; }
-            
+
             .input-wrapper { border-radius: var(--radius-md); }
-            
+
             /* Mobile specific toggle button */
-            .mobile-toggle { 
-                display: block !important; 
-                background: none; 
-                border: none; 
-                color: var(--text-primary); 
-                font-size: 1.5rem; 
-                cursor: pointer; 
+            .mobile-toggle {
+                display: block !important;
+                background: none;
+                border: none;
+                color: var(--text-primary);
+                font-size: 1.5rem;
+                cursor: pointer;
                 margin-right: 10px;
             }
         }
 
         /* Utility to hide elements */
         .hidden { display: none !important; }
+
+        /* =========================================
+           10. ADDITIONAL UI REFINEMENTS
+           ========================================= */
+
+        /* Scrollbar for message area */
+        #messages::-webkit-scrollbar { width: 6px; }
+        #messages::-webkit-scrollbar-track { background: transparent; }
+        #messages::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+
+        /* Focus visible outline for accessibility */
+        button:focus-visible,
+        input:focus-visible {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        /* Smooth transitions for theme switching */
+        .sidebar,
+        .chat-area,
+        .chat-header,
+        #input-area,
+        .msg-bubble,
+        .user-item,
+        .modal-content,
+        .setting-item {
+            transition: background-color var(--transition-speed) ease,
+                        color var(--transition-speed) ease,
+                        border-color var(--transition-speed) ease;
+        }
+
+        /* Date separator between messages */
+        .date-separator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 0;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .date-separator::before,
+        .date-separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+            margin: 0 15px;
+        }
+
+        /* Unread badge for user items */
+        .unread-badge {
+            background: var(--accent-primary);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Connection status indicator at top of sidebar */
+        .connection-status {
+            padding: 8px 20px;
+            font-size: 0.75rem;
+            text-align: center;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .connection-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--online);
+            animation: pulseGlow 2s infinite;
+        }
+        .connection-dot.disconnected {
+            background: var(--danger);
+            animation: none;
+        }
+
+        /* Empty state styling */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            gap: 10px;
+        }
+        .empty-state-icon {
+            font-size: 3rem;
+            opacity: 0.5;
+        }
+        .empty-state-text {
+            font-size: 1rem;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* Welcome message in chat */
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .welcome-message h3 {
+            font-size: 1.3rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .welcome-message p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Context menu for messages */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-soft);
+            z-index: 250;
+            min-width: 160px;
+            padding: 5px 0;
+            display: none;
+        }
+        .context-menu.active { display: block; }
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            transition: background 0.1s, color 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .context-menu-item:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+        .context-menu-item.danger:hover {
+            background: var(--danger);
+        }
+
+        /* Tooltip for icons */
+        [data-tooltip] {
+            position: relative;
+        }
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            border: 1px solid var(--border-color);
+        }
+        [data-tooltip]:hover::after {
+            opacity: 1;
+        }
+
+        /* Selection color */
+        ::selection {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        /* Placeholder text consistency */
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+            opacity: 1;
+        }
+
+        /* System message in chat */
+        .system-message {
+            text-align: center;
+            padding: 8px 0;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        /* Notification toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-primary);
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-soft);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 300px;
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.success { border-left-color: var(--online); }
+
+        /* Message hover action bar */
+        .message-group .msg-hover-actions {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            display: none;
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+        }
+        .message-group:hover .msg-hover-actions {
+            display: flex;
+        }
+        .msg-hover-actions button {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.15s, color 0.15s;
+        }
+        .msg-hover-actions button:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Fix: Ensure avatar images in all contexts are constrained */
+        img.msg-avatar,
+        img.avatar-preview,
+        .user-item img,
+        #my-avatar-footer,
+        .my-profile img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        /* Override: login preview is larger */
+        img.avatar-preview {
+            width: 100px;
+            height: 100px;
+        }
+
+        /* Override: message avatar is 40px */
+        img.msg-avatar {
+            width: 40px;
+            height: 40px;
+        }
+
+        /* Message group relative for hover actions */
+        .message-group {
+            position: relative;
+        }
+
+        /* Sidebar overlay for mobile */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 199;
+            display: none;
+        }
+        .sidebar-overlay.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -825,13 +1240,32 @@
     <div class="bg-decoration one"></div>
     <div class="bg-decoration two"></div>
 
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" onclick="contextReply()">
+            ↩️ Reply
+        </div>
+        <div class="context-menu-item" onclick="contextCopy()">
+            📋 Copy Text
+        </div>
+        <div class="context-menu-item danger" onclick="contextDelete()">
+            🗑️ Delete
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
+
     <!-- 1. LOGIN SCREEN -->
     <div id="login-screen">
         <div class="logo-container">
             <div class="logo-text">IdlyCall</div>
             <div class="logo-sub">Modern Communication</div>
         </div>
-        
+
         <div class="avatar-upload-container">
             <label for="login-file">
                 <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" title="Click to upload avatar">
@@ -845,7 +1279,7 @@
         <div class="input-group">
             <input type="text" id="username" placeholder="Enter your display name" autocomplete="off" onkeypress="if(event.key === 'Enter') connect()">
         </div>
-        
+
         <button class="btn-primary" onclick="connect()">
             Enter Lobby
         </button>
@@ -859,10 +1293,15 @@
                 <div class="sidebar-header">
                     <span>Messages</span>
                     <div class="sidebar-header-actions">
-                        <button onclick="openSettings()" title="Settings">
+                        <button onclick="openSettings()" title="Settings" data-tooltip="Settings">
                             <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
                         </button>
                     </div>
+                </div>
+
+                <div class="connection-status" id="connection-status">
+                    <div class="connection-dot" id="connection-dot"></div>
+                    <span id="connection-text">Connecting...</span>
                 </div>
 
                 <div class="search-box">
@@ -875,7 +1314,7 @@
 
                 <div class="my-profile" onclick="openSettings()">
                     <div class="user-avatar-wrapper">
-                        <img id="my-avatar-footer" src="">
+                        <img id="my-avatar-footer" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
                         <div class="status-indicator status-online"></div>
                     </div>
                     <div class="user-info">
@@ -894,10 +1333,10 @@
                         <span id="chat-header-subtitle">General Chat</span>
                     </div>
                     <div class="chat-header-actions">
-                        <button class="icon-btn desktop-only" onclick="forceSync()" title="Sync">
+                        <button class="icon-btn desktop-only" onclick="forceSync()" title="Sync" data-tooltip="Sync">
                             <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
                         </button>
-                        <button class="icon-btn" onclick="clearChatUI()" title="Clear View">
+                        <button class="icon-btn" onclick="clearChatUI()" title="Clear View" data-tooltip="Clear">
                             <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                         </button>
                     </div>
@@ -937,7 +1376,7 @@
                         </div>
 
                         <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" oninput="handleTyping()">
-                        
+
                         <button class="send-btn" onclick="sendMsg()" title="Send">
                             <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                         </button>
@@ -971,6 +1410,16 @@
                     <button class="btn-primary" style="width:auto; padding:8px 16px; background:var(--danger);" onclick="clearData()">Clear</button>
                 </div>
             </div>
+            <div class="settings-group">
+                <h3>Profile</h3>
+                <div class="setting-item" style="flex-direction:column; align-items:flex-start; gap:10px;">
+                    <span>Update Avatar</span>
+                    <label for="settings-file-upload" style="cursor:pointer; color:var(--accent-secondary); font-size:0.9rem;">
+                        Choose new image...
+                    </label>
+                    <input type="file" id="settings-file-upload" accept="image/*" style="display:none;" onchange="updateProfilePic(event)">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -982,7 +1431,7 @@
 
     <script>
         /* =========================================
-           10. JAVASCRIPT LOGIC
+           11. JAVASCRIPT LOGIC
            ========================================= */
 
         // --- State Management ---
@@ -997,27 +1446,62 @@
         let currentlyTypingUsers = new Set();
         let indicatorTimeout;
         let replyingTo = null; // Stores the message object being replied to
+        let contextMenuTarget = null; // Stores info for right-click context menu
+        let messageStore = []; // Local store of displayed messages for reference
 
-        const emojis = ['😀', '😂', '🔥', '❤️', '👍', '👎', '😮', '😢', '😡', '🤔', '😎', '🥳', '🤫', '👀', '👋', '🙏', '💪', '🎉', '✨', '💯', '🚀', '☕', '🍕', '🍔'];
+        // Extended emoji list
+        const emojis = [
+            '😀', '😂', '🤣', '😊', '😍', '🥰', '😘', '😎',
+            '🤔', '😮', '😢', '😡', '🤯', '🥳', '😎', '🤫',
+            '👀', '👋', '🙏', '💪', '🎉', '✨', '💯', '🚀',
+            '🔥', '❤️', '👍', '👎', '☕', '🍕', '🍔', '🎵',
+            '😴', '🤗', '😏', '🫡', '💀', '👻', '🤖', '🌈',
+            '⭐', '💡', '📌', '🎯', '🏆', '🧠', '💎', '🌟'
+        ];
 
-        // --- Initialization ---
+        // Default avatar URL constant
+        const DEFAULT_AVATAR = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+
+        /* =========================================
+           12. INITIALIZATION
+           ========================================= */
         window.onload = () => {
             loadTheme();
             initEmojiPicker();
             loadSession();
-            
+
             const inputField = document.getElementById("msgInput");
-            inputField.addEventListener('keypress', (e) => { 
-                if (e.key === 'Enter') sendMsg(); 
+            inputField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMsg();
+            });
+
+            // Close context menu on any click elsewhere
+            document.addEventListener('click', () => {
+                const ctx = document.getElementById('context-menu');
+                if (ctx) ctx.classList.remove('active');
+            });
+
+            // Close emoji picker when clicking outside
+            document.addEventListener('click', (e) => {
+                const picker = document.getElementById('emoji-picker');
+                if (picker && picker.classList.contains('active')) {
+                    if (!e.target.closest('.emoji-picker') && !e.target.closest('.input-action-btn')) {
+                        picker.classList.remove('active');
+                    }
+                }
             });
         };
 
+        /**
+         * Load saved session data from localStorage
+         * Restores username, avatar, and last active chat
+         */
         function loadSession() {
             try {
                 const savedName = localStorage.getItem("idly_user");
                 const savedPic = localStorage.getItem("idly_pic");
                 const savedChat = localStorage.getItem("idly_chat");
-                
+
                 if (savedName) {
                     document.getElementById("username").value = savedName;
                     myUsername = savedName;
@@ -1028,31 +1512,56 @@
                 }
                 if (savedChat) currentChat = savedChat;
             } catch (e) {
-                console.log("Storage blocked");
+                console.log("Storage blocked or unavailable");
             }
         }
 
+        /**
+         * Initialize the emoji picker grid
+         * Creates button elements for each emoji
+         */
         function initEmojiPicker() {
             const picker = document.getElementById('emoji-picker');
+            picker.innerHTML = '';
             emojis.forEach(e => {
                 const btn = document.createElement('button');
                 btn.className = 'emoji-btn';
                 btn.innerText = e;
-                btn.onclick = () => insertEmoji(e);
+                btn.onclick = (ev) => {
+                    ev.stopPropagation();
+                    insertEmoji(e);
+                };
                 picker.appendChild(btn);
             });
         }
 
+        /**
+         * Insert an emoji at the current cursor position in the message input
+         */
         function insertEmoji(emoji) {
             const input = document.getElementById('msgInput');
-            input.value += emoji;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            const text = input.value;
+            input.value = text.substring(0, start) + emoji + text.substring(end);
+            input.selectionStart = input.selectionEnd = start + emoji.length;
             input.focus();
         }
 
-        // --- WebSocket Connection ---
+        /* =========================================
+           13. WEBSOCKET CONNECTION
+           ========================================= */
+
+        /**
+         * Connect to the WebSocket server
+         * Validates username, transitions UI, and opens connection
+         */
         function connect() {
             myUsername = document.getElementById("username").value.trim();
-            if (!myUsername) return alert("Please enter a username");
+            if (!myUsername) {
+                showToast("Please enter a username", "error");
+                return;
+            }
 
             try {
                 localStorage.setItem("idly_user", myUsername);
@@ -1060,10 +1569,10 @@
                 localStorage.setItem("idly_chat", currentChat);
             } catch(e) {}
 
-            // Update UI
+            // Update UI - transition from login to app
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("app-container").style.display = "flex";
-            
+
             updateFooterProfile();
             updateHeader();
 
@@ -1071,30 +1580,63 @@
             ws = new WebSocket(`${protocol}://${window.location.host}/ws/${myUsername}`);
 
             ws.onopen = function() {
-                // Send profile info
+                // Update connection status indicator
+                updateConnectionStatus(true);
+
+                // Send profile info to server
                 this.send(JSON.stringify({ pic: myPicBase64, target: currentChat }));
-                // Request history
+
+                // Request chat history for current channel
                 this.send(JSON.stringify({ type: "get_history", target: currentChat }));
-                
+
                 // Heartbeat to keep connection alive
                 heartbeat = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) 
+                    if (ws.readyState === WebSocket.OPEN)
                         ws.send(JSON.stringify({ type: "ping" }));
                 }, 25000);
+
+                showToast("Connected successfully", "success");
             };
 
             ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleWsMessage(data);
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWsMessage(data);
+                } catch (err) {
+                    console.error("Failed to parse WebSocket message:", err);
+                }
             };
 
             ws.onclose = () => {
                 clearInterval(heartbeat);
-                // Optional: Auto-reconnect logic or simple alert
-                console.log("Disconnected");
+                updateConnectionStatus(false);
+                console.log("Disconnected from server");
+            };
+
+            ws.onerror = () => {
+                updateConnectionStatus(false);
+                showToast("Connection error", "error");
             };
         }
 
+        /**
+         * Update the connection status indicator in the sidebar
+         */
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('connection-text');
+            if (connected) {
+                dot.className = 'connection-dot';
+                text.textContent = 'Connected';
+            } else {
+                dot.className = 'connection-dot disconnected';
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        /**
+         * Route incoming WebSocket messages to the appropriate handler
+         */
         function handleWsMessage(data) {
             switch(data.type) {
                 case "history":
@@ -1109,106 +1651,179 @@
                 case "typing":
                     handleTypingIndicator(data);
                     break;
+                default:
+                    console.log("Unknown message type:", data.type);
             }
         }
 
-        // --- UI Rendering ---
+        /* =========================================
+           14. UI RENDERING - MESSAGES
+           ========================================= */
+
+        /**
+         * Render chat history from the server
+         * Clears existing messages and draws all history items
+         */
         function renderHistory(data) {
             const msgs = document.getElementById("messages");
             msgs.innerHTML = "";
-            
-            if (data.data.length === 0) {
-                msgs.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:50px;">No messages yet. Say hello! 👋</div>`;
+            messageStore = [];
+
+            if (!data.data || data.data.length === 0) {
+                msgs.innerHTML = `
+                    <div class="welcome-message">
+                        <h3>Welcome to ${currentChat === 'Public' ? 'Public Lobby' : currentChat}!</h3>
+                        <p>No messages yet. Be the first to say hello! 👋</p>
+                    </div>
+                `;
             } else {
-                data.data.forEach(m => drawMessage(m, false));
+                data.data.forEach(m => {
+                    drawMessage(m, false);
+                });
                 scrollToBottom();
             }
         }
 
+        /**
+         * Handle an incoming chat message
+         * Determines if it should be displayed in the current view
+         */
         function handleIncomingChat(data) {
-            // Logic to determine if message belongs to current view
-            // Public: receiver == "Public"
-            // Private: sender == currentChat OR (sender == me && receiver == currentChat)
-            
+            // Determine if message belongs to current view
             const isPublic = data.receiver === "Public";
             const isForMe = data.receiver === myUsername;
             const isFromMe = data.sender === myUsername;
-            
+
             let show = false;
 
             if (currentChat === "Public" && isPublic) {
                 show = true;
             } else if (currentChat !== "Public") {
-                if (isFromMe && data.receiver === currentChat) show = true; // I sent to current target
-                if (data.sender === currentChat && isForMe) show = true; // Target sent to me
+                if (isFromMe && data.receiver === currentChat) show = true;
+                if (data.sender === currentChat && isForMe) show = true;
             }
 
             if (show) {
-                drawMessage(data);
+                drawMessage(data, true);
                 scrollToBottom();
             } else {
-                // Optional: Show notification for other tabs
+                // Show notification for messages in other channels
+                if (!isFromMe) {
+                    const channelName = isPublic ? "Public Lobby" : data.sender;
+                    showToast(`New message from ${channelName}`, "success");
+                }
             }
         }
 
+        /**
+         * Draw a single message in the chat area
+         * FIX: Own messages render on RIGHT side, others on LEFT side
+         */
         function drawMessage(msg, isNew = true) {
             const msgs = document.getElementById("messages");
-            
-            // Remove 'empty' text if present
-            if (msgs.innerHTML.includes("No messages yet")) msgs.innerHTML = "";
+
+            // Remove welcome/empty message if present
+            const welcomeEl = msgs.querySelector('.welcome-message');
+            if (welcomeEl) welcomeEl.remove();
 
             const div = document.createElement("div");
             div.className = "message-group";
-            
+
             const isMe = msg.sender === myUsername;
-            const safePic = msg.profile_pic || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
+
+            // Add own-message class for right-side alignment
+            if (isMe) {
+                div.classList.add("own-message");
+            }
+
+            // Use default avatar if profile pic is missing or invalid
+            const safePic = msg.profile_pic || DEFAULT_AVATAR;
             const timeStr = msg.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // Check for image
-            const isImage = msg.content && (msg.content.startsWith("data:image") || msg.content.includes("http"));
+            // Store message for reply reference
+            const msgId = msg.id || 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            messageStore.push({ id: msgId, sender: msg.sender, content: msg.content, timestamp: timeStr });
+
+            // Check if content is an image
+            const isImage = msg.content && (msg.content.startsWith("data:image") || (msg.content.includes("http") && msg.content.match(/\.(jpeg|jpg|gif|png|webp)/i)));
             let contentHtml = "";
-            
+
             if (isImage) {
-                contentHtml = `<img src="${msg.content}" class="msg-image" onclick="openLightbox('${msg.content}')">`;
+                contentHtml = `<img src="${msg.content}" class="msg-image" onclick="openLightbox('${msg.content.replace(/'/g, "\\'")}')">`;
             } else {
                 contentHtml = `<div class="msg-bubble">${escapeHtml(msg.content)}</div>`;
             }
 
-            // Reply Logic UI
+            // Reply context HTML
             let replyHtml = "";
             if (msg.reply_to) {
+                const replyTextDisplay = msg.reply_to_text
+                    ? escapeHtml(msg.reply_to_text.substring(0, 80))
+                    : 'Image';
                 replyHtml = `
-                    <div class="msg-reply-context" onclick="scrollToMessage('${msg.reply_to_id}')">
-                        <strong>${msg.reply_to_name}</strong><br>
-                        <span style="color:var(--text-muted)">${escapeHtml(msg.reply_to_text || 'Image')}</span>
+                    <div class="msg-reply-context" onclick="scrollToMessage('${msg.reply_to_id || ''}')">
+                        <strong>${escapeHtml(msg.reply_to_name || 'Unknown')}</strong><br>
+                        <span style="color:var(--text-muted)">${replyTextDisplay}</span>
                     </div>
                 `;
             }
 
-            div.innerHTML = `
-                <div class="message" data-me="${isMe}" oncontextmenu="showMessageContext(event, '${msg.id || ''}', '${escapeHtml(msg.content)}', '${msg.sender}')">
-                    <div class="msg-avatar-spacer">
-                        <img src="${safePic}" class="msg-avatar" title="${msg.sender}">
-                    </div>
-                    <div class="msg-content">
-                        <div class="msg-header">
-                            <span class="msg-name">${msg.sender}</span>
-                            <span class="msg-time">${timeStr}</span>
+            // Build the message HTML differently based on sender
+            if (isMe) {
+                // OWN MESSAGE - RIGHT SIDE
+                div.innerHTML = `
+                    <div class="message" data-me="true" data-msg-id="${msgId}" oncontextmenu="showMessageContext(event, '${msgId}', '${escapeHtml(msg.content).replace(/'/g, "\\'")}', '${escapeHtml(msg.sender)}')">
+                        <div class="msg-avatar-spacer">
+                            <img src="${safePic}" class="msg-avatar" title="${msg.sender}">
                         </div>
-                        ${replyHtml}
-                        ${contentHtml}
+                        <div class="msg-content">
+                            <div class="msg-header">
+                                <span class="msg-time">${timeStr}</span>
+                                <span class="msg-name">You</span>
+                            </div>
+                            ${replyHtml}
+                            ${contentHtml}
+                        </div>
                     </div>
-                </div>
-            `;
-            
+                `;
+            } else {
+                // OTHER USER MESSAGE - LEFT SIDE
+                div.innerHTML = `
+                    <div class="message" data-me="false" data-msg-id="${msgId}" oncontextmenu="showMessageContext(event, '${msgId}', '${escapeHtml(msg.content).replace(/'/g, "\\'")}', '${escapeHtml(msg.sender)}')">
+                        <div class="msg-avatar-spacer">
+                            <img src="${safePic}" class="msg-avatar" title="${msg.sender}">
+                        </div>
+                        <div class="msg-content">
+                            <div class="msg-header">
+                                <span class="msg-name">${escapeHtml(msg.sender)}</span>
+                                <span class="msg-time">${timeStr}</span>
+                            </div>
+                            ${replyHtml}
+                            ${contentHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
             msgs.appendChild(div);
         }
 
+        /* =========================================
+           15. UI RENDERING - USER LIST
+           ========================================= */
+
+        /**
+         * Handle updated user list from server
+         */
         function handleUserList(data) {
             userList = data.users;
             renderSidebar();
         }
 
+        /**
+         * Render the sidebar with channels and user list
+         * Groups users by online/offline status
+         */
         function renderSidebar() {
             const container = document.getElementById("user-list-container");
             let html = `
@@ -1222,15 +1837,18 @@
                     </div>
                 </div>
             `;
-            
+
+            // Separate online and offline users
             const onlineUsers = userList.filter(u => u.username !== myUsername && u.status === 'Online');
             const offlineUsers = userList.filter(u => u.username !== myUsername && u.status !== 'Online');
 
+            // Render online users section
             html += `<div class="list-header">Online — ${onlineUsers.length}</div>`;
             onlineUsers.forEach(user => {
                 html += createUserItem(user);
             });
 
+            // Render offline users section
             html += `<div class="list-header">Offline — ${offlineUsers.length}</div>`;
             offlineUsers.forEach(user => {
                 html += createUserItem(user);
@@ -1239,37 +1857,53 @@
             container.innerHTML = html;
         }
 
+        /**
+         * Create HTML for a single user item in the sidebar
+         */
         function createUserItem(user) {
             const statusClass = user.status === "Online" ? "status-online" : "status-offline";
             const activeClass = currentChat === user.username ? "active" : "";
-            const safePic = user.profile_pic || "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
-            
+            const safePic = user.profile_pic || DEFAULT_AVATAR;
+
             return `
-                <div class="user-item ${activeClass}" onclick="switchChat('${user.username}')">
+                <div class="user-item ${activeClass}" onclick="switchChat('${escapeHtml(user.username)}')">
                     <div class="user-avatar-wrapper">
                         <img src="${safePic}">
                         <div class="status-indicator ${statusClass}"></div>
                     </div>
                     <div class="user-info">
-                        <div class="name">${user.username}</div>
+                        <div class="name">${escapeHtml(user.username)}</div>
                     </div>
                 </div>
             `;
         }
 
-        // --- Actions ---
+        /* =========================================
+           16. CHAT ACTIONS
+           ========================================= */
+
+        /**
+         * Switch to a different chat channel (Public or DM)
+         */
         function switchChat(target) {
             if (currentChat === target) return;
             currentChat = target;
-            
+
             try { localStorage.setItem("idly_chat", currentChat); } catch(e) {}
 
             updateHeader();
             renderSidebar();
             cancelReply();
 
-            document.getElementById("messages").innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:50px;">Loading...</div>`;
-            
+            // Show loading state
+            document.getElementById("messages").innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <div class="empty-state-text">Loading messages...</div>
+                </div>
+            `;
+
+            // Request history for new channel
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
             }
@@ -1277,23 +1911,29 @@
             // Close sidebar on mobile
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebar-overlay').classList.remove('active');
             }
         }
 
+        /**
+         * Send a text message to the current chat
+         */
         function sendMsg() {
             const input = document.getElementById("msgInput");
             const text = input.value.trim();
-            if (text && ws && ws.readyState === WebSocket.OPEN) {
-                const msgObj = { 
-                    type: "chat", 
-                    receiver: currentChat, 
-                    pic: myPicBase64, 
+            if (!text) return;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const msgObj = {
+                    type: "chat",
+                    receiver: currentChat,
+                    pic: myPicBase64,
                     content: text
                 };
 
-                // Handle Reply Data
+                // Attach reply data if replying to a message
                 if (replyingTo) {
-                    msgObj.reply_to_id = replyingTo.id || Date.now();
+                    msgObj.reply_to_id = replyingTo.id;
                     msgObj.reply_to_name = replyingTo.sender;
                     msgObj.reply_to_text = replyingTo.content;
                     replyingTo = null;
@@ -1303,64 +1943,97 @@
                 ws.send(JSON.stringify(msgObj));
                 input.value = "";
                 input.focus();
-                
-                // Reset typing
+
+                // Reset typing state
                 clearTimeout(typingTimeout);
                 isTyping = false;
+            } else {
+                showToast("Not connected to server", "error");
             }
         }
 
+        /**
+         * Send an image message
+         * Resizes the image before sending to reduce bandwidth
+         */
         function sendImage(e) {
-            const file = e.target.files[0]; 
-            if (!file) return; 
-            
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validate file size (max 10MB before resize)
+            if (file.size > 10 * 1024 * 1024) {
+                showToast("Image too large. Max 10MB.", "error");
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = (event) => {
-                // Resize logic
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement('canvas'); 
+                    const canvas = document.createElement('canvas');
                     let width = img.width, height = img.height;
-                    
-                    if (width > 1000) { height *= 1000 / width; width = 1000; }
-                    canvas.width = width; 
-                    canvas.height = height; 
-                    const ctx = canvas.getContext('2d'); 
+
+                    // Resize large images
+                    if (width > 1000) {
+                        height *= 1000 / width;
+                        width = 1000;
+                    }
+                    if (height > 1000) {
+                        width *= 1000 / height;
+                        height = 1000;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    
+
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                    
+
                     if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ 
-                            type: "chat", 
-                            receiver: currentChat, 
-                            pic: myPicBase64, 
-                            content: dataUrl 
+                        ws.send(JSON.stringify({
+                            type: "chat",
+                            receiver: currentChat,
+                            pic: myPicBase64,
+                            content: dataUrl
                         }));
                     }
-                }; 
+                };
+                img.onerror = () => {
+                    showToast("Failed to load image", "error");
+                };
                 img.src = event.target.result;
-            }; 
-            reader.readAsDataURL(file); 
+            };
+            reader.readAsDataURL(file);
             e.target.value = '';
         }
 
-        // --- Interaction Handlers ---
+        /* =========================================
+           17. TYPING INDICATOR
+           ========================================= */
+
+        /**
+         * Handle typing input - send typing event to server
+         */
         function handleTyping() {
             if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            
+
             if (!isTyping) {
                 isTyping = true;
                 ws.send(JSON.stringify({ type: "typing", receiver: currentChat }));
             }
-            
+
             clearTimeout(typingTimeout);
             typingTimeout = setTimeout(() => { isTyping = false; }, 1500);
         }
 
+        /**
+         * Handle incoming typing indicator from server
+         */
         function handleTypingIndicator(data) {
-            if (data.sender === myUsername) return; // Ignore self
+            if (data.sender === myUsername) return;
 
+            // Add sender to currently typing set if in relevant channel
             if (currentChat === "Public" && data.receiver === "Public") {
                 currentlyTypingUsers.add(data.sender);
             } else if (currentChat === data.sender) {
@@ -1368,7 +2041,7 @@
             }
 
             updateTypingUI();
-            
+
             clearTimeout(indicatorTimeout);
             indicatorTimeout = setTimeout(() => {
                 currentlyTypingUsers.clear();
@@ -1376,6 +2049,9 @@
             }, 3000);
         }
 
+        /**
+         * Update the typing indicator UI element
+         */
         function updateTypingUI() {
             const indicator = document.getElementById("typing-indicator");
             const textSpan = document.getElementById("typing-text");
@@ -1383,10 +2059,14 @@
 
             if (users.length > 0) {
                 let text = "";
-                if (users.length === 1) text = `${users[0]} is typing`;
-                else if (users.length === 2) text = `${users[0]} and ${users[1]} are typing`;
-                else text = "Several people are typing";
-                
+                if (users.length === 1) {
+                    text = `${users[0]} is typing`;
+                } else if (users.length === 2) {
+                    text = `${users[0]} and ${users[1]} are typing`;
+                } else {
+                    text = "Several people are typing";
+                }
+
                 textSpan.innerText = text;
                 indicator.classList.add('visible');
             } else {
@@ -1394,6 +2074,13 @@
             }
         }
 
+        /* =========================================
+           18. REPLY FUNCTIONALITY
+           ========================================= */
+
+        /**
+         * Set the message being replied to
+         */
         function setReply(sender, content, id) {
             replyingTo = { sender, content, id };
             document.getElementById('reply-to-name').innerText = sender;
@@ -1402,22 +2089,79 @@
             document.getElementById('msgInput').focus();
         }
 
+        /**
+         * Cancel the current reply
+         */
         function cancelReply() {
             replyingTo = null;
             document.getElementById('reply-preview').classList.remove('active');
         }
 
+        /**
+         * Show context menu on right-click for a message
+         */
         function showMessageContext(e, id, content, sender) {
             e.preventDefault();
-            // Simple implementation: Reply only for now
-            if (content && !content.startsWith('data:image')) {
-                if (confirm(`Reply to ${sender}?`)) {
-                    setReply(sender, content, id);
-                }
-            }
+            e.stopPropagation();
+
+            contextMenuTarget = { id, content, sender };
+
+            const ctx = document.getElementById('context-menu');
+            ctx.style.left = e.clientX + 'px';
+            ctx.style.top = e.clientY + 'px';
+            ctx.classList.add('active');
         }
 
-        // --- Helper Functions ---
+        /**
+         * Context menu action: Reply
+         */
+        function contextReply() {
+            if (contextMenuTarget) {
+                setReply(contextMenuTarget.sender, contextMenuTarget.content, contextMenuTarget.id);
+            }
+            document.getElementById('context-menu').classList.remove('active');
+        }
+
+        /**
+         * Context menu action: Copy text
+         */
+        function contextCopy() {
+            if (contextMenuTarget && contextMenuTarget.content) {
+                navigator.clipboard.writeText(contextMenuTarget.content).then(() => {
+                    showToast("Copied to clipboard", "success");
+                }).catch(() => {
+                    showToast("Failed to copy", "error");
+                });
+            }
+            document.getElementById('context-menu').classList.remove('active');
+        }
+
+        /**
+         * Context menu action: Delete (local only)
+         */
+        function contextDelete() {
+            if (contextMenuTarget) {
+                const msgEl = document.querySelector(`[data-msg-id="${contextMenuTarget.id}"]`);
+                if (msgEl) {
+                    const group = msgEl.closest('.message-group');
+                    if (group) {
+                        group.style.transition = 'opacity 0.3s, transform 0.3s';
+                        group.style.opacity = '0';
+                        group.style.transform = 'scale(0.95)';
+                        setTimeout(() => group.remove(), 300);
+                    }
+                }
+            }
+            document.getElementById('context-menu').classList.remove('active');
+        }
+
+        /* =========================================
+           19. HELPER FUNCTIONS
+           ========================================= */
+
+        /**
+         * Escape HTML special characters to prevent XSS
+         */
         function escapeHtml(text) {
             if (!text) return "";
             return text
@@ -1428,11 +2172,39 @@
                 .replace(/'/g, "&#039;");
         }
 
+        /**
+         * Scroll the messages container to the bottom
+         */
         function scrollToBottom() {
             const msgs = document.getElementById("messages");
-            msgs.scrollTop = msgs.scrollHeight;
+            // Use requestAnimationFrame for smooth scrolling
+            requestAnimationFrame(() => {
+                msgs.scrollTop = msgs.scrollHeight;
+            });
         }
 
+        /**
+         * Scroll to a specific message by ID (for reply clicks)
+         */
+        function scrollToMessage(msgId) {
+            if (!msgId) return;
+            const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Briefly highlight the message
+                const group = el.closest('.message-group');
+                if (group) {
+                    group.style.background = 'rgba(99, 102, 241, 0.15)';
+                    setTimeout(() => {
+                        group.style.background = '';
+                    }, 1500);
+                }
+            }
+        }
+
+        /**
+         * Update the chat header with current channel info
+         */
         function updateHeader() {
             const title = document.getElementById("chat-header-title");
             const sub = document.getElementById("chat-header-subtitle");
@@ -1445,82 +2217,209 @@
             }
         }
 
+        /**
+         * Update the footer profile section with current user info
+         */
         function updateFooterProfile() {
             document.getElementById("my-avatar-footer").src = myPicBase64;
             document.getElementById("my-username-footer").innerText = myUsername;
         }
 
+        /**
+         * Process an uploaded image file
+         * Resizes and converts to base64 data URL
+         * FIX: Properly constrains images to correct dimensions
+         */
         function processImage(e, targetId) {
-            const file = e.target.files[0]; if (!file) return;
+            const file = e.target.files[0];
+            if (!file) return;
+
             const reader = new FileReader();
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement('canvas'); 
+                    const canvas = document.createElement('canvas');
                     let width = img.width, height = img.height;
-                    if (width > 800) { height *= 800 / width; width = 800; }
-                    canvas.width = width; canvas.height = height; 
-                    const ctx = canvas.getContext('2d'); 
+
+                    // Constrain to max 800px on either dimension
+                    if (width > 800) {
+                        height *= 800 / width;
+                        width = 800;
+                    }
+                    if (height > 800) {
+                        width *= 800 / height;
+                        height = 800;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    const b64 = canvas.toDataURL('image/jpeg', 0.8); 
-                    document.getElementById(targetId).src = b64;
-                    if(targetId === 'login-preview') myPicBase64 = b64;
-                }; 
+                    const b64 = canvas.toDataURL('image/jpeg', 0.8);
+
+                    const target = document.getElementById(targetId);
+                    if (target) {
+                        target.src = b64;
+                    }
+
+                    if (targetId === 'login-preview') {
+                        myPicBase64 = b64;
+                    }
+                };
+                img.onerror = () => {
+                    showToast("Failed to process image", "error");
+                };
                 img.src = event.target.result;
-            }; 
+            };
             reader.readAsDataURL(file);
         }
 
+        /**
+         * Update profile picture from settings modal
+         */
+        function updateProfilePic(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width, height = img.height;
+
+                    if (width > 800) {
+                        height *= 800 / width;
+                        width = 800;
+                    }
+                    if (height > 800) {
+                        width *= 800 / height;
+                        height = 800;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const b64 = canvas.toDataURL('image/jpeg', 0.8);
+
+                    myPicBase64 = b64;
+                    updateFooterProfile();
+
+                    // Send updated profile pic to server
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ pic: myPicBase64, target: currentChat }));
+                    }
+
+                    try { localStorage.setItem("idly_pic", myPicBase64); } catch(e) {}
+                    showToast("Profile picture updated", "success");
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        /**
+         * Filter users in the sidebar by search query
+         */
         function filterUsers() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             const items = document.querySelectorAll('.user-item');
             items.forEach(item => {
-                const name = item.querySelector('.name').innerText.toLowerCase();
-                item.style.display = name.includes(query) ? 'flex' : 'none';
+                const name = item.querySelector('.name');
+                if (name) {
+                    const text = name.innerText.toLowerCase();
+                    item.style.display = text.includes(query) ? 'flex' : 'none';
+                }
             });
         }
 
+        /**
+         * Force sync - re-request chat history from server
+         */
         function forceSync() {
-             if (ws && ws.readyState === WebSocket.OPEN) {
-                document.getElementById("messages").innerHTML = `<div style="text-align:center; color:var(--accent-primary); margin-top:20px;">Syncing...</div>`;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                document.getElementById("messages").innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔄</div>
+                        <div class="empty-state-text">Syncing messages...</div>
+                    </div>
+                `;
                 ws.send(JSON.stringify({ type: "get_history", target: currentChat }));
+                showToast("Syncing...", "success");
             }
         }
 
+        /**
+         * Clear the chat UI locally (does not delete from server)
+         */
         function clearChatUI() {
             document.getElementById("messages").innerHTML = "";
+            messageStore = [];
         }
 
-        // --- Mobile & UI Controls ---
+        /* =========================================
+           20. MOBILE & UI CONTROLS
+           ========================================= */
+
+        /**
+         * Toggle the sidebar open/closed on mobile
+         */
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
         }
 
+        /**
+         * Close the sidebar on mobile
+         */
         function closeSidebarMobile() {
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebar-overlay').classList.remove('active');
             }
         }
 
+        /**
+         * Toggle the emoji picker visibility
+         */
         function toggleEmojiPicker() {
             document.getElementById('emoji-picker').classList.toggle('active');
         }
 
-        // --- Theme & Settings ---
+        /* =========================================
+           21. THEME & SETTINGS
+           ========================================= */
+
+        /**
+         * Open the settings modal
+         */
         function openSettings() {
             document.getElementById('settings-modal').classList.add('active');
         }
 
+        /**
+         * Close the settings modal
+         */
         function closeSettings() {
             document.getElementById('settings-modal').classList.remove('active');
         }
 
+        /**
+         * Load saved theme preference
+         */
         function loadTheme() {
             const theme = localStorage.getItem('idly_theme') || 'dark';
             document.body.setAttribute('data-theme', theme);
             document.getElementById('theme-toggle').checked = (theme === 'dark');
         }
 
+        /**
+         * Toggle between light and dark theme
+         */
         function toggleTheme() {
             const isDark = document.getElementById('theme-toggle').checked;
             const theme = isDark ? 'dark' : 'light';
@@ -1528,21 +2427,116 @@
             localStorage.setItem('idly_theme', theme);
         }
 
+        /**
+         * Clear all local data and reload the page
+         */
         function clearData() {
-            if(confirm("Clear all local settings and data? You will return to login.")) {
+            if (confirm("Clear all local settings and data? You will return to login.")) {
                 localStorage.clear();
                 location.reload();
             }
         }
 
-        // --- Lightbox ---
+        /* =========================================
+           22. LIGHTBOX
+           ========================================= */
+
+        /**
+         * Open the image lightbox
+         */
         function openLightbox(src) {
             document.getElementById('lightbox-img').src = src;
             document.getElementById('lightbox').classList.add('active');
         }
+
+        /**
+         * Close the image lightbox
+         */
         function closeLightbox() {
             document.getElementById('lightbox').classList.remove('active');
         }
+
+        /* =========================================
+           23. TOAST NOTIFICATIONS
+           ========================================= */
+
+        /**
+         * Show a toast notification
+         * @param {string} message - The notification text
+         * @param {string} type - "success", "error", or default
+         */
+        function showToast(message, type = "") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            if (type) toast.classList.add(type);
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s, transform 0.3s';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(30px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /* =========================================
+           24. KEYBOARD SHORTCUTS
+           ========================================= */
+        document.addEventListener('keydown', (e) => {
+            // Escape key closes modals and overlays
+            if (e.key === 'Escape') {
+                closeLightbox();
+                closeSettings();
+                cancelReply();
+                document.getElementById('emoji-picker').classList.remove('active');
+                document.getElementById('context-menu').classList.remove('active');
+                closeSidebarMobile();
+            }
+
+            // Ctrl+K or Cmd+K to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) searchInput.focus();
+            }
+        });
+
+        /* =========================================
+           25. WINDOW RESIZE HANDLER
+           ========================================= */
+        window.addEventListener('resize', () => {
+            // Auto-close sidebar on resize to desktop
+            if (window.innerWidth > 768) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebar-overlay').classList.remove('active');
+            }
+        });
+
+        /* =========================================
+           26. ONLINE/OFFLINE STATUS DETECTION
+           ========================================= */
+        window.addEventListener('online', () => {
+            showToast("You're back online", "success");
+            updateConnectionStatus(ws && ws.readyState === WebSocket.OPEN);
+        });
+
+        window.addEventListener('offline', () => {
+            showToast("You're offline", "error");
+            updateConnectionStatus(false);
+        });
+
+        /* =========================================
+           27. PREVENT DEFAULT CONTEXT MENU ON APP
+           ========================================= */
+        document.getElementById('app-container')?.addEventListener('contextmenu', (e) => {
+            // Allow context menu only on message elements
+            if (!e.target.closest('.message')) {
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 </html>
