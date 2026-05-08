@@ -73,7 +73,9 @@
         body {
             background-color: var(--bg-primary);
             color: var(--text-primary);
+            /* Use dvh for dynamic viewport height to handle mobile keyboard properly */
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             display: flex;
             justify-content: center;
@@ -233,7 +235,8 @@
         #app-container {
             display: none;
             width: 100%;
-            height: 100%;
+            height: 100vh;
+            height: 100dvh;
             position: relative;
         }
 
@@ -304,6 +307,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 10px;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
         }
 
         .list-header {
@@ -325,6 +329,8 @@
             align-items: center;
             margin-bottom: 2px;
             transition: background 0.15s, color 0.15s;
+            /* Larger touch target for mobile */
+            min-height: 44px;
         }
 
         .user-item:hover {
@@ -379,6 +385,7 @@
             align-items: center;
             cursor: pointer;
             transition: background 0.2s;
+            min-height: 60px;
         }
         .my-profile:hover { background: var(--bg-input); }
 
@@ -404,11 +411,16 @@
             background: var(--bg-primary);
             position: relative;
             background-image: radial-gradient(circle at 50% 0%, var(--bg-secondary) 0%, transparent 60%);
+            /* Fix for mobile viewport */
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
         }
 
         .chat-header {
             padding: 0 25px;
             height: 70px;
+            min-height: 70px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
@@ -435,11 +447,14 @@
             justify-content: center;
             cursor: pointer;
             transition: background 0.2s, color 0.2s;
+            /* Increase touch target */
+            min-width: 44px;
+            min-height: 44px;
         }
         .icon-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
         .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
 
-        /* Messages */
+        /* Messages Container */
         #messages {
             flex: 1;
             overflow-y: auto;
@@ -447,6 +462,10 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            -webkit-overflow-scrolling: touch;
+            /* Allow proper scrolling on mobile keyboard open */
+            position: relative;
+            overscroll-behavior: contain;
         }
 
         .message-group {
@@ -454,6 +473,7 @@
             padding: 4px 0;
             border-radius: var(--radius-sm);
             transition: background 0.1s;
+            position: relative;
         }
         .message-group:hover { background: rgba(255,255,255,0.02); }
 
@@ -490,6 +510,8 @@
         .msg-content {
             flex: 1;
             max-width: calc(100% - 60px);
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .msg-header {
@@ -637,6 +659,10 @@
         #input-area {
             padding: 15px 25px 20px 25px;
             background: var(--bg-primary);
+            /* Ensure it stays above content when keyboard opens */
+            position: relative;
+            z-index: 10;
+            flex-shrink: 0;
         }
 
         .reply-preview {
@@ -654,6 +680,7 @@
             border: none;
             color: var(--text-muted);
             cursor: pointer;
+            padding: 5px;
         }
 
         .input-wrapper {
@@ -679,6 +706,9 @@
             display: flex;
             align-items: center;
             transition: color 0.2s;
+            min-width: 44px;
+            min-height: 44px;
+            justify-content: center;
         }
         .input-action-btn:hover { color: var(--text-primary); }
         .input-action-btn svg { width: 22px; height: 22px; fill: currentColor; }
@@ -691,6 +721,7 @@
             color: var(--text-primary);
             outline: none;
             font-size: 0.95rem;
+            min-width: 0; /* Fix flex truncation */
         }
         #msgInput::placeholder { color: var(--text-muted); }
 
@@ -707,6 +738,7 @@
             cursor: pointer;
             transition: transform 0.2s, opacity 0.2s;
             opacity: 0.8;
+            flex-shrink: 0;
         }
         .send-btn:hover { opacity: 1; transform: scale(1.05); }
         .send-btn svg { width: 18px; height: 18px; fill: white; margin-left: 2px; }
@@ -741,6 +773,8 @@
             box-shadow: var(--shadow-glow);
             transform: scale(0.9);
             transition: transform 0.3s;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .modal-overlay.active .modal-content { transform: scale(1); }
 
@@ -751,7 +785,7 @@
             margin-bottom: 25px;
         }
         .modal-header h2 { font-size: 1.3rem; }
-        .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem; }
+        .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem; padding: 5px; }
 
         .settings-group {
             margin-bottom: 20px;
@@ -811,6 +845,7 @@
             z-index: 150;
             box-shadow: var(--shadow-soft);
             animation: fadeIn 0.2s;
+            max-width: 250px;
         }
         .emoji-picker.active { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
         .emoji-btn {
@@ -821,6 +856,11 @@
             cursor: pointer;
             border-radius: var(--radius-sm);
             transition: background 0.2s;
+            min-width: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .emoji-btn:hover { background: var(--bg-tertiary); }
 
@@ -850,6 +890,9 @@
             border-radius: 50%;
             font-size: 1.2rem;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* =========================================
@@ -892,9 +935,17 @@
         @media (max-width: 768px) {
             .bg-decoration { display: none; }
 
+            .app-layout {
+                flex-direction: column;
+                height: 100vh;
+                height: 100dvh;
+            }
+
             .sidebar {
                 position: fixed;
                 left: 0; top: 0; bottom: 0;
+                width: 85vw; /* Slightly wider for mobile */
+                max-width: 320px;
                 transform: translateX(-100%);
                 box-shadow: 5px 0 20px rgba(0,0,0,0.5);
                 z-index: 200;
@@ -903,9 +954,25 @@
 
             .chat-header-actions .desktop-only { display: none; }
 
+            /* Constrain message widths on mobile so they don't span edge to edge */
+            .msg-content {
+                max-width: 80% !important;
+            }
+            .message-group.own-message .msg-content {
+                max-width: 80% !important;
+            }
+
             .msg-image { max-width: 100%; }
 
-            .input-wrapper { border-radius: var(--radius-md); }
+            #input-area {
+                padding: 10px 15px 15px 15px;
+                /* Safe area insets for notched phones at bottom */
+                padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px));
+            }
+
+            .input-wrapper {
+                border-radius: var(--radius-md);
+            }
 
             /* Mobile specific toggle button */
             .mobile-toggle {
@@ -916,6 +983,57 @@
                 font-size: 1.5rem;
                 cursor: pointer;
                 margin-right: 10px;
+                padding: 5px;
+            }
+
+            /* Chat area takes full height on mobile */
+            .chat-area {
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Adjust typing indicator for mobile keyboards */
+            #typing-indicator {
+                bottom: 80px;
+                left: 10px;
+            }
+            
+            /* Emoji picker adjustments for mobile */
+            .emoji-picker {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+                width: auto;
+                bottom: 75px;
+            }
+            .emoji-picker.active {
+                grid-template-columns: repeat(8, 1fr);
+            }
+        }
+
+        /* Small phone adjustments */
+        @media (max-width: 400px) {
+            .chat-header {
+                padding: 0 15px;
+            }
+            #messages {
+                padding: 15px;
+            }
+            .msg-avatar {
+                width: 32px;
+                height: 32px;
+            }
+            .msg-avatar-spacer {
+                width: 32px;
+            }
+            .msg-content {
+                max-width: calc(100% - 45px) !important;
+            }
+            .message-group.own-message .msg-content {
+                max-width: calc(100% - 45px) !important;
+            }
+            .msg-header {
+                gap: 5px;
             }
         }
 
@@ -1065,7 +1183,7 @@
         }
         .context-menu.active { display: block; }
         .context-menu-item {
-            padding: 8px 16px;
+            padding: 10px 16px; /* Larger touch target */
             cursor: pointer;
             font-size: 0.9rem;
             color: var(--text-secondary);
@@ -1193,8 +1311,6 @@
         .user-item img,
         #my-avatar-footer,
         .my-profile img {
-            width: 36px;
-            height: 36px;
             border-radius: 50%;
             object-fit: cover;
             display: block;
@@ -1213,9 +1329,12 @@
             height: 40px;
         }
 
-        /* Message group relative for hover actions */
-        .message-group {
-            position: relative;
+        /* Override: sidebar avatars */
+        .user-item img,
+        .my-profile .user-avatar-wrapper img,
+        #my-avatar-footer {
+            width: 36px;
+            height: 36px;
         }
 
         /* Sidebar overlay for mobile */
@@ -1231,6 +1350,15 @@
         }
         .sidebar-overlay.active {
             display: block;
+        }
+        
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
@@ -1251,7 +1379,8 @@
         <div class="context-menu-item" onclick="contextCopy()">
             📋 Copy Text
         </div>
-        <div class="context-menu-item danger" onclick="contextDelete()">
+        <!-- Delete is dynamically shown/hidden based on message sender -->
+        <div class="context-menu-item danger" id="ctx-delete-btn" onclick="contextDelete()">
             🗑️ Delete
         </div>
     </div>
@@ -1437,6 +1566,8 @@
         // --- State Management ---
         let ws;
         let heartbeat;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 5;
         let myUsername = "";
         let myPicBase64 = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png";
         let currentChat = "Public";
@@ -1490,6 +1621,14 @@
                     }
                 }
             });
+
+            // Mobile specific: handle visual viewport resize (keyboard open/close)
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    // Fix for mobile browsers where keyboard pushes layout up
+                    document.documentElement.style.setProperty('--vh', `${window.visualViewport.height * 0.01}px`);
+                });
+            }
         };
 
         /**
@@ -1582,6 +1721,7 @@
             ws.onopen = function() {
                 // Update connection status indicator
                 updateConnectionStatus(true);
+                reconnectAttempts = 0;
 
                 // Send profile info to server
                 this.send(JSON.stringify({ pic: myPicBase64, target: currentChat }));
@@ -1611,6 +1751,7 @@
                 clearInterval(heartbeat);
                 updateConnectionStatus(false);
                 console.log("Disconnected from server");
+                attemptReconnect();
             };
 
             ws.onerror = () => {
@@ -1620,17 +1761,41 @@
         }
 
         /**
+         * Attempt to reconnect to the WebSocket server
+         * Uses exponential backoff up to a maximum number of attempts
+         */
+        function attemptReconnect() {
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                showToast("Could not reconnect. Please refresh.", "error");
+                return;
+            }
+            
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+            reconnectAttempts++;
+            
+            updateConnectionStatus(false);
+            showToast(`Reconnecting in ${delay/1000}s...`, "error");
+            
+            setTimeout(() => {
+                console.log(`Reconnect attempt ${reconnectAttempts}...`);
+                connect();
+            }, delay);
+        }
+
+        /**
          * Update the connection status indicator in the sidebar
          */
         function updateConnectionStatus(connected) {
             const dot = document.getElementById('connection-dot');
             const text = document.getElementById('connection-text');
-            if (connected) {
-                dot.className = 'connection-dot';
-                text.textContent = 'Connected';
-            } else {
-                dot.className = 'connection-dot disconnected';
-                text.textContent = 'Disconnected';
+            if (dot && text) {
+                if (connected) {
+                    dot.className = 'connection-dot';
+                    text.textContent = 'Connected';
+                } else {
+                    dot.className = 'connection-dot disconnected';
+                    text.textContent = reconnectAttempts > 0 ? 'Reconnecting...' : 'Disconnected';
+                }
             }
         }
 
@@ -1717,7 +1882,7 @@
 
         /**
          * Draw a single message in the chat area
-         * FIX: Own messages render on RIGHT side, others on LEFT side
+         * Own messages render on RIGHT side, others on LEFT side
          */
         function drawMessage(msg, isNew = true) {
             const msgs = document.getElementById("messages");
@@ -1909,10 +2074,7 @@
             }
 
             // Close sidebar on mobile
-            if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.remove('open');
-                document.getElementById('sidebar-overlay').classList.remove('active');
-            }
+            closeSidebarMobile();
         }
 
         /**
@@ -2075,7 +2237,7 @@
         }
 
         /* =========================================
-           18. REPLY FUNCTIONALITY
+           18. REPLY FUNCTIONALITY & CONTEXT MENU
            ========================================= */
 
         /**
@@ -2099,6 +2261,7 @@
 
         /**
          * Show context menu on right-click for a message
+         * FIX: Only allow Delete option for the user's own messages
          */
         function showMessageContext(e, id, content, sender) {
             e.preventDefault();
@@ -2107,8 +2270,30 @@
             contextMenuTarget = { id, content, sender };
 
             const ctx = document.getElementById('context-menu');
-            ctx.style.left = e.clientX + 'px';
-            ctx.style.top = e.clientY + 'px';
+            const deleteBtn = document.getElementById('ctx-delete-btn');
+            
+            // Security fix: Only show delete button if the message belongs to the current user
+            if (sender === myUsername) {
+                deleteBtn.style.display = 'flex';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+
+            // Mobile fix: Prevent menu from going off-screen
+            const menuWidth = 160;
+            const menuHeight = 120;
+            let left = e.clientX;
+            let top = e.clientY;
+
+            if (left + menuWidth > window.innerWidth) {
+                left = window.innerWidth - menuWidth - 10;
+            }
+            if (top + menuHeight > window.innerHeight) {
+                top = window.innerHeight - menuHeight - 10;
+            }
+
+            ctx.style.left = left + 'px';
+            ctx.style.top = top + 'px';
             ctx.classList.add('active');
         }
 
@@ -2127,20 +2312,26 @@
          */
         function contextCopy() {
             if (contextMenuTarget && contextMenuTarget.content) {
-                navigator.clipboard.writeText(contextMenuTarget.content).then(() => {
-                    showToast("Copied to clipboard", "success");
-                }).catch(() => {
-                    showToast("Failed to copy", "error");
-                });
+                // Check if content is an image (base64 or URL)
+                const isImage = contextMenuTarget.content.startsWith("data:image") || contextMenuTarget.content.match(/\.(jpeg|jpg|gif|png|webp)/i);
+                if (isImage) {
+                    showToast("Cannot copy image content as text", "error");
+                } else {
+                    navigator.clipboard.writeText(contextMenuTarget.content).then(() => {
+                        showToast("Copied to clipboard", "success");
+                    }).catch(() => {
+                        showToast("Failed to copy", "error");
+                    });
+                }
             }
             document.getElementById('context-menu').classList.remove('active');
         }
 
         /**
-         * Context menu action: Delete (local only)
+         * Context menu action: Delete (Local UI only, restricted to own messages)
          */
         function contextDelete() {
-            if (contextMenuTarget) {
+            if (contextMenuTarget && contextMenuTarget.sender === myUsername) {
                 const msgEl = document.querySelector(`[data-msg-id="${contextMenuTarget.id}"]`);
                 if (msgEl) {
                     const group = msgEl.closest('.message-group');
@@ -2149,8 +2340,12 @@
                         group.style.opacity = '0';
                         group.style.transform = 'scale(0.95)';
                         setTimeout(() => group.remove(), 300);
+                        // Remove from local store
+                        messageStore = messageStore.filter(m => m.id !== contextMenuTarget.id);
                     }
                 }
+            } else {
+                showToast("You can only delete your own messages", "error");
             }
             document.getElementById('context-menu').classList.remove('active');
         }
@@ -2221,14 +2416,15 @@
          * Update the footer profile section with current user info
          */
         function updateFooterProfile() {
-            document.getElementById("my-avatar-footer").src = myPicBase64;
-            document.getElementById("my-username-footer").innerText = myUsername;
+            const avatarEl = document.getElementById("my-avatar-footer");
+            const nameEl = document.getElementById("my-username-footer");
+            if (avatarEl) avatarEl.src = myPicBase64;
+            if (nameEl) nameEl.innerText = myUsername;
         }
 
         /**
          * Process an uploaded image file
          * Resizes and converts to base64 data URL
-         * FIX: Properly constrains images to correct dimensions
          */
         function processImage(e, targetId) {
             const file = e.target.files[0];
@@ -2313,6 +2509,9 @@
 
                     try { localStorage.setItem("idly_pic", myPicBase64); } catch(e) {}
                     showToast("Profile picture updated", "success");
+                };
+                img.onerror = () => {
+                    showToast("Failed to process image", "error");
                 };
                 img.src = event.target.result;
             };
