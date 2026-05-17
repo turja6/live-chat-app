@@ -293,6 +293,7 @@
             if (event.candidate) {
                 sendSignal({
                     type: 'ice_candidate',
+                    receiver: currentChat,
                     target: currentChat,
                     candidate: event.candidate
                 });
@@ -326,6 +327,7 @@
 
             sendSignal({
                 type: 'call_offer',
+                receiver: currentChat,
                 target: currentChat,
                 offer: offer
             });
@@ -361,6 +363,7 @@
 
             sendSignal({
                 type: 'call_answer',
+                receiver: currentChat,
                 target: currentChat,
                 answer: answer
             });
@@ -461,6 +464,7 @@
         if (!isInternal) {
             sendSignal({
                 type: 'call_end',
+                receiver: currentChat,
                 target: currentChat
             });
         }
@@ -471,6 +475,7 @@
     window.rejectCall = function() {
         sendSignal({
             type: 'call_end',
+            receiver: currentChat,
             target: currentChat
         });
         resetUI();
