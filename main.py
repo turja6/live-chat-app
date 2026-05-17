@@ -12,6 +12,8 @@ import database
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Initialize database schemas
 database.init_db()
 
 class PluginManager:
@@ -37,13 +39,17 @@ class PluginManager:
 
     async def broadcast(self, message: dict):
         for connection in list(self.active_connections.values()):
-            try: await connection.send_text(json.dumps(message))
-            except: pass
+            try: 
+                await connection.send_text(json.dumps(message))
+            except: 
+                pass
 
     async def send_personal_message(self, message: dict, username: str):
         if username in self.active_connections:
-            try: await self.active_connections[username].send_text(json.dumps(message))
-            except: pass
+            try: 
+                await self.active_connections[username].send_text(json.dumps(message))
+            except: 
+                pass
 
     async def broadcast_user_list(self):
         users = await asyncio.to_thread(database.get_all_users)
@@ -51,25 +57,48 @@ class PluginManager:
 
 manager = PluginManager()
 
-if not os.path.exists("plugins"): os.makedirs("plugins")
-sys.path.append(os.path.abspath("plugins"))
-for filename in os.listdir("plugins"):
+# --- ABSOLUTE PATH PLUGIN ENGINE ---
+plugins_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
+
+if not os.path.exists(plugins_dir): 
+    os.makedirs(plugins_dir)
+
+if plugins_dir not in sys.path:
+    sys.path.append(plugins_dir)
+
+# Dynamically discover and setup backend modules
+for filename in os.listdir(plugins_dir):
     if filename.endswith(".py") and not filename.startswith("__"):
         module_name = filename[:-3]
-        module = importlib.import_module(module_name)
-        module.setup(manager)
+        try:
+            # Clear old module cache to ensure clean redeploys on server updates
+            if module_name in sys.modules:
+                importlib.reload(sys.modules[module_name])
+            else:
+                importlib.import_module(module_name)
+            
+            module = sys.modules[module_name]
+            module.setup(manager)
+            print(f"✅ Successfully Loaded Backend Plugin: {filename}")
+        except Exception as e:
+            print(f"❌ Failed to load backend plugin {filename}: {e}")
 
+# --- HTTP ROUTES ---
 @app.get("/")
 async def get(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
+# --- WEBSOCKET ENGINE ---
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await websocket.accept()
+    
+    # Process initial payload sent immediately upon frontend connection
     init_data = await websocket.receive_text()
     init_json = json.loads(init_data)
     manager.active_connections[username] = websocket
     
+    # Fire off client registration hooks
     await manager.trigger_event("client_connect", init_json, username, websocket)
     
     try:
@@ -78,10 +107,15 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             data = json.loads(data_str)
             msg_type = data.get("type", "chat")
             
-            if msg_type == "ping": continue
+            # Keep-alive ping from frontend client
+            if msg_type == "ping": 
+                continue
+                
+            # Route signaling and communication packets to correct hooks
             await manager.trigger_event(msg_type, data, username, websocket)
             
     except WebSocketDisconnect:
         await manager.disconnect(username)
     except Exception as e:
+        print(f"⚠️ Exception handling websocket for {username}: {e}")
         await manager.disconnect(username)
