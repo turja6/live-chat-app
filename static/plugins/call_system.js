@@ -1,336 +1,566 @@
-(function InitAdvancedCallSystem() {
-    let localStream;
-    let screenStream;
-    let peerConnection;
-    let isMuted = false;
-    let isVideoOff = false;
-    let isScreenSharing = false;
-    const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+(function() {
+    'use strict';
 
-    // 1. INJECT MOBILE-OPTIMIZED CSS
+    // --- CSS INJECTION ---
     const style = document.createElement('style');
-    style.innerHTML = `
-        /* Top Header Call Button */
-        .header-call-btn { color: var(--online); background: transparent; transition: all 0.2s ease; }
-        .header-call-btn:hover { background: rgba(16, 185, 129, 0.15) !important; transform: scale(1.05); }
-        
-        /* Full Screen Call Overlay using DVH for mobile perfection */
-        #adv-call-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; 
-            background: #09090b; z-index: 9999; display: none;
-            flex-direction: column; opacity: 0; transition: opacity 0.3s ease;
+    style.textContent = `
+        #call-trigger-btn {
+            background: transparent;
+            border: none;
+            color: currentColor;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
         }
-        #adv-call-overlay.active { display: flex; opacity: 1; }
-        
-        /* Top Bar Info */
-        .call-top-bar {
-            position: absolute; top: 0; left: 0; width: 100%; padding: 20px 30px;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
-            z-index: 10; display: flex; justify-content: space-between; align-items: center;
+        #call-trigger-btn:hover {
+            background: rgba(255,255,255,0.1);
         }
-        .call-info-text h3 { margin: 0; color: white; font-size: 1.5rem; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        .call-info-text p { margin: 5px 0 0 0; color: #10b981; font-weight: 500; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
 
-        /* Video Grid Layout */
-        .video-layout {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden; padding: 20px; height: 100%;
+        #call-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            height: 100dvh;
+            width: 100vw;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-        
-        /* Remote Video (Main Background) */
+        #call-overlay.active {
+            display: flex;
+        }
+
         #remote-video {
-            width: 100%; height: 100%; object-fit: cover; border-radius: 16px;
-            background: #18181b; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            background: #111;
         }
-        
-        /* Local Video (Floating PiP) */
+
         #local-video {
-            position: absolute; bottom: 120px; right: 40px; width: 180px; height: 240px;
-            object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1);
-            background: #27272a; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            transform: scaleX(-1); transition: all 0.3s ease; z-index: 5;
-        }
-        
-        /* Control Bar (Glassmorphism) */
-        .control-bar {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(24, 24, 27, 0.7); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            padding: 12px 20px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.08);
-            display: flex; gap: 15px; z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            width: max-content; max-width: 95vw; justify-content: center; align-items: center;
+            position: absolute;
+            bottom: 110px;
+            right: 20px;
+            width: 240px;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+            z-index: 2;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: scaleX(-1);
+            background: #222;
         }
 
-        /* Control Buttons */
-        .ctrl-btn {
-            width: 54px; height: 54px; border-radius: 50%; border: none;
-            background: rgba(255,255,255,0.1); color: white; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
+        #call-timer {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            z-index: 10;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            font-variant-numeric: tabular-nums;
         }
-        .ctrl-btn:hover { background: rgba(255,255,255,0.2); transform: translateY(-3px); }
-        .ctrl-btn svg { width: 24px; height: 24px; fill: currentColor; }
-        
-        /* Active/Toggled States */
-        .ctrl-btn.off { background: white; color: #18181b; }
-        .ctrl-btn.end { background: #ef4444; color: white; }
-        .ctrl-btn.end:hover { background: #dc2626; }
-        .ctrl-btn.accept { background: #10b981; color: white; animation: pulseCall 2s infinite; }
 
-        @keyframes pulseCall { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        #call-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+            padding: 14px 28px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
 
-        /* MOBILE OPTIMIZATIONS */
+        .call-ctrl-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .call-ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+        .call-ctrl-btn.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #1a1a1a;
+        }
+        .call-ctrl-btn.end-call {
+            background: #ff3b30;
+        }
+        .call-ctrl-btn.end-call:hover {
+            background: #ff4f46;
+        }
+        .call-ctrl-btn svg {
+            width: 24px;
+            height: 24px;
+            pointer-events: none;
+        }
+
+        #incoming-call-ui {
+            position: absolute;
+            z-index: 20;
+            text-align: center;
+            background: rgba(0,0,0,0.6);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        #incoming-call-ui h2 { margin: 0 0 10px 0; font-size: 24px; }
+        #incoming-call-ui p { margin: 0 0 30px 0; color: rgba(255,255,255,0.7); }
+
+        .incoming-action-btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: transform 0.1s;
+        }
+        .incoming-action-btn:active { transform: scale(0.95); }
+        .btn-accept { background: #34c759; color: white; }
+        .btn-reject { background: #ff3b30; color: white; }
+
+        /* Mobile Adjustments */
         @media (max-width: 768px) {
-            .video-layout { padding: 0; }
-            #remote-video { border-radius: 0; }
-            
-            /* Tucks PiP video cleanly above the control bar */
-            #local-video { width: 90px; height: 130px; bottom: 100px; right: 15px; border-radius: 8px; }
-            
-            /* Compacts control bar so it fits on narrow screens */
-            .control-bar { bottom: 20px; gap: 10px; padding: 10px 15px; }
-            .ctrl-btn { width: 46px; height: 46px; }
-            .ctrl-btn svg { width: 20px; height: 20px; }
-            
-            /* Adjusts header text to prevent wrapping */
-            .call-top-bar { padding: 15px 20px; }
-            .call-info-text h3 { font-size: 1.2rem; }
-            
-            /* Hides screen share on mobile to save space */
-            .desktop-only { display: none !important; }
-        }
-
-        /* EXTRA TINY PHONES (e.g. iPhone SE) */
-        @media (max-width: 380px) {
-            .control-bar { gap: 8px; padding: 8px 12px; }
-            .ctrl-btn { width: 40px; height: 40px; }
-            #local-video { bottom: 90px; width: 80px; height: 110px; right: 10px; }
+            #local-video {
+                width: 120px;
+                height: 90px;
+                bottom: 100px;
+                right: 10px;
+                border-radius: 12px;
+            }
+            #call-controls {
+                padding: 10px 20px;
+                gap: 10px;
+                bottom: 20px;
+            }
+            .call-ctrl-btn {
+                width: 48px;
+                height: 48px;
+            }
+            .call-ctrl-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+            .call-btn-screen {
+                display: none !important;
+            }
+            #call-timer {
+                font-size: 18px;
+                top: 20px;
+            }
         }
     `;
     document.head.appendChild(style);
 
-    // SVG Icons
-    const ICONS = {
-        micOn: `<svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>`,
-        micOff: `<svg viewBox="0 0 24 24"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02 3.28l-2.6 2.6V21h-2v-3.08c-2.43-.34-4.48-1.95-5.54-4.22l1.62-.89c.86 1.76 2.69 2.99 4.8 2.99.71 0 1.38-.15 2-.41l1.72 1.71v.18zm-5.69-5.69L4.27 3.57 3 4.84l3.18 3.18C6.06 8.95 6 9.46 6 10v1h2v-1c0-1.63.85-3.05 2.15-3.86l2.13 2.13c-.18.23-.28.51-.28.82v6c0 1.66 1.34 3 3 3 .31 0 .59-.1.82-.28l2.91 2.91 1.27-1.27-10.71-10.71zM15 10V5c0-1.66-1.34-3-3-3s-3 1.34-3 3v1.17l6 6V10z"/></svg>`,
-        camOn: `<svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>`,
-        camOff: `<svg viewBox="0 0 24 24"><path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/></svg>`,
-        screen: `<svg viewBox="0 0 24 24"><path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.11-.9-2-2-2H4c-1.11 0-2 .89-2 2v10c0 1.1.89 2 2 2H0v2h24v-2h-4zM4 16V6h16v10H4z"/></svg>`,
-        end: `<svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>`,
-        accept: `<svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>`
+    // --- STATE VARIABLES ---
+    let pc = null;
+    let localStream = null;
+    let timerInterval = null;
+    let callDuration = 0;
+    let isScreenSharing = false;
+    let micEnabled = true;
+    let camEnabled = true;
+
+    // --- WEBRTC CONFIG ---
+    const rtcConfig = {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
-    // 2. BUILD THE UI
-    window.ChatHooks.onUIReady.push(function() {
-        const headerActions = document.getElementById("mount-header-actions");
-        if (headerActions && !document.querySelector('.header-call-btn')) { // Prevent duplicates
-            const callBtn = document.createElement("button");
-            callBtn.className = "icon-btn header-call-btn";
-            callBtn.innerHTML = ICONS.camOn;
-            callBtn.onclick = initiateCall;
-            headerActions.prepend(callBtn);
+    // --- HELPER FUNCTIONS ---
+    function getUI() {
+        return {
+            overlay: document.getElementById('call-overlay'),
+            remoteVideo: document.getElementById('remote-video'),
+            localVideo: document.getElementById('local-video'),
+            timer: document.getElementById('call-timer'),
+            incomingUI: document.getElementById('incoming-call-ui'),
+            btnMic: document.getElementById('btn-mic'),
+            btnCam: document.getElementById('btn-cam'),
+            btnScreen: document.getElementById('btn-screen')
+        };
+    }
+
+    function startTimer() {
+        const ui = getUI();
+        callDuration = 0;
+        ui.timer.innerText = '00:00';
+        timerInterval = setInterval(function() {
+            callDuration++;
+            const mins = String(Math.floor(callDuration / 60)).padStart(2, '0');
+            const secs = String(callDuration % 60).padStart(2, '0');
+            ui.timer.innerText = mins + ':' + secs;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
         }
+    }
 
-        const overlayZone = document.getElementById("mount-overlays");
-        if (overlayZone && !document.getElementById('adv-call-overlay')) {
-            overlayZone.innerHTML += `
-                <div id="adv-call-overlay">
-                    <div class="call-top-bar">
-                        <div class="call-info-text">
-                            <h3 id="call-target-name">User</h3>
-                            <p id="call-status-text">Ringing...</p>
-                        </div>
-                    </div>
-                    <div class="video-layout">
-                        <video id="remote-video" autoplay playsinline></video>
-                        <video id="local-video" autoplay muted playsinline></video>
-                    </div>
-                    <div class="control-bar" id="call-controls"></div>
-                </div>
-            `;
+    function resetUI() {
+        const ui = getUI();
+        if (ui.overlay) ui.overlay.classList.remove('active');
+        if (ui.remoteVideo) ui.remoteVideo.srcObject = null;
+        if (ui.localVideo) ui.localVideo.srcObject = null;
+        if (ui.timer) ui.timer.innerText = '00:00';
+        if (ui.incomingUI) ui.incomingUI.style.display = 'none';
+        if (ui.btnMic) ui.btnMic.classList.remove('active');
+        if (ui.btnCam) ui.btnCam.classList.remove('active');
+        if (ui.btnScreen) ui.btnScreen.classList.remove('active');
+        micEnabled = true;
+        camEnabled = true;
+        isScreenSharing = false;
+    }
+
+    function cleanupPeerConnection() {
+        if (pc) {
+            pc.ontrack = null;
+            pc.onicecandidate = null;
+            pc.close();
+            pc = null;
         }
-    });
+        if (localStream) {
+            localStream.getTracks().forEach(function(track) { track.stop(); });
+            localStream = null;
+        }
+        stopTimer();
+    }
 
-    // 3. INTERCEPT SIGNALS
-    window.ChatHooks.onMessageRender.push(function(msg) {
-        if (msg.type === "call_offer") { handleReceiveOffer(msg); return null; }
-        if (msg.type === "call_answer") { handleReceiveAnswer(msg); return null; }
-        if (msg.type === "ice_candidate") { handleNewICECandidateMsg(msg); return null; }
-        if (msg.type === "call_end") { cleanupCallUI(); return null; }
-        return msg; 
-    });
+    function sendSignal(payload) {
+        if (typeof ws !== 'undefined' && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(payload));
+        } else {
+            console.error("WebSocket is not connected.");
+            endCall(true);
+        }
+    }
 
-    // 4. LOGIC
-    async function startMedia() {
+    // --- WEBRTC LOGIC ---
+    async function getLocalMedia() {
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
-            document.getElementById("local-video").srcObject = localStream;
-            isMuted = false; isVideoOff = false; isScreenSharing = false;
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const ui = getUI();
+            ui.localVideo.srcObject = localStream;
+            return localStream;
         } catch (err) {
-            showToast("Camera/Microphone access denied", "error"); throw err;
+            console.error("Failed to get local media", err);
+            alert("Could not access camera/microphone.");
+            throw err;
         }
     }
 
     function createPeerConnection() {
-        peerConnection = new RTCPeerConnection(servers);
-        peerConnection.onicecandidate = (e) => {
-            if (e.candidate && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "ice_candidate", receiver: window.currentCallTarget, candidate: e.candidate }));
+        pc = new RTCPeerConnection(rtcConfig);
+
+        pc.onicecandidate = function(event) {
+            if (event.candidate) {
+                sendSignal({
+                    type: 'ice_candidate',
+                    target: currentChat,
+                    candidate: event.candidate
+                });
             }
         };
-        peerConnection.ontrack = (e) => {
-            document.getElementById("remote-video").srcObject = e.streams[0];
+
+        pc.ontrack = function(event) {
+            const ui = getUI();
+            ui.remoteVideo.srcObject = event.streams[0];
+            ui.incomingUI.style.display = 'none';
+            startTimer();
         };
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
     }
 
-    // --- BUTTON CONTROLS ---
-    function renderRingingControls() {
-        document.getElementById("call-controls").innerHTML = `
-            <button class="ctrl-btn end" onclick="endCall()" title="Cancel Call">${ICONS.end}</button>
-        `;
+    function addLocalTracks() {
+        if (localStream && pc) {
+            localStream.getTracks().forEach(function(track) {
+                pc.addTrack(track, localStream);
+            });
+        }
     }
 
-    function renderIncomingControls(offerStr) {
-        document.getElementById("call-controls").innerHTML = `
-            <button class="ctrl-btn accept" onclick="acceptCall('${escapeHtml(JSON.stringify(offerStr))}')">${ICONS.accept}</button>
-            <button class="ctrl-btn end" onclick="endCall()">${ICONS.end}</button>
-        `;
-    }
-
-    function renderActiveControls() {
-        document.getElementById("call-controls").innerHTML = `
-            <button class="ctrl-btn" id="btn-mic" onclick="toggleMic()">${ICONS.micOn}</button>
-            <button class="ctrl-btn" id="btn-cam" onclick="toggleCam()">${ICONS.camOn}</button>
-            <button class="ctrl-btn desktop-only" id="btn-screen" onclick="toggleScreenShare()">${ICONS.screen}</button>
-            <button class="ctrl-btn end" onclick="endCall()">${ICONS.end}</button>
-        `;
-    }
-
-    // --- CALL ACTIONS ---
     async function initiateCall() {
-        if (currentChat === "Public") { showToast("Direct Messages only", "error"); return; }
-        window.currentCallTarget = currentChat;
-        await startMedia();
-        document.getElementById("adv-call-overlay").classList.add("active");
-        document.getElementById("call-target-name").innerText = window.currentCallTarget;
-        document.getElementById("call-status-text").innerText = "Ringing...";
-        document.getElementById("call-status-text").style.color = "#10b981";
-        renderRingingControls();
+        try {
+            await getLocalMedia();
+            createPeerConnection();
+            addLocalTracks();
 
-        createPeerConnection();
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        ws.send(JSON.stringify({ type: "call_offer", receiver: window.currentCallTarget, offer: offer }));
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            sendSignal({
+                type: 'call_offer',
+                target: currentChat,
+                offer: offer
+            });
+
+            const ui = getUI();
+            ui.overlay.classList.add('active');
+            ui.incomingUI.style.display = 'block';
+            ui.incomingUI.innerHTML = 
+                '<h2>Calling...</h2>' +
+                '<p>' + currentChat + '</p>' +
+                '<div style="width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto 0 auto;"></div>' +
+                '<style>@keyframes spin { to { transform: rotate(360deg); } }</style>';
+        } catch (err) {
+            endCall(true);
+        }
     }
 
-    async function handleReceiveOffer(msg) {
-        window.currentCallTarget = msg.sender;
-        document.getElementById("adv-call-overlay").classList.add("active");
-        document.getElementById("call-target-name").innerText = msg.sender;
-        document.getElementById("call-status-text").innerText = "Incoming Video Call...";
-        document.getElementById("call-status-text").style.color = "#ef4444";
-        renderIncomingControls(msg.offer);
-    }
+    // CRITICAL BUG FIX IMPLEMENTATION:
+    // Save to window variable securely. DO NOT serialize SDP into HTML onclick!
+    window.acceptCall = async function() {
+        const offer = window.currentIncomingOffer;
+        if (!offer) return;
 
-    window.acceptCall = async function(offerStr) {
-        const offer = JSON.parse(offerStr);
-        await startMedia();
-        createPeerConnection();
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        
-        ws.send(JSON.stringify({ type: "call_answer", receiver: window.currentCallTarget, answer: answer }));
-        startCallTimer(); renderActiveControls();
+        try {
+            await getLocalMedia();
+            createPeerConnection();
+            addLocalTracks();
+
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            sendSignal({
+                type: 'call_answer',
+                target: currentChat,
+                answer: answer
+            });
+
+            const ui = getUI();
+            ui.incomingUI.style.display = 'none';
+        } catch (err) {
+            console.error("Error accepting call", err);
+            endCall(true);
+        }
     };
 
-    async function handleReceiveAnswer(msg) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.answer));
-        startCallTimer(); renderActiveControls();
+    async function handleAnswer(answer) {
+        if (!pc) return;
+        try {
+            await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            const ui = getUI();
+            if (ui.incomingUI) ui.incomingUI.style.display = 'none';
+        } catch (err) {
+            console.error("Error setting remote description (answer)", err);
+        }
     }
 
-    async function handleNewICECandidateMsg(msg) {
-        if (peerConnection) await peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate));
+    async function handleIceCandidate(candidate) {
+        if (!pc) return;
+        try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+            console.error("Error adding ICE candidate", err);
+        }
     }
 
-    // --- TOGGLES ---
-    window.toggleMic = function() {
-        isMuted = !isMuted;
-        localStream.getAudioTracks()[0].enabled = !isMuted;
-        const btn = document.getElementById('btn-mic');
-        btn.classList.toggle('off', isMuted);
-        btn.innerHTML = isMuted ? ICONS.micOff : ICONS.micOn;
-    };
+    // --- CONTROLS LOGIC ---
+    function toggleMic() {
+        if (!localStream) return;
+        micEnabled = !micEnabled;
+        localStream.getAudioTracks().forEach(function(track) { track.enabled = micEnabled; });
+        getUI().btnMic.classList.toggle('active', !micEnabled);
+    }
 
-    window.toggleCam = function() {
-        isVideoOff = !isVideoOff;
-        localStream.getVideoTracks()[0].enabled = !isVideoOff;
-        const btn = document.getElementById('btn-cam');
-        btn.classList.toggle('off', isVideoOff);
-        btn.innerHTML = isVideoOff ? ICONS.camOff : ICONS.camOn;
-        document.getElementById('local-video').style.opacity = isVideoOff ? '0.3' : '1';
-    };
+    function toggleCam() {
+        if (!localStream) return;
+        camEnabled = !camEnabled;
+        localStream.getVideoTracks().forEach(function(track) { track.enabled = camEnabled; });
+        getUI().btnCam.classList.toggle('active', !camEnabled);
+    }
 
-    window.toggleScreenShare = async function() {
-        const btn = document.getElementById('btn-screen');
+    async function toggleScreen() {
+        if (!pc || !localStream) return;
+        const ui = getUI();
+        const videoSender = pc.getSenders().find(function(s) { return s.track.kind === 'video'; });
+
         if (!isScreenSharing) {
             try {
-                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                const videoTrack = screenStream.getVideoTracks()[0];
-                const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
-                sender.replaceTrack(videoTrack);
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const screenTrack = screenStream.getVideoTracks()[0];
                 
+                await videoSender.replaceTrack(screenTrack);
+                ui.localVideo.srcObject = screenStream;
                 isScreenSharing = true;
-                btn.classList.add('off');
-                document.getElementById('local-video').srcObject = screenStream;
+                ui.btnScreen.classList.add('active');
 
-                videoTrack.onended = () => { window.toggleScreenShare(); };
-            } catch (err) { console.error("Screen share failed", err); }
+                screenTrack.onended = function() {
+                    revertScreenShare(videoSender);
+                };
+            } catch (err) {
+                console.log("Screen share cancelled by user.");
+            }
         } else {
-            const videoTrack = localStream.getVideoTracks()[0];
-            const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
-            sender.replaceTrack(videoTrack);
+            await revertScreenShare(videoSender);
+        }
+    }
+
+    async function revertScreenShare(videoSender) {
+        try {
+            const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const camTrack = camStream.getVideoTracks()[0];
             
+            await videoSender.replaceTrack(camTrack);
+            
+            getUI().localVideo.srcObject = camStream;
+            
+            if (localStream) {
+                localStream.getVideoTracks().forEach(function(t) { t.stop(); });
+                localStream.removeTrack(localStream.getVideoTracks()[0]);
+                localStream.addTrack(camTrack);
+            }
+
             isScreenSharing = false;
-            btn.classList.remove('off');
-            document.getElementById('local-video').srcObject = localStream;
-            
-            if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+            getUI().btnScreen.classList.remove('active');
+        } catch (err) {
+            console.error("Error reverting screen share", err);
+            endCall(true);
         }
-    };
-
-    window.endCall = function() {
-        if (ws && ws.readyState === WebSocket.OPEN && window.currentCallTarget) {
-            ws.send(JSON.stringify({ type: "call_end", receiver: window.currentCallTarget }));
-        }
-        cleanupCallUI();
-    };
-
-    // --- UTILS ---
-    let callTimer;
-    let callSeconds = 0;
-    function startCallTimer() {
-        clearInterval(callTimer); callSeconds = 0;
-        const statusText = document.getElementById("call-status-text");
-        statusText.style.color = "#10b981";
-        callTimer = setInterval(() => {
-            callSeconds++;
-            const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
-            const secs = String(callSeconds % 60).padStart(2, '0');
-            statusText.innerText = `${mins}:${secs}`;
-        }, 1000);
     }
 
-    function cleanupCallUI() {
-        document.getElementById("adv-call-overlay").classList.remove("active");
-        clearInterval(callTimer);
-        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-        if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
-        if (peerConnection) { peerConnection.close(); peerConnection = null; }
-        document.getElementById("local-video").srcObject = null;
-        document.getElementById("remote-video").srcObject = null;
-        window.currentCallTarget = null;
+    function endCall(isInternal) {
+        if (!isInternal) {
+            sendSignal({
+                type: 'call_end',
+                target: currentChat
+            });
+        }
+        cleanupPeerConnection();
+        resetUI();
     }
 
-    function escapeHtml(unsafe) { return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+    window.rejectCall = function() {
+        sendSignal({
+            type: 'call_end',
+            target: currentChat
+        });
+        resetUI();
+    };
+
+    // --- HOOKS INTEGRATION ---
+
+    if (!window.ChatHooks) window.ChatHooks = { onUIReady: [], onMessageRender: [] };
+    
+    window.ChatHooks.onUIReady.push(function() {
+        const header = document.querySelector('.chat-header') || document.querySelector('header') || document.body;
+        const callBtn = document.createElement('button');
+        callBtn.id = 'call-trigger-btn';
+        callBtn.title = 'Start Video Call';
+        callBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>';
+        callBtn.onclick = initiateCall;
+        header.appendChild(callBtn);
+
+        const overlay = document.createElement('div');
+        overlay.id = 'call-overlay';
+        overlay.innerHTML = 
+            '<video id="remote-video" autoplay playsinline></video>' +
+            '<video id="local-video" autoplay playsinline muted></video>' +
+            '<div id="call-timer">00:00</div>' +
+            '<div id="incoming-call-ui" style="display: none;">' +
+                '<h2>Incoming Call</h2>' +
+                '<p id="incoming-caller-name">User</p>' +
+                '<div style="margin-top: 20px;">' +
+                    '<button class="incoming-action-btn btn-accept" onclick="window.acceptCall()">Accept</button>' +
+                    '<button class="incoming-action-btn btn-reject" onclick="window.rejectCall()">Decline</button>' +
+                '</div>' +
+            '</div>' +
+            '<div id="call-controls">' +
+                '<button id="btn-mic" class="call-ctrl-btn" onclick="window.callSystemToggleMic()" title="Toggle Microphone">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>' +
+                '</button>' +
+                '<button id="btn-cam" class="call-ctrl-btn" onclick="window.callSystemToggleCam()" title="Toggle Camera">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>' +
+                '</button>' +
+                '<button id="btn-screen" class="call-ctrl-btn call-btn-screen" onclick="window.callSystemToggleScreen()" title="Share Screen">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>' +
+                '</button>' +
+                '<button class="call-ctrl-btn end-call" onclick="window.callSystemEndCall()" title="End Call">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" transform="rotate(135 12 12)"></path></svg>' +
+                '</button>' +
+            '</div>';
+        document.body.appendChild(overlay);
+
+        window.callSystemToggleMic = toggleMic;
+        window.callSystemToggleCam = toggleCam;
+        window.callSystemToggleScreen = toggleScreen;
+        window.callSystemEndCall = endCall;
+    });
+
+    window.ChatHooks.onMessageRender.push(function(msg) {
+        if (typeof msg === 'string') {
+            try { msg = JSON.parse(msg); } catch(e) { return msg; }
+        }
+
+        if (msg && msg.type) {
+            const ui = getUI();
+
+            switch(msg.type) {
+                case 'call_offer':
+                    // CRITICAL BUG FIX: Save to global variable instead of stringifying into onclick attribute
+                    window.currentIncomingOffer = msg.offer;
+                    
+                    ui.overlay.classList.add('active');
+                    ui.incomingUI.style.display = 'block';
+                    ui.incomingUI.querySelector('h2').innerText = 'Incoming Call';
+                    ui.incomingUI.querySelector('#incoming-caller-name').innerText = msg.sender || currentChat;
+                    
+                    return null;
+
+                case 'call_answer':
+                    handleAnswer(msg.answer);
+                    return null;
+
+                case 'ice_candidate':
+                    handleIceCandidate(msg.candidate);
+                    return null;
+
+                case 'call_end':
+                    cleanupPeerConnection();
+                    resetUI();
+                    return null;
+            }
+        }
+
+        return msg;
+    });
+
 })();
