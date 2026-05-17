@@ -54,13 +54,13 @@
             position: absolute;
             bottom: 120px;
             right: 24px;
-            width: 260px;
-            height: 195px;
+            width: 160px;
+            height: 120px;
             object-fit: cover;
-            border-radius: 16px;
+            border-radius: 12px;
             border: 2px solid rgba(255,255,255,0.15);
             z-index: 2;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
             transform: scaleX(-1);
             background: #111;
         }
@@ -70,13 +70,13 @@
             top: 32px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 500;
             letter-spacing: 1px;
             z-index: 10;
             text-shadow: 0 2px 10px rgba(0,0,0,0.8);
             font-variant-numeric: tabular-nums;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.4);
             padding: 6px 16px;
             border-radius: 20px;
             backdrop-filter: blur(10px);
@@ -88,8 +88,8 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 16px;
-            padding: 12px 24px;
+            gap: 14px;
+            padding: 10px 24px;
             background: rgba(24, 24, 27, 0.75);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
@@ -110,15 +110,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .call-ctrl-btn:hover {
             background: rgba(255, 255, 255, 0.2);
             transform: scale(1.05);
         }
-        .call-ctrl-btn.active {
-            background: rgba(255, 255, 255, 0.9);
-            color: #000;
+        .call-ctrl-btn.toggled-off {
+            background: rgba(255, 59, 48, 0.6);
+            opacity: 0.9;
         }
         .call-ctrl-btn.end-call {
             background: #ff3b30;
@@ -146,27 +146,11 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             max-width: 90vw;
         }
-        #incoming-call-ui h2 { 
-            margin: 0 0 8px 0; 
-            font-size: 28px; 
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            color: #fff;
-        }
-        #incoming-call-ui p { 
-            margin: 0 0 32px 0; 
-            color: rgba(255,255,255,0.5); 
-            font-size: 15px;
-            font-weight: 400;
-        }
+        #incoming-call-ui h2 { margin: 0 0 8px 0; font-size: 28px; font-weight: 600; color: #fff; }
+        #incoming-call-ui p { margin: 0 0 32px 0; color: rgba(255,255,255,0.5); font-size: 15px; }
         
-        .pulsing-text {
-            animation: pulse-opacity 2s ease-in-out infinite;
-        }
-        @keyframes pulse-opacity {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 1; }
-        }
+        .pulsing-text { animation: pulse-opacity 2s ease-in-out infinite; }
+        @keyframes pulse-opacity { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
         .incoming-action-btn {
             padding: 14px 36px;
@@ -177,7 +161,6 @@
             cursor: pointer;
             margin: 0 8px;
             transition: all 0.2s ease;
-            letter-spacing: -0.01em;
         }
         .incoming-action-btn:active { transform: scale(0.95); }
         .btn-accept { background: #34c759; color: white; }
@@ -188,22 +171,22 @@
         /* Mobile Adjustments */
         @media (max-width: 768px) {
             #local-video {
-                width: 100px;
-                height: 75px;
-                bottom: 110px; /* Safely tucked above control panel */
+                width: 90px;
+                height: 130px;
+                bottom: 105px;
                 right: 16px;
                 border-radius: 12px;
                 border-width: 1px;
                 box-shadow: 0 10px 20px rgba(0,0,0,0.5);
             }
             #call-controls {
-                padding: 10px 16px;
-                gap: 12px;
+                padding: 8px 16px;
+                gap: 10px;
                 bottom: 24px;
             }
             .call-ctrl-btn {
-                width: 46px;
-                height: 46px;
+                width: 44px;
+                height: 44px;
             }
             .call-ctrl-btn svg {
                 width: 20px;
@@ -223,10 +206,7 @@
             }
             #incoming-call-ui h2 { font-size: 22px; }
             #incoming-call-ui p { font-size: 14px; margin-bottom: 24px; }
-            .incoming-action-btn {
-                padding: 12px 28px;
-                font-size: 14px;
-            }
+            .incoming-action-btn { padding: 12px 28px; font-size: 14px; }
         }
     `;
     document.head.appendChild(style);
@@ -239,6 +219,10 @@
     let isScreenSharing = false;
     let micEnabled = true;
     let camEnabled = true;
+    
+    // Call tracking states
+    let callState = 'idle'; // idle, ringing, connected
+    let callStartTime = null;
 
     // --- WEBRTC CONFIG ---
     const rtcConfig = {
@@ -259,15 +243,28 @@
         };
     }
 
+    function sendChatLog(text) {
+        sendSignal({
+            type: 'message', // Standard type so it passes the interceptor and renders in chat
+            receiver: currentChat,
+            target: currentChat,
+            message: text
+        });
+    }
+
+    function formatDuration(seconds) {
+        const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const secs = String(seconds % 60).padStart(2, '0');
+        return mins + ':' + secs;
+    }
+
     function startTimer() {
         const ui = getUI();
         callDuration = 0;
         ui.timer.innerText = '00:00';
         timerInterval = setInterval(function() {
             callDuration++;
-            const mins = String(Math.floor(callDuration / 60)).padStart(2, '0');
-            const secs = String(callDuration % 60).padStart(2, '0');
-            ui.timer.innerText = mins + ':' + secs;
+            ui.timer.innerText = formatDuration(callDuration);
         }, 1000);
     }
 
@@ -285,12 +282,15 @@
         if (ui.localVideo) ui.localVideo.srcObject = null;
         if (ui.timer) ui.timer.innerText = '00:00';
         if (ui.incomingUI) ui.incomingUI.style.display = 'none';
-        if (ui.btnMic) ui.btnMic.classList.remove('active');
-        if (ui.btnCam) ui.btnCam.classList.remove('active');
-        if (ui.btnScreen) ui.btnScreen.classList.remove('active');
+        if (ui.btnMic) ui.btnMic.classList.remove('toggled-off');
+        if (ui.btnCam) ui.btnCam.classList.remove('toggled-off');
+        if (ui.btnScreen) ui.btnScreen.classList.remove('toggled-off');
+        
         micEnabled = true;
         camEnabled = true;
         isScreenSharing = false;
+        callState = 'idle';
+        callStartTime = null;
     }
 
     function cleanupPeerConnection() {
@@ -348,7 +348,6 @@
             const ui = getUI();
             ui.remoteVideo.srcObject = event.streams[0];
             ui.incomingUI.style.display = 'none';
-            startTimer();
         };
     }
 
@@ -376,10 +375,12 @@
                 offer: offer
             });
 
+            callState = 'ringing';
+            sendChatLog('📞 Video Call Started...');
+
             const ui = getUI();
             ui.overlay.classList.add('active');
             ui.incomingUI.style.display = 'block';
-            // Polished Outgoing Modal
             ui.incomingUI.innerHTML = 
                 '<h2>' + currentChat + '</h2>' +
                 '<p class="pulsing-text">Ringing...</p>' +
@@ -390,8 +391,7 @@
         }
     }
 
-    // CRITICAL BUG FIX IMPLEMENTATION:
-    // Secure global variable mapping for the incoming SDP offer.
+    // CRITICAL BUG FIX IMPLEMENTATION: Safe state handling for offer
     window.acceptCall = async function() {
         const offer = window.currentIncomingOffer;
         if (!offer) return;
@@ -413,6 +413,11 @@
                 answer: answer
             });
 
+            callState = 'connected';
+            callStartTime = Date.now();
+            startTimer();
+            sendChatLog('📞 Video Call Connected...');
+
             const ui = getUI();
             ui.incomingUI.style.display = 'none';
         } catch (err) {
@@ -425,6 +430,12 @@
         if (!pc) return;
         try {
             await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            
+            callState = 'connected';
+            callStartTime = Date.now();
+            startTimer();
+            sendChatLog('📞 Video Call Connected...');
+
             const ui = getUI();
             if (ui.incomingUI) ui.incomingUI.style.display = 'none';
         } catch (err) {
@@ -446,14 +457,14 @@
         if (!localStream) return;
         micEnabled = !micEnabled;
         localStream.getAudioTracks().forEach(function(track) { track.enabled = micEnabled; });
-        getUI().btnMic.classList.toggle('active', !micEnabled);
+        getUI().btnMic.classList.toggle('toggled-off', !micEnabled);
     }
 
     function toggleCam() {
         if (!localStream) return;
         camEnabled = !camEnabled;
         localStream.getVideoTracks().forEach(function(track) { track.enabled = camEnabled; });
-        getUI().btnCam.classList.toggle('active', !camEnabled);
+        getUI().btnCam.classList.toggle('toggled-off', !camEnabled);
     }
 
     async function toggleScreen() {
@@ -469,7 +480,7 @@
                 await videoSender.replaceTrack(screenTrack);
                 ui.localVideo.srcObject = screenStream;
                 isScreenSharing = true;
-                ui.btnScreen.classList.add('active');
+                ui.btnScreen.classList.add('toggled-off');
 
                 screenTrack.onended = function() {
                     revertScreenShare(videoSender);
@@ -488,7 +499,6 @@
             const camTrack = camStream.getVideoTracks()[0];
             
             await videoSender.replaceTrack(camTrack);
-            
             getUI().localVideo.srcObject = camStream;
             
             if (localStream) {
@@ -498,7 +508,7 @@
             }
 
             isScreenSharing = false;
-            getUI().btnScreen.classList.remove('active');
+            getUI().btnScreen.classList.remove('toggled-off');
         } catch (err) {
             console.error("Error reverting screen share", err);
             endCall(true);
@@ -506,6 +516,7 @@
     }
 
     function endCall(isInternal) {
+        // History Logging Logic
         if (!isInternal) {
             sendSignal({
                 type: 'call_end',
@@ -513,6 +524,14 @@
                 target: currentChat
             });
         }
+
+        if (callState === 'connected') {
+            const duration = formatDuration(callDuration);
+            sendChatLog('📞 Video Call Ended — Duration: ' + duration);
+        } else if (callState === 'ringing') {
+            sendChatLog('🚫 Call Cancelled');
+        }
+
         cleanupPeerConnection();
         resetUI();
     }
@@ -523,6 +542,8 @@
             receiver: currentChat,
             target: currentChat
         });
+        sendChatLog('🚫 Missed Call');
+        cleanupPeerConnection();
         resetUI();
     };
 
@@ -545,8 +566,6 @@
             '<video id="remote-video" autoplay playsinline></video>' +
             '<video id="local-video" autoplay playsinline muted></video>' +
             '<div id="call-timer">00:00</div>' +
-            
-            // Polished Incoming Modal
             '<div id="incoming-call-ui" style="display: none;">' +
                 '<h2>Incoming Video Call</h2>' +
                 '<p id="incoming-caller-name" class="pulsing-text">User</p>' +
@@ -555,8 +574,6 @@
                     '<button class="incoming-action-btn btn-accept" onclick="window.acceptCall()">Accept</button>' +
                 '</div>' +
             '</div>' +
-
-            // Frosted Glass Control Dock
             '<div id="call-controls">' +
                 '<button id="btn-mic" class="call-ctrl-btn" onclick="window.callSystemToggleMic()" title="Toggle Microphone">' +
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>' +
@@ -574,7 +591,6 @@
             
         document.body.appendChild(overlay);
 
-        // Expose control functions
         window.callSystemToggleMic = toggleMic;
         window.callSystemToggleCam = toggleCam;
         window.callSystemToggleScreen = toggleScreen;
@@ -591,10 +607,10 @@
 
             switch(msg.type) {
                 case 'call_offer':
-                    // CRITICAL BUG FIX: Securely map the complex SDP object to a global variable.
-                    // DO NOT stringify it directly into the onclick attribute.
+                    // Secure state handling
                     window.currentIncomingOffer = msg.offer;
                     
+                    callState = 'ringing';
                     ui.overlay.classList.add('active');
                     ui.incomingUI.style.display = 'block';
                     ui.incomingUI.querySelector('#incoming-caller-name').innerText = msg.sender || currentChat;
@@ -610,12 +626,17 @@
                     return null;
 
                 case 'call_end':
+                    // If it ended while ringing, log missed call
+                    if (callState === 'ringing') {
+                        sendChatLog('🚫 Missed Call');
+                    }
                     cleanupPeerConnection();
                     resetUI();
                     return null;
             }
         }
 
+        // Let standard chat messages (like our history logs) render normally
         return msg;
     });
 
