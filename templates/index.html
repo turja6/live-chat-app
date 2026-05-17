@@ -8,54 +8,35 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-
-    <!-- Decorative Background -->
     <div class="bg-decoration one"></div>
     <div class="bg-decoration two"></div>
-
-    <!-- Toast Container for Notifications -->
     <div class="toast-container" id="toast-container"></div>
-
-    <!-- Context Menu -->
     <div class="context-menu" id="context-menu">
         <div class="context-menu-item" onclick="contextReply()">↩️ Reply</div>
         <div class="context-menu-item" onclick="contextCopy()">📋 Copy Text</div>
-        <!-- MOUNT POINT: Plugin Context Menu Items -->
         <div id="mount-context-menu-actions"></div>
         <div class="context-menu-item danger" id="ctx-delete-btn" onclick="contextDelete()">🗑️ Delete</div>
     </div>
-
-    <!-- Sidebar Overlay (Mobile) -->
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
-
-    <!-- 1. LOGIN SCREEN -->
     <div id="login-screen">
         <div class="logo-container">
             <div class="logo-text">IdlyCall</div>
             <div class="logo-sub">Modular Engine</div>
         </div>
-
         <div class="avatar-upload-container">
             <label for="login-file">
-                <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png" title="Click to upload avatar">
-                <div class="avatar-overlay">
-                    <svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg>
-                </div>
+                <img id="login-preview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
+                <div class="avatar-overlay"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></div>
             </label>
             <input type="file" id="login-file" accept="image/*" style="display:none;" onchange="processImage(event, 'login-preview')">
         </div>
-
         <div class="input-group">
             <input type="text" id="username" placeholder="Enter your display name" autocomplete="off" onkeypress="if(event.key === 'Enter') connect()">
         </div>
-
         <button class="btn-primary" onclick="connect()">Enter Lobby</button>
     </div>
-
-    <!-- 2. APP CONTAINER -->
     <div id="app-container">
         <div class="app-layout">
-            <!-- Sidebar -->
             <div class="sidebar" id="sidebar">
                 <div class="sidebar-header">
                     <span>Messages</span>
@@ -65,23 +46,15 @@
                         </button>
                     </div>
                 </div>
-
                 <div class="connection-status" id="connection-status">
                     <div class="connection-dot" id="connection-dot"></div>
                     <span id="connection-text">Connecting...</span>
                 </div>
-
                 <div class="search-box">
                     <input type="text" placeholder="Find or start a conversation" id="searchInput" oninput="filterUsers()">
                 </div>
-
-                <div class="user-list" id="user-list-container">
-                    <!-- User list injected here -->
-                </div>
-
-                <!-- MOUNT POINT: Custom Sidebar Elements -->
+                <div class="user-list" id="user-list-container"></div>
                 <div id="mount-sidebar-bottom"></div>
-
                 <div class="my-profile" onclick="openSettings()">
                     <div class="user-avatar-wrapper">
                         <img id="my-avatar-footer" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png">
@@ -93,8 +66,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Chat Area -->
             <div class="chat-area" onclick="closeSidebarMobile()">
                 <header class="chat-header">
                     <div class="chat-header-info">
@@ -104,24 +75,17 @@
                         <h2 id="chat-header-title"># Public Lobby</h2>
                         <span id="chat-header-subtitle">General Chat</span>
                     </div>
-                    
-                    <!-- MOUNT POINT: Header Actions (e.g., Call Button, Video Button) -->
                     <div class="chat-header-actions" id="mount-header-actions">
                         <button class="icon-btn desktop-only" onclick="forceSync()" title="Sync" data-tooltip="Sync">
                             <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
                         </button>
                     </div>
                 </header>
-
-                <div id="messages">
-                    <!-- Messages injected here -->
-                </div>
-
+                <div id="messages"></div>
                 <div id="typing-indicator">
                     <div class="typing-dots"><span></span><span></span><span></span></div>
                     <span id="typing-text">Someone is typing</span>
                 </div>
-
                 <div id="input-area">
                     <div class="reply-preview" id="reply-preview">
                         <div>
@@ -130,27 +94,18 @@
                         </div>
                         <button class="close-reply" onclick="cancelReply()">✕</button>
                     </div>
-
                     <div class="input-wrapper">
-                        <!-- MOUNT POINT: Input Actions (Left side) -->
                         <div id="mount-input-left" style="display:flex;"></div>
-                        
                         <label for="imageAttachInput" class="input-action-btn" title="Attach Image">
                             <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                         </label>
                         <input type="file" id="imageAttachInput" accept="image/*" style="display: none;" onchange="sendImage(event)">
-
                         <button class="input-action-btn" onclick="toggleEmojiPicker()" title="Emoji">
                             <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
                         </button>
-
                         <div id="emoji-picker" class="emoji-picker"></div>
-
                         <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" oninput="handleTyping()">
-
-                        <!-- MOUNT POINT: Input Actions (Right side) -->
                         <div id="mount-input-right" style="display:flex;"></div>
-                        
                         <button class="send-btn" onclick="sendMsg()" title="Send">
                             <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                         </button>
@@ -159,18 +114,13 @@
             </div>
         </div>
     </div>
-
-    <!-- Settings Modal -->
     <div id="settings-modal" class="modal-overlay" onclick="if(event.target === this) closeSettings()">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Settings</h2>
                 <button class="modal-close" onclick="closeSettings()">✕</button>
             </div>
-            
-            <!-- MOUNT POINT: Custom Settings -->
             <div id="mount-settings"></div>
-            
             <div class="settings-group">
                 <h3>Appearance</h3>
                 <div class="setting-item">
@@ -200,16 +150,11 @@
             </div>
         </div>
     </div>
-
-    <!-- MOUNT POINT: Modals and Overlays (e.g. Call Screen) -->
     <div id="mount-overlays"></div>
-
-    <!-- Image Lightbox -->
     <div id="lightbox" class="lightbox" onclick="closeLightbox()">
         <button class="lightbox-close">✕</button>
         <img id="lightbox-img" src="">
     </div>
-
     <script src="/static/app.js"></script>
 </body>
 </html>

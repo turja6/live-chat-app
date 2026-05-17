@@ -51,16 +51,13 @@ class PluginManager:
 
 manager = PluginManager()
 
-# AUTOMATIC PLUGIN LOADER
 if not os.path.exists("plugins"): os.makedirs("plugins")
-# Add plugins directory to sys.path so modules can be imported
 sys.path.append(os.path.abspath("plugins"))
 for filename in os.listdir("plugins"):
     if filename.endswith(".py") and not filename.startswith("__"):
         module_name = filename[:-3]
         module = importlib.import_module(module_name)
         module.setup(manager)
-        print(f"✅ Loaded Backend Plugin: {filename}")
 
 @app.get("/")
 async def get(request: Request):
@@ -69,13 +66,10 @@ async def get(request: Request):
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await websocket.accept()
-    
     init_data = await websocket.receive_text()
     init_json = json.loads(init_data)
-    
     manager.active_connections[username] = websocket
     
-    # Let core plugin handle the initial connection payload (history + broadcast)
     await manager.trigger_event("client_connect", init_json, username, websocket)
     
     try:
@@ -85,12 +79,9 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             msg_type = data.get("type", "chat")
             
             if msg_type == "ping": continue
-            
-            # Pass all events to the plugin engine
             await manager.trigger_event(msg_type, data, username, websocket)
             
     except WebSocketDisconnect:
         await manager.disconnect(username)
     except Exception as e:
         await manager.disconnect(username)
-        print(f"Socket Error: {e}")

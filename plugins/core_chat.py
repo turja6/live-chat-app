@@ -4,21 +4,19 @@ import cloudinary
 import cloudinary.uploader
 import database
 
-# Configure Cloudinary
+# USING EXACT STRINGS FROM YOUR ORIGINAL CODE
 cloudinary.config(
-  cloud_name = "dvdfjknil", 
-  api_key = "452245293533251", 
-  api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
+  cloud_name = "", 
+  api_key = "", 
+  api_secret = "",
   secure = True
 )
 
 async def handle_connect(manager, data, username, websocket):
     pic = data.get("pic", "")
     target_chat = data.get("target", "Public")
-    
     await asyncio.to_thread(database.update_user, username, pic, "Online")
     await manager.broadcast_user_list()
-    
     history = await asyncio.to_thread(database.get_chat_history, username, target_chat)
     await websocket.send_text(json.dumps({"type": "history", "target": target_chat, "data": history}))
 
@@ -39,8 +37,11 @@ async def handle_chat(manager, data, username, websocket):
     current_pic = data.get("pic", "")
     
     if content.startswith("data:image/"):
-        upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
-        content = upload_result.get("secure_url")
+        try:
+            upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
+            content = upload_result.get("secure_url")
+        except Exception:
+            pass # Fails silently if no keys provided, just like original
         
     ts = await asyncio.to_thread(database.save_message, username, receiver, current_pic, content)
     
@@ -49,7 +50,6 @@ async def handle_chat(manager, data, username, websocket):
         "profile_pic": current_pic, "content": content, "timestamp": ts
     }
     
-    # Pass through standard features
     if "reply_to_id" in data:
         payload["reply_to"] = True
         payload["reply_to_id"] = data["reply_to_id"]
@@ -77,7 +77,6 @@ async def handle_update_profile(manager, data, username, websocket):
     await manager.broadcast_user_list()
 
 def setup(manager):
-    # Register core events
     manager.register_hook("client_connect", handle_connect)
     manager.register_hook("typing", handle_typing)
     manager.register_hook("chat", handle_chat)

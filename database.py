@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, or_, and_, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
-import os
 
+# USING YOUR EXACT ORIGINAL STRING
 SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_wYLdSsg4kVn8@ep-broad-feather-aev320j5-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
@@ -14,7 +14,7 @@ class User(Base):
     username = Column(String, primary_key=True)
     profile_pic = Column(Text)
     status = Column(String, default="Offline")
-    metadata_json = Column(JSON, default={}) # Plugin metadata
+    metadata_json = Column(JSON, default={})
 
 class Message(Base):
     __tablename__ = "app_messages_v3"
@@ -24,11 +24,11 @@ class Message(Base):
     profile_pic = Column(Text)
     content = Column(Text)
     timestamp = Column(String)
-    metadata_json = Column(JSON, default={}) # Plugin metadata
+    metadata_json = Column(JSON, default={})
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    print("✅ Database with Profiles & Plugin Metadata Ready")
+    print("✅ Database Ready (v3)")
 
 def update_user(username, profile_pic, status):
     db = SessionLocal()
