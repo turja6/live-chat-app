@@ -4,7 +4,7 @@
 
     // 1. CONFIGURATION: Audio Track Path
     // This points directly to the local file asset uploaded to your project static tree
-    const CUSTOM_SOUND_URL = '/static/media/message_pop.mp3'; 
+    const CUSTOM_SOUND_URL = '/static/media/message.mp3'; 
     const notificationAudio = new Audio(CUSTOM_SOUND_URL);
 
     // 2. INITIALIZATION: Request Push Banner Permissions
