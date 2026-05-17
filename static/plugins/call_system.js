@@ -7,16 +7,17 @@
     let isScreenSharing = false;
     const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-    // 1. INJECT RESPONSIVE, MODERN CSS
+    // 1. INJECT MOBILE-OPTIMIZED CSS
     const style = document.createElement('style');
     style.innerHTML = `
         /* Top Header Call Button */
         .header-call-btn { color: var(--online); background: transparent; transition: all 0.2s ease; }
         .header-call-btn:hover { background: rgba(16, 185, 129, 0.15) !important; transform: scale(1.05); }
         
-        /* Full Screen Call Overlay */
+        /* Full Screen Call Overlay using DVH for mobile perfection */
         #adv-call-overlay {
-            position: fixed; inset: 0; background: #09090b; z-index: 9999; display: none;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; 
+            background: #09090b; z-index: 9999; display: none;
             flex-direction: column; opacity: 0; transition: opacity 0.3s ease;
         }
         #adv-call-overlay.active { display: flex; opacity: 1; }
@@ -27,13 +28,13 @@
             background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
             z-index: 10; display: flex; justify-content: space-between; align-items: center;
         }
-        .call-info-text h3 { margin: 0; color: white; font-size: 1.5rem; font-weight: 600; }
-        .call-info-text p { margin: 5px 0 0 0; color: #10b981; font-weight: 500; font-size: 0.9rem; }
+        .call-info-text h3 { margin: 0; color: white; font-size: 1.5rem; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .call-info-text p { margin: 5px 0 0 0; color: #10b981; font-weight: 500; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
 
         /* Video Grid Layout */
         .video-layout {
             flex: 1; display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden; padding: 20px;
+            position: relative; overflow: hidden; padding: 20px; height: 100%;
         }
         
         /* Remote Video (Main Background) */
@@ -44,8 +45,8 @@
         
         /* Local Video (Floating PiP) */
         #local-video {
-            position: absolute; bottom: 120px; right: 40px; width: 200px; height: 280px;
-            object-fit: cover; border-radius: 16px; border: 2px solid rgba(255,255,255,0.1);
+            position: absolute; bottom: 120px; right: 40px; width: 180px; height: 240px;
+            object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1);
             background: #27272a; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
             transform: scaleX(-1); transition: all 0.3s ease; z-index: 5;
         }
@@ -54,8 +55,9 @@
         .control-bar {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: rgba(24, 24, 27, 0.7); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            padding: 15px 25px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.08);
-            display: flex; gap: 20px; z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 12px 20px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.08);
+            display: flex; gap: 15px; z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: max-content; max-width: 95vw; justify-content: center; align-items: center;
         }
 
         /* Control Buttons */
@@ -63,7 +65,7 @@
             width: 54px; height: 54px; border-radius: 50%; border: none;
             background: rgba(255,255,255,0.1); color: white; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0;
         }
         .ctrl-btn:hover { background: rgba(255,255,255,0.2); transform: translateY(-3px); }
         .ctrl-btn svg { width: 24px; height: 24px; fill: currentColor; }
@@ -76,14 +78,32 @@
 
         @keyframes pulseCall { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
 
-        /* Mobile Responsiveness */
+        /* MOBILE OPTIMIZATIONS */
         @media (max-width: 768px) {
             .video-layout { padding: 0; }
             #remote-video { border-radius: 0; }
-            #local-video { width: 110px; height: 160px; bottom: 110px; right: 20px; }
-            .control-bar { bottom: 20px; width: 90%; max-width: 350px; justify-content: space-between; padding: 12px 20px; }
-            .ctrl-btn { width: 48px; height: 48px; }
-            .ctrl-btn svg { width: 22px; height: 22px; }
+            
+            /* Tucks PiP video cleanly above the control bar */
+            #local-video { width: 90px; height: 130px; bottom: 100px; right: 15px; border-radius: 8px; }
+            
+            /* Compacts control bar so it fits on narrow screens */
+            .control-bar { bottom: 20px; gap: 10px; padding: 10px 15px; }
+            .ctrl-btn { width: 46px; height: 46px; }
+            .ctrl-btn svg { width: 20px; height: 20px; }
+            
+            /* Adjusts header text to prevent wrapping */
+            .call-top-bar { padding: 15px 20px; }
+            .call-info-text h3 { font-size: 1.2rem; }
+            
+            /* Hides screen share on mobile to save space */
+            .desktop-only { display: none !important; }
+        }
+
+        /* EXTRA TINY PHONES (e.g. iPhone SE) */
+        @media (max-width: 380px) {
+            .control-bar { gap: 8px; padding: 8px 12px; }
+            .ctrl-btn { width: 40px; height: 40px; }
+            #local-video { bottom: 90px; width: 80px; height: 110px; right: 10px; }
         }
     `;
     document.head.appendChild(style);
@@ -102,7 +122,7 @@
     // 2. BUILD THE UI
     window.ChatHooks.onUIReady.push(function() {
         const headerActions = document.getElementById("mount-header-actions");
-        if (headerActions) {
+        if (headerActions && !document.querySelector('.header-call-btn')) { // Prevent duplicates
             const callBtn = document.createElement("button");
             callBtn.className = "icon-btn header-call-btn";
             callBtn.innerHTML = ICONS.camOn;
@@ -111,7 +131,7 @@
         }
 
         const overlayZone = document.getElementById("mount-overlays");
-        if (overlayZone) {
+        if (overlayZone && !document.getElementById('adv-call-overlay')) {
             overlayZone.innerHTML += `
                 <div id="adv-call-overlay">
                     <div class="call-top-bar">
@@ -142,7 +162,7 @@
     // 4. LOGIC
     async function startMedia() {
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
             document.getElementById("local-video").srcObject = localStream;
             isMuted = false; isVideoOff = false; isScreenSharing = false;
         } catch (err) {
@@ -264,7 +284,6 @@
                 btn.classList.add('off');
                 document.getElementById('local-video').srcObject = screenStream;
 
-                // Stop screen sharing when user clicks native browser "Stop sharing" bar
                 videoTrack.onended = () => { window.toggleScreenShare(); };
             } catch (err) { console.error("Screen share failed", err); }
         } else {
