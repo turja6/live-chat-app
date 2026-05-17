@@ -25,9 +25,9 @@
             top: 0; left: 0; right: 0; bottom: 0;
             height: 100dvh;
             width: 100vw;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
             z-index: 99999;
             display: none;
             flex-direction: column;
@@ -35,6 +35,7 @@
             align-items: center;
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
         }
         #call-overlay.active {
             display: flex;
@@ -46,80 +47,85 @@
             width: 100%; height: 100%;
             object-fit: cover;
             z-index: 1;
-            background: #111;
+            background: #0a0a0a;
         }
 
         #local-video {
             position: absolute;
-            bottom: 110px;
-            right: 20px;
-            width: 240px;
-            height: 180px;
+            bottom: 120px;
+            right: 24px;
+            width: 260px;
+            height: 195px;
             object-fit: cover;
             border-radius: 16px;
-            border: 2px solid rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.15);
             z-index: 2;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             transform: scaleX(-1);
-            background: #222;
+            background: #111;
         }
 
         #call-timer {
             position: absolute;
-            top: 30px;
+            top: 32px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: 2px;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 1px;
             z-index: 10;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
             font-variant-numeric: tabular-nums;
+            background: rgba(0,0,0,0.3);
+            padding: 6px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
         }
 
         #call-controls {
             position: absolute;
-            bottom: 30px;
+            bottom: 32px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
             gap: 16px;
-            padding: 14px 28px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 24px;
+            background: rgba(24, 24, 27, 0.75);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.08);
             border-radius: 50px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
             z-index: 10;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
 
         .call-ctrl-btn {
-            width: 56px;
-            height: 56px;
+            width: 54px;
+            height: 54px;
             border-radius: 50%;
             border: none;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .call-ctrl-btn:hover {
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.2);
             transform: scale(1.05);
         }
         .call-ctrl-btn.active {
             background: rgba(255, 255, 255, 0.9);
-            color: #1a1a1a;
+            color: #000;
         }
         .call-ctrl-btn.end-call {
             background: #ff3b30;
         }
         .call-ctrl-btn.end-call:hover {
             background: #ff4f46;
+            transform: scale(1.1);
         }
         .call-ctrl-btn svg {
             width: 24px;
@@ -131,46 +137,73 @@
             position: absolute;
             z-index: 20;
             text-align: center;
-            background: rgba(0,0,0,0.6);
-            padding: 40px;
-            border-radius: 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
+            background: rgba(24, 24, 27, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 48px 56px;
+            border-radius: 28px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 90vw;
         }
-        #incoming-call-ui h2 { margin: 0 0 10px 0; font-size: 24px; }
-        #incoming-call-ui p { margin: 0 0 30px 0; color: rgba(255,255,255,0.7); }
+        #incoming-call-ui h2 { 
+            margin: 0 0 8px 0; 
+            font-size: 28px; 
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+        #incoming-call-ui p { 
+            margin: 0 0 32px 0; 
+            color: rgba(255,255,255,0.5); 
+            font-size: 15px;
+            font-weight: 400;
+        }
+        
+        .pulsing-text {
+            animation: pulse-opacity 2s ease-in-out infinite;
+        }
+        @keyframes pulse-opacity {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
 
         .incoming-action-btn {
-            padding: 14px 32px;
+            padding: 14px 36px;
             border: none;
             border-radius: 50px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            margin: 0 10px;
-            transition: transform 0.1s;
+            margin: 0 8px;
+            transition: all 0.2s ease;
+            letter-spacing: -0.01em;
         }
         .incoming-action-btn:active { transform: scale(0.95); }
         .btn-accept { background: #34c759; color: white; }
-        .btn-reject { background: #ff3b30; color: white; }
+        .btn-accept:hover { background: #2dd248; }
+        .btn-reject { background: rgba(255, 59, 48, 0.2); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.3); }
+        .btn-reject:hover { background: rgba(255, 59, 48, 0.3); }
 
         /* Mobile Adjustments */
         @media (max-width: 768px) {
             #local-video {
-                width: 120px;
-                height: 90px;
-                bottom: 100px;
-                right: 10px;
+                width: 100px;
+                height: 75px;
+                bottom: 110px; /* Safely tucked above control panel */
+                right: 16px;
                 border-radius: 12px;
+                border-width: 1px;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.5);
             }
             #call-controls {
-                padding: 10px 20px;
-                gap: 10px;
-                bottom: 20px;
+                padding: 10px 16px;
+                gap: 12px;
+                bottom: 24px;
             }
             .call-ctrl-btn {
-                width: 48px;
-                height: 48px;
+                width: 46px;
+                height: 46px;
             }
             .call-ctrl-btn svg {
                 width: 20px;
@@ -180,8 +213,19 @@
                 display: none !important;
             }
             #call-timer {
-                font-size: 18px;
-                top: 20px;
+                font-size: 16px;
+                top: 24px;
+                padding: 4px 12px;
+            }
+            #incoming-call-ui {
+                padding: 32px 24px;
+                border-radius: 20px;
+            }
+            #incoming-call-ui h2 { font-size: 22px; }
+            #incoming-call-ui p { font-size: 14px; margin-bottom: 24px; }
+            .incoming-action-btn {
+                padding: 12px 28px;
+                font-size: 14px;
             }
         }
     `;
@@ -335,10 +379,11 @@
             const ui = getUI();
             ui.overlay.classList.add('active');
             ui.incomingUI.style.display = 'block';
+            // Polished Outgoing Modal
             ui.incomingUI.innerHTML = 
-                '<h2>Calling...</h2>' +
-                '<p>' + currentChat + '</p>' +
-                '<div style="width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto 0 auto;"></div>' +
+                '<h2>' + currentChat + '</h2>' +
+                '<p class="pulsing-text">Ringing...</p>' +
+                '<div style="width: 40px; height: 40px; border: 2px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>' +
                 '<style>@keyframes spin { to { transform: rotate(360deg); } }</style>';
         } catch (err) {
             endCall(true);
@@ -346,7 +391,7 @@
     }
 
     // CRITICAL BUG FIX IMPLEMENTATION:
-    // Save to window variable securely. DO NOT serialize SDP into HTML onclick!
+    // Secure global variable mapping for the incoming SDP offer.
     window.acceptCall = async function() {
         const offer = window.currentIncomingOffer;
         if (!offer) return;
@@ -500,14 +545,18 @@
             '<video id="remote-video" autoplay playsinline></video>' +
             '<video id="local-video" autoplay playsinline muted></video>' +
             '<div id="call-timer">00:00</div>' +
+            
+            // Polished Incoming Modal
             '<div id="incoming-call-ui" style="display: none;">' +
-                '<h2>Incoming Call</h2>' +
-                '<p id="incoming-caller-name">User</p>' +
-                '<div style="margin-top: 20px;">' +
-                    '<button class="incoming-action-btn btn-accept" onclick="window.acceptCall()">Accept</button>' +
+                '<h2>Incoming Video Call</h2>' +
+                '<p id="incoming-caller-name" class="pulsing-text">User</p>' +
+                '<div style="display: flex; justify-content: center; gap: 12px; margin-top: 8px;">' +
                     '<button class="incoming-action-btn btn-reject" onclick="window.rejectCall()">Decline</button>' +
+                    '<button class="incoming-action-btn btn-accept" onclick="window.acceptCall()">Accept</button>' +
                 '</div>' +
             '</div>' +
+
+            // Frosted Glass Control Dock
             '<div id="call-controls">' +
                 '<button id="btn-mic" class="call-ctrl-btn" onclick="window.callSystemToggleMic()" title="Toggle Microphone">' +
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>' +
@@ -522,8 +571,10 @@
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" transform="rotate(135 12 12)"></path></svg>' +
                 '</button>' +
             '</div>';
+            
         document.body.appendChild(overlay);
 
+        // Expose control functions
         window.callSystemToggleMic = toggleMic;
         window.callSystemToggleCam = toggleCam;
         window.callSystemToggleScreen = toggleScreen;
@@ -540,12 +591,12 @@
 
             switch(msg.type) {
                 case 'call_offer':
-                    // CRITICAL BUG FIX: Save to global variable instead of stringifying into onclick attribute
+                    // CRITICAL BUG FIX: Securely map the complex SDP object to a global variable.
+                    // DO NOT stringify it directly into the onclick attribute.
                     window.currentIncomingOffer = msg.offer;
                     
                     ui.overlay.classList.add('active');
                     ui.incomingUI.style.display = 'block';
-                    ui.incomingUI.querySelector('h2').innerText = 'Incoming Call';
                     ui.incomingUI.querySelector('#incoming-caller-name').innerText = msg.sender || currentChat;
                     
                     return null;
