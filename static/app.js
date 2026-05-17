@@ -17,7 +17,8 @@ window.ChatHooks = {
 
 // --- PLUGIN LOADER ---
 const activePlugins = [
-    '/static/plugins/call_system.js'     // <-- Add this line!
+    '/static/plugins/call_system.js',
+    '/static/plugins/msg_notifications.js'
 ];
 
 activePlugins.forEach(pluginUrl => {
