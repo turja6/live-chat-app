@@ -1,7 +1,6 @@
 fastapi
 uvicorn
-websockets
-jinja2
 sqlalchemy
 psycopg2-binary
 cloudinary
+jinja2

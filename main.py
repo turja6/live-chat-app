@@ -1,29 +1,33 @@
 import json
 import asyncio
+import importlib
+import os
+import sys
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import cloudinary
-import cloudinary.uploader
 import database
 
-# ==========================================
-# 1. CLOUDINARY CONFIGURATION
-# ==========================================
-cloudinary.config( 
-  cloud_name = "dvdfjknil", 
-  api_key = "452245293533251", 
-  api_secret = "WPLiRjhMyG4GVKFBDjrz0zFrEf4",
-  secure = True
-)
-
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 database.init_db()
 
-class ConnectionManager:
+class PluginManager:
     def __init__(self):
         self.active_connections = {}
+        self.hooks = {}
+
+    def register_hook(self, event_type, callback):
+        if event_type not in self.hooks:
+            self.hooks[event_type] = []
+        self.hooks[event_type].append(callback)
+
+    async def trigger_event(self, event_type, data, username, websocket):
+        if event_type in self.hooks:
+            for callback in self.hooks[event_type]:
+                await callback(self, data, username, websocket)
 
     async def disconnect(self, username: str):
         if username in self.active_connections:
@@ -45,7 +49,18 @@ class ConnectionManager:
         users = await asyncio.to_thread(database.get_all_users)
         await self.broadcast({"type": "user_list", "users": users})
 
-manager = ConnectionManager()
+manager = PluginManager()
+
+# AUTOMATIC PLUGIN LOADER
+if not os.path.exists("plugins"): os.makedirs("plugins")
+# Add plugins directory to sys.path so modules can be imported
+sys.path.append(os.path.abspath("plugins"))
+for filename in os.listdir("plugins"):
+    if filename.endswith(".py") and not filename.startswith("__"):
+        module_name = filename[:-3]
+        module = importlib.import_module(module_name)
+        module.setup(manager)
+        print(f"✅ Loaded Backend Plugin: {filename}")
 
 @app.get("/")
 async def get(request: Request):
@@ -55,76 +70,25 @@ async def get(request: Request):
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await websocket.accept()
     
-    # Wait for the frontend to send the profile picture before fully connecting
     init_data = await websocket.receive_text()
     init_json = json.loads(init_data)
-    pic = init_json.get("pic", "")
-    target_chat = init_json.get("target", "Public") # Let frontend request initial chat
-
-    manager.active_connections[username] = websocket
-    await asyncio.to_thread(database.update_user, username, pic, "Online")
-    await manager.broadcast_user_list()
     
-    # Send history for the requested chat immediately upon connection
-    history = await asyncio.to_thread(database.get_chat_history, username, target_chat)
-    await websocket.send_text(json.dumps({"type": "history", "target": target_chat, "data": history}))
+    manager.active_connections[username] = websocket
+    
+    # Let core plugin handle the initial connection payload (history + broadcast)
+    await manager.trigger_event("client_connect", init_json, username, websocket)
     
     try:
         while True:
             data_str = await websocket.receive_text()
             data = json.loads(data_str)
-            msg_type = data.get("type")
+            msg_type = data.get("type", "chat")
             
             if msg_type == "ping": continue
             
-            # --- NEW: Handle Typing Indicator ---
-            if msg_type == "typing":
-                receiver = data.get("receiver", "Public")
-                payload = {"type": "typing", "sender": username, "receiver": receiver}
-                if receiver == "Public":
-                    # Broadcast typing to everyone in Public (except sender)
-                    for user, conn in manager.active_connections.items():
-                        if user != username:
-                            try: await conn.send_text(json.dumps(payload))
-                            except: pass
-                else:
-                    await manager.send_personal_message(payload, receiver)
-                continue # Skip the rest of the loop for typing events
-                
-            if msg_type == "chat":
-                content = data.get("content")
-                receiver = data.get("receiver", "Public")
-                current_pic = data.get("pic", pic)
-                
-                if content.startswith("data:image/"):
-                    upload_result = await asyncio.to_thread(cloudinary.uploader.upload, content)
-                    content = upload_result.get("secure_url")
-                
-                ts = await asyncio.to_thread(database.save_message, username, receiver, current_pic, content)
-                
-                payload = {
-                    "type": "chat", "sender": username, "receiver": receiver, 
-                    "profile_pic": current_pic, "content": content, "timestamp": ts
-                }
-                
-                if receiver == "Public":
-                    await manager.broadcast(payload)
-                else:
-                    await manager.send_personal_message(payload, receiver)
-                    if username != receiver: 
-                        await manager.send_personal_message(payload, username)
-
-            elif msg_type == "get_history":
-                target = data.get("target")
-                hist = await asyncio.to_thread(database.get_chat_history, username, target)
-                await websocket.send_text(json.dumps({"type": "history", "target": target, "data": hist}))
-
-            elif msg_type == "update_profile":
-                new_pic = data.get("pic")
-                pic = new_pic
-                await asyncio.to_thread(database.update_user, username, new_pic, "Online")
-                await manager.broadcast_user_list()
-
+            # Pass all events to the plugin engine
+            await manager.trigger_event(msg_type, data, username, websocket)
+            
     except WebSocketDisconnect:
         await manager.disconnect(username)
     except Exception as e:
