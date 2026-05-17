@@ -3,17 +3,13 @@
     'use strict';
 
     // 1. CONFIGURATION: Audio Track Path
-    // This points directly to the local file asset uploaded to your project static tree
     const CUSTOM_SOUND_URL = '/static/media/notification.mp3'; 
     const notificationAudio = new Audio(CUSTOM_SOUND_URL);
 
-    // 2. INITIALIZATION: Request Push Banner Permissions
-    // Executes automatically on login screen render to secure permissions early
+    // 2. INITIALIZATION: Request Push Banner Permissions early
     function requestSystemPermissions() {
         if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-                console.log(`📡 System Notification Permission Status: ${permission}`);
-            });
+            Notification.requestPermission();
         }
     }
 
@@ -23,56 +19,62 @@
         requestSystemPermissions();
     }
 
-    // 3. CORE ENGINE: Hook Setup & Message Interception
+    // 3. CORE ENGINE: Hook Setup & Precise Message Interception
     if (!window.ChatHooks) window.ChatHooks = { onUIReady: [], onMessageRender: [] };
 
     window.ChatHooks.onMessageRender.push(function(msg) {
-        // Guard Clause A: If the message packet is invalid, bypass processing
+        // Guard Clause A: If the message packet is null/empty, pass through
         if (!msg) return msg;
 
-        // Guard Clause B: Strict separation from the WebRTC calling engine signals
-        // We do not want text chimes triggering when background coordination data passes through
-        const signalingTypes = ['call_offer', 'call_answer', 'ice_candidate', 'call_end'];
-        if (signalingTypes.includes(msg.type)) {
+        // Ensure we handle both stringified and object formats safely
+        if (typeof msg === 'string') {
+            try { msg = JSON.parse(msg); } catch(e) { return msg; }
+        }
+
+        // CRITICAL FIX 1: FILTER OUT BACKGROUND SIGNALS & SYSTEM HOOKS
+        // Skip playing sound if it's a call event, a typing status packet, or a system ping
+        const ignoredTypes = ['call_offer', 'call_answer', 'ice_candidate', 'call_end', 'typing', 'ping', 'status_update'];
+        if (msg.type && ignoredTypes.includes(msg.type)) {
             return msg; 
         }
 
-        // Guard Clause C: Prevent loopback chimes
-        // Do not play an alert chime or fire notifications for messages sent by yourself
+        // CRITICAL FIX 2: ENSURE IT IS AN INCOMING REAL CHAT MESSAGE
+        // We only want alerts for standard text types. If the message has no actual text content, ignore it.
+        if (!msg.message && !msg.content) {
+            return msg;
+        }
+
+        // Guard Clause C: Prevent loopback chimes (Don't ring for messages you typed yourself)
         const currentLobbyUser = document.getElementById('username-display')?.innerText || ''; 
         if (msg.sender === currentLobbyUser) {
             return msg;
         }
 
-        // --- ACTION A: PLAY CUSTOM CHIME ---
+        // --- ACTION A: PLAY CUSTOM CHIME (Only for true incoming texts now) ---
         try {
-            // Rewind track instantly to allow overlapping audio if messages arrive in rapid succession
             notificationAudio.currentTime = 0; 
             notificationAudio.play();
         } catch (err) {
-            // Modern browsers block autoplay audio streams until the user performs at least one interaction click
-            console.log("🔊 Audio chime play deferred: Awaiting initial user page interaction gesture.");
+            console.log("🔊 Audio chime play deferred: Awaiting initial user page click.");
         }
 
         // --- ACTION B: FIRE PUSH NOTIFICATION ---
-        // Only trigger a push banner if the application tab is minimized or hidden in the background
         if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+            const displayText = msg.message || msg.content || 'Sent an attachment';
             const systemNotification = new Notification(`Message from ${msg.sender || 'User'}`, {
-                body: msg.content || 'Sent a message attachment',
-                icon: '/static/favicon.ico', // Fallback path configuration to your app icon
-                tag: 'chat-message-sync'     // Collapses notification history stacking to prevent user screen spam
+                body: displayText,
+                icon: '/static/favicon.ico',
+                tag: 'chat-message-sync' // Groups banners to prevent screen crowding
             });
 
-            // Clicking the push banner refocuses the chat interface immediately
             systemNotification.onclick = function() {
                 window.focus();
                 this.close();
             };
         }
 
-        // Return the message object unmodified so the layout engine draws it inside your message bubble viewport
         return msg;
     });
 
-    console.log("✅ Successfully Loaded Frontend Plugin: msg_notifications.js");
+    console.log("🔔 Message Notification Engine Cleaned & Configured!");
 })();
