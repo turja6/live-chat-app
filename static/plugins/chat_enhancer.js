@@ -1,55 +1,28 @@
-(function() {
-    console.log("Chat Enhancer Plugin Loaded");
-
-    // 1. The Parser: Converts text to links/HTML securely
-    function formatMessage(text) {
-        if (text.startsWith("http")) {
-            return `<a href="${text}" target="_blank" style="color:#6366f1; text-decoration:underline;">${text}</a>`;
-        }
-        return text;
-    }
-
-    // 2. Patch the Draw Function
-    const originalDrawMessage = window.drawMessage;
-    window.drawMessage = function(msg, isNew) {
-        originalDrawMessage(msg, isNew);
-        
-        // Find the last bubble created and update it
-        const bubbles = document.querySelectorAll('.msg-bubble');
-        const bubble = bubbles[bubbles.length - 1];
-        if (bubble) {
-            bubble.innerHTML = formatMessage(msg.content);
-        }
-    };
-
-    // 3. Define Context Actions (Global Window Scope)
-    window.contextReply = () => {
-        if (contextMenuTarget) setReply(contextMenuTarget.sender, contextMenuTarget.content, contextMenuTarget.id);
-        document.getElementById('context-menu').classList.remove('active');
-    };
-
-    window.contextForward = () => {
-        if (contextMenuTarget) {
-            document.getElementById('msgInput').value = `Forwarded: ${contextMenuTarget.content}`;
-            document.getElementById('msgInput').focus();
-        }
-        document.getElementById('context-menu').classList.remove('active');
-    };
-
-    window.contextPin = () => {
-        window.IdlyPlugins.sendToSocket({ type: 'pin', id: contextMenuTarget.id });
-        showToast("Pinned", "success");
-        document.getElementById('context-menu').classList.remove('active');
-    };
-
-    window.contextDelete = () => {
-        if (contextMenuTarget && contextMenuTarget.sender === myUsername) {
-            const msgEl = document.querySelector(`[data-msg-id="${contextMenuTarget.id}"]`);
-            if (msgEl) {
-                msgEl.closest('.message-group').remove();
-                window.IdlyPlugins.sendToSocket({ type: 'delete_message', id: contextMenuTarget.id });
+window.contextDelete = function() {
+    console.log("Delete clicked for ID:", contextMenuTarget?.id); // Debugging
+    
+    if (contextMenuTarget && contextMenuTarget.sender === myUsername) {
+        // 1. Remove from UI
+        const msgEl = document.querySelector(`[data-msg-id="${contextMenuTarget.id}"]`);
+        if (msgEl) {
+            const group = msgEl.closest('.message-group');
+            if (group) {
+                group.remove();
+                console.log("Message removed from UI");
             }
+        } else {
+            console.error("Could not find message element with ID:", contextMenuTarget.id);
         }
-        document.getElementById('context-menu').classList.remove('active');
-    };
-})();
+
+        // 2. Notify Server
+        window.IdlyPlugins.sendToSocket({ 
+            type: 'delete_message', 
+            id: contextMenuTarget.id 
+        });
+        console.log("Delete request sent to server");
+    } else {
+        console.warn("Delete aborted: Message does not belong to user or target is null");
+    }
+    
+    document.getElementById('context-menu').classList.remove('active');
+};
