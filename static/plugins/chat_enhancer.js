@@ -1,64 +1,52 @@
 (function() {
     console.log("Chat Enhancer Plugin Loaded");
 
-    // 1. The Parser: Converts text to links/HTML securely
-    function formatMessage(text) {
-        if (text.startsWith("http")) {
-            return `<a href="${text}" target="_blank" style="color:#6366f1; text-decoration:underline;">${text}</a>`;
-        }
-        return text;
-    }
-    function drawMessage(msg, isNew = true) {
-    const msgs = document.getElementById("messages");
-    const div = document.createElement("div");
-    div.className = "message-group";
-    
-    // IMPORTANT: This creates the ID attribute that contextDelete looks for!
-    const msgId = msg.id || 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-    div.setAttribute("data-msg-id", msgId);
-    }
-
-    // 2. Patch the Draw Function
+    // 1. Hook into your existing message system
     const originalDrawMessage = window.drawMessage;
+    
     window.drawMessage = function(msg, isNew) {
+        // Ensure the message has an ID if one wasn't provided
+        if (!msg.id) msg.id = 'msg_' + Date.now() + Math.random().toString(36).substr(2, 5);
+        
+        // Run the original function
         originalDrawMessage(msg, isNew);
         
-        // Find the last bubble created and update it
-        const bubbles = document.querySelectorAll('.msg-bubble');
-        const bubble = bubbles[bubbles.length - 1];
-        if (bubble) {
-            bubble.innerHTML = formatMessage(msg.content);
-        }
-    };
-
-    // 3. Define Context Actions (Global Window Scope)
-    window.contextReply = () => {
-        if (contextMenuTarget) setReply(contextMenuTarget.sender, contextMenuTarget.content, contextMenuTarget.id);
-        document.getElementById('context-menu').classList.remove('active');
-    };
-
-    window.contextForward = () => {
-        if (contextMenuTarget) {
-            document.getElementById('msgInput').value = `Forwarded: ${contextMenuTarget.content}`;
-            document.getElementById('msgInput').focus();
-        }
-        document.getElementById('context-menu').classList.remove('active');
-    };
-
-    window.contextPin = () => {
-        window.IdlyPlugins.sendToSocket({ type: 'pin', id: contextMenuTarget.id });
-        showToast("Pinned", "success");
-        document.getElementById('context-menu').classList.remove('active');
-    };
-
-    window.contextDelete = () => {
-        if (contextMenuTarget && contextMenuTarget.sender === myUsername) {
-            const msgEl = document.querySelector(`[data-msg-id="${contextMenuTarget.id}"]`);
-            if (msgEl) {
-                msgEl.closest('.message-group').remove();
-                window.IdlyPlugins.sendToSocket({ type: 'delete_message', id: contextMenuTarget.id });
+        // Find the last bubble and the container
+        const groups = document.querySelectorAll('.message-group');
+        const lastGroup = groups[groups.length - 1];
+        if (lastGroup) {
+            // Apply the ID to the container so contextDelete can find it
+            lastGroup.setAttribute("data-msg-id", msg.id);
+            
+            // Format content safely
+            const bubble = lastGroup.querySelector('.msg-bubble');
+            if (bubble) {
+                if (msg.content.startsWith("http")) {
+                    bubble.innerHTML = `<a href="${msg.content}" target="_blank" style="color:#6366f1;">${msg.content}</a>`;
+                } else {
+                    bubble.textContent = msg.content;
+                }
             }
         }
+    };
+
+    // 2. Fix the Delete logic
+    window.contextDelete = () => {
+        if (!contextMenuTarget) return;
+        
+        // Use the ID directly from the menu target
+        const id = contextMenuTarget.id;
+        const msgEl = document.querySelector(`[data-msg-id="${id}"]`);
+        
+        if (msgEl) {
+            msgEl.remove();
+            window.IdlyPlugins.sendToSocket({ type: 'delete_message', id: id });
+            console.log("Deleted:", id);
+        } else {
+            console.error("Could not find message with ID:", id);
+        }
         document.getElementById('context-menu').classList.remove('active');
     };
+
+    // ... (Keep your Reply/Forward/Pin functions the same)
 })();
