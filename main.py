@@ -1,24 +1,25 @@
 import json
 import asyncio
+import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles # Ensure this is imported
+from fastapi.staticfiles import StaticFiles
 import cloudinary
 import cloudinary.uploader
 import database
 
-# 1. Create the app object first
+# 1. Initialize App ONCE
 app = FastAPI()
 
-# 2. Now mount the static directory
+# 2. Mount Static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 3. Setup templates and database
 templates = Jinja2Templates(directory="templates")
 database.init_db()
+
 # ==========================================
-# 1. CLOUDINARY CONFIGURATION
+# CLOUDINARY CONFIGURATION
 # ==========================================
 cloudinary.config( 
   cloud_name = "dvdfjknil", 
@@ -27,11 +28,21 @@ cloudinary.config(
   secure = True
 )
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
-database.init_db()
+# ==========================================
+# PLUGIN SCANNER (The "Automatic" Part)
+# ==========================================
+@app.get("/api/get-plugins")
+async def get_plugins():
+    plugin_dir = "static/plugins"
+    if not os.path.exists(plugin_dir):
+        os.makedirs(plugin_dir)
+    # Automatically finds all .js files in the plugins folder
+    plugins = [f.replace(".js", "") for f in os.listdir(plugin_dir) if f.endswith(".js")]
+    return {"plugins": plugins}
 
+# ==========================================
+# CHAT LOGIC
+# ==========================================
 class ConnectionManager:
     def __init__(self):
         self.active_connections = {}
@@ -57,14 +68,6 @@ class ConnectionManager:
         await self.broadcast({"type": "user_list", "users": users})
 
 manager = ConnectionManager()
-import os
-
-@app.get("/api/get-plugins")
-async def get_plugins():
-    # This automatically scans your plugins folder
-    plugin_dir = "static/plugins"
-    plugins = [f.replace(".js", "") for f in os.listdir(plugin_dir) if f.endswith(".js")]
-    return {"plugins": plugins}
 
 @app.get("/")
 async def get(request: Request):
@@ -74,17 +77,15 @@ async def get(request: Request):
 async def websocket_endpoint(websocket: WebSocket, username: str):
     await websocket.accept()
     
-    # Wait for the frontend to send the profile picture before fully connecting
     init_data = await websocket.receive_text()
     init_json = json.loads(init_data)
     pic = init_json.get("pic", "")
-    target_chat = init_json.get("target", "Public") # Let frontend request initial chat
+    target_chat = init_json.get("target", "Public")
 
     manager.active_connections[username] = websocket
     await asyncio.to_thread(database.update_user, username, pic, "Online")
     await manager.broadcast_user_list()
     
-    # Send history for the requested chat immediately upon connection
     history = await asyncio.to_thread(database.get_chat_history, username, target_chat)
     await websocket.send_text(json.dumps({"type": "history", "target": target_chat, "data": history}))
     
@@ -96,19 +97,17 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             
             if msg_type == "ping": continue
             
-            # --- NEW: Handle Typing Indicator ---
             if msg_type == "typing":
                 receiver = data.get("receiver", "Public")
                 payload = {"type": "typing", "sender": username, "receiver": receiver}
                 if receiver == "Public":
-                    # Broadcast typing to everyone in Public (except sender)
                     for user, conn in manager.active_connections.items():
                         if user != username:
                             try: await conn.send_text(json.dumps(payload))
                             except: pass
                 else:
                     await manager.send_personal_message(payload, receiver)
-                continue # Skip the rest of the loop for typing events
+                continue
                 
             if msg_type == "chat":
                 content = data.get("content")
@@ -120,18 +119,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     content = upload_result.get("secure_url")
                 
                 ts = await asyncio.to_thread(database.save_message, username, receiver, current_pic, content)
+                payload = {"type": "chat", "sender": username, "receiver": receiver, "profile_pic": current_pic, "content": content, "timestamp": ts}
                 
-                payload = {
-                    "type": "chat", "sender": username, "receiver": receiver, 
-                    "profile_pic": current_pic, "content": content, "timestamp": ts
-                }
-                
-                if receiver == "Public":
-                    await manager.broadcast(payload)
+                if receiver == "Public": await manager.broadcast(payload)
                 else:
                     await manager.send_personal_message(payload, receiver)
-                    if username != receiver: 
-                        await manager.send_personal_message(payload, username)
+                    if username != receiver: await manager.send_personal_message(payload, username)
 
             elif msg_type == "get_history":
                 target = data.get("target")
@@ -144,12 +137,11 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 await asyncio.to_thread(database.update_user, username, new_pic, "Online")
                 await manager.broadcast_user_list()
 
-            # --- NEW: The Universal Plugin Hook ---
             else:
-                # Route any unknown message types (like WebRTC signals) directly to the receiver
+                # --- UNIVERSAL PLUGIN HOOK ---
                 receiver = data.get("receiver")
                 if receiver and receiver != "Public":
-                    data["sender"] = username  # Stamp with sender identity for security
+                    data["sender"] = username
                     await manager.send_personal_message(data, receiver)
 
     except WebSocketDisconnect:
