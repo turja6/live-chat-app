@@ -1,6 +1,6 @@
 import json
 import asyncio
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request 
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import cloudinary
@@ -124,6 +124,14 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 pic = new_pic
                 await asyncio.to_thread(database.update_user, username, new_pic, "Online")
                 await manager.broadcast_user_list()
+
+            # --- NEW: The Universal Plugin Hook ---
+            else:
+                # Route any unknown message types (like WebRTC signals) directly to the receiver
+                receiver = data.get("receiver")
+                if receiver and receiver != "Public":
+                    data["sender"] = username  # Stamp with sender identity for security
+                    await manager.send_personal_message(data, receiver)
 
     except WebSocketDisconnect:
         await manager.disconnect(username)

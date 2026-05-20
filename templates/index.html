@@ -898,6 +898,10 @@
             box-shadow: var(--shadow-soft);
             animation: fadeIn 0.2s;
             max-width: 250px;
+
+            /* Add these two lines right here! */
+            max-height: 250px;
+            overflow-y: auto;
         }
         .emoji-picker.active { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
         .emoji-btn {
@@ -1579,6 +1583,7 @@
            ========================================= */
 
         // --- State Management ---
+        // Plugin Registry
         let ws;
         let heartbeat;
         let reconnectAttempts = 0;
@@ -1596,13 +1601,52 @@
         let messageStore = []; // Local store of displayed messages for reference
 
         // Extended emoji list
+        // Extended emoji list
         const emojis = [
-            '😀', '😂', '🤣', '😊', '😍', '🥰', '😘', '😎',
-            '🤔', '😮', '😢', '😡', '🤯', '🥳', '😎', '🤫',
-            '👀', '👋', '🙏', '💪', '🎉', '✨', '💯', '🚀',
-            '🔥', '❤️', '👍', '👎', '☕', '🍕', '🍔', '🎵',
-            '😴', '🤗', '😏', '🫡', '💀', '👻', '🤖', '🌈',
-            '⭐', '💡', '📌', '🎯', '🏆', '🧠', '💎', '🌟'
+            // Smileys & Emotion
+            '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '😊', '😇', '🙂', '🙃', '😉', '😌', 
+            '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', 
+            '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', 
+            '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', 
+            '😓', '🫣', '🤗', '🫡', '🤔', '🫢', '🤭', '🤫', '🤥', '😶', '😶‍🌫️', '😐', '😑', '😬', '🫠', 
+            '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🤐', '🥴', '🤢', 
+            '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', 
+            '👽', '👾', '🤖',
+            
+            // Gestures & Body Parts
+            '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', 
+            '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '🫶', '👐', '🤲', '🤝', '🙏', 
+            '✍️', '💅', '🤳', '💪', '🧠', '🫀', '🫁', '👀', '👁️', '👅', '👄', '🫦',
+            
+            // Hearts & Symbols
+            '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❤️‍🔥', '❤️‍🩹', '❣️', '💕', '💞', 
+            '💓', '💗', '💖', '💘', '💝', '💯', '💢', '💥', '💫', '💦', '💨', '💤', '💬', '💭', '🗯️',
+            
+            // Nature & Animals
+            '🐵', '🐶', '🐺', '🐱', '🦁', '🐯', '🦒', '🦊', '🦝', '🐮', '🐷', '🐗', '🐭', '🐹', '🐰', 
+            '🐻', '🐨', '🐼', '🐸', '🦓', '🐴', '🦄', '🐔', '🐲', '🦋', '🦕', '🦖', '🐢', '🐍', '🐙', 
+            '🐟', '🐠', '🦈', '🐬', '🐳', '🐋', '🐊', '🐆', '🐅', '🐃', '🐂', '🐄', '🐪', '🐫', '🐘', 
+            '🌞', '🌝', '🌛', '🌜', '🌚', '🌕', '🌖', '🌗', '🌘', '🌑', '🌒', '🌓', '🌔', '🌙', '🌎', 
+            '🌍', '🌏', '🪐', '🌟', '⭐️', '🌠', '🌌', '☁️', '⛅', '⛈️', '🌤️', '🌥️', '🌦️', '🌧️', '🌨️', 
+            
+            // Food & Drink
+            '🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', 
+            '🥝', '🍅', '🍆', '🥑', '🥦', '🥒', '🥬', '🌶️', '🌽', '🥕', '🧄', '🧅', '🥔', '🍠', '🥐', 
+            '🍞', '🥖', '🥨', '🥯', '🧀', '🥚', '🍳', '🧈', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🦴', 
+            '🌭', '🍔', '🍟', '🍕', '🥪', '🥙', '🧆', '🌮', '🌯', '🥗', '🥘', '🥫', '🍝', '🍜', '🍲', 
+            '🍛', '🍣', '🍱', '🥟', '🦪', '🍤', '🍙', '🍚', '🍘', '🍥', '🥠', '🥮', '🍢', '🍡', '🍧', 
+            '☕', '🫖', '🍵', '🥤', '🧋', '🧃', '🧉', '🥛', '🍺', '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', 
+            
+            // Objects & Activities
+            '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', 
+            '🎮', '🕹️', '🎰', '🎲', '🧩', '🧸', '🪅', '🪄', '🔮', '🧿', '🎯', '🏆', '🥇', '🥈', '🥉', 
+            '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '📷', '📸', '📹', '🎥', '📽️', '📼', '📱', '☎️', '📞', 
+            '💡', '🔦', '🏮', '🪔', '📔', '📕', '📖', '📗', '📘', '📙', '📚', '📓', '📒', '📃', '📜',
+            
+            // Travel & Places
+            '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🏎️', 
+            '🏍️', '🛵', '🦽', '🦼', '🛺', '🚲', '🛴', '🛹', '🛼', '🚏', '🛣️', '🛤️', '🛢️', '⛽', '🚨', 
+            '🚥', '🚦', '🛑', '🚧', '⚓', '⛵', '🛶', '🚤', '🛳️', '⛴️', '🛥️', '🚢', '✈️', '🛩️', '🛫'
         ];
 
         // Default avatar URL constant
@@ -1611,15 +1655,24 @@
         /* =========================================
            12. INITIALIZATION
            ========================================= */
+                // Plugin Registry
+        window.IdlyPlugins = {
+            messageHandlers: {}, // For WebSocket messages
+            uiHooks: {}          // For adding buttons to the UI
+            };
+
         window.onload = () => {
             loadTheme();
             initEmojiPicker();
             loadSession();
+    
+            // ACTIVATED:
+            loadPlugins(['video_calls']); 
 
             const inputField = document.getElementById("msgInput");
             inputField.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') sendMsg();
-            });
+           });
 
             // Close context menu on any click elsewhere
             document.addEventListener('click', () => {
@@ -1804,28 +1857,21 @@
             }
         }
 
-        /**
-         * Route incoming WebSocket messages to the appropriate handler
-         */
         function handleWsMessage(data) {
-            switch(data.type) {
-                case "history":
-                    renderHistory(data);
-                    break;
-                case "chat":
-                    handleIncomingChat(data);
-                    break;
-                case "user_list":
-                    handleUserList(data);
-                    break;
-                case "typing":
-                    handleTypingIndicator(data);
-                    break;
-                default:
-                    console.log("Unknown message type:", data.type);
-            }
-        }
-
+          switch(data.type) {
+            case "history": renderHistory(data); break;
+            case "chat": handleIncomingChat(data); break;
+            case "user_list": handleUserList(data); break;
+            case "typing": handleTypingIndicator(data); break;
+            default:
+              // THE PLUG-IN HOOK: If the core app doesn't recognize the message, check if a plugin does.
+              if (window.IdlyPlugins.messageHandlers[data.type]) {
+                window.IdlyPlugins.messageHandlers[data.type](data);
+              } else {
+                  console.log("Unknown message type ignored:", data.type);
+              }
+      }
+  }
         /* =========================================
            14. UI RENDERING - MESSAGES
            ========================================= */
@@ -2624,6 +2670,17 @@
                 e.preventDefault();
             }
         });
+        function loadPlugins(pluginNames) {
+            pluginNames.forEach(name => {
+                const script = document.createElement('script');
+                script.src = `/static/plugins/${name}.js`;
+                script.onload = () => console.log(`Plugin loaded: ${name}`);
+                document.body.appendChild(script);
+            });
+        }
+
+// Call this on window.onload with the list of plugins you want to activate
+// loadPlugins(['video_calls']);
     </script>
 </body>
 </html>
