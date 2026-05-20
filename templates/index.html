@@ -1392,10 +1392,18 @@
 
     <!-- Context Menu -->
     <div class="context-menu" id="context-menu">
-    <div class="context-menu-item" onclick="contextReply()">Reply</div>
-    <div class="context-menu-item" onclick="contextForward()">Forward</div>
-    <div class="context-menu-item" onclick="contextPin()">Pin Message</div>
-    <div class="context-menu-item danger" id="ctx-delete-btn" onclick="contextDelete()">Delete</div>
+    <div class="context-menu-item" onclick="contextReply()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a8 8 0 0 1 8 8v2M7 14l-4-4 4-4"/></svg> Reply
+    </div>
+    <div class="context-menu-item" onclick="contextForward()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 15V3"/></svg> Forward
+    </div>
+    <div class="context-menu-item" onclick="contextPin()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 12H19"/><path d="M7 12V6a5 5 0 0 1 10 0v6"/></svg> Pin
+    </div>
+    <div class="context-menu-item danger" id="ctx-delete-btn" onclick="contextDelete()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Delete
+    </div>
 </div>
     </div>
 

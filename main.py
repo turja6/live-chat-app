@@ -130,6 +130,10 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 target = data.get("target")
                 hist = await asyncio.to_thread(database.get_chat_history, username, target)
                 await websocket.send_text(json.dumps({"type": "history", "target": target, "data": hist}))
+            elif msg_type == "delete_message":
+                 msg_id = data.get("id")
+                 await asyncio.to_thread(database.delete_message, msg_id)
+                 await manager.broadcast({"type": "delete_ui", "id": msg_id})
 
             elif msg_type == "update_profile":
                 new_pic = data.get("pic")

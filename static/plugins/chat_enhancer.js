@@ -1,37 +1,34 @@
 (function() {
     console.log("Chat Enhancer Plugin Loaded");
 
-    // 1. Fix the Display (No more raw HTML)
+    // 1. The Parser: Converts text to links/HTML securely
+    function formatMessage(text) {
+        if (text.startsWith("http")) {
+            return `<a href="${text}" target="_blank" style="color:#6366f1; text-decoration:underline;">${text}</a>`;
+        }
+        return text;
+    }
+
+    // 2. Patch the Draw Function
     const originalDrawMessage = window.drawMessage;
     window.drawMessage = function(msg, isNew) {
         originalDrawMessage(msg, isNew);
+        
+        // Find the last bubble created and update it
         const bubbles = document.querySelectorAll('.msg-bubble');
         const bubble = bubbles[bubbles.length - 1];
         if (bubble) {
-            // Check if link, otherwise plain text (No HTML escaping issues)
-            if (msg.content.startsWith("http")) {
-                bubble.innerHTML = `<a href="${msg.content}" target="_blank" style="color:#6366f1;">Link</a>`;
-            } else {
-                bubble.textContent = msg.content;
-            }
+            bubble.innerHTML = formatMessage(msg.content);
         }
     };
 
-    // 2. Replace Emojis with Icons (SVG)
-    // Add logic here to replace common text :) with icons if needed, 
-    // but keeping it simple as requested.
-
-    // 3. Context Menu Actions (Icons replaced by text/labels)
-    window.contextReply = function() {
-        if (contextMenuTarget) {
-            replyingTo = { sender: contextMenuTarget.sender, content: contextMenuTarget.content, id: contextMenuTarget.id };
-            document.getElementById('reply-to-name').innerText = contextMenuTarget.sender;
-            document.getElementById('reply-preview').classList.add('active');
-        }
+    // 3. Define Context Actions (Global Window Scope)
+    window.contextReply = () => {
+        if (contextMenuTarget) setReply(contextMenuTarget.sender, contextMenuTarget.content, contextMenuTarget.id);
         document.getElementById('context-menu').classList.remove('active');
     };
 
-    window.contextForward = function() {
+    window.contextForward = () => {
         if (contextMenuTarget) {
             document.getElementById('msgInput').value = `Forwarded: ${contextMenuTarget.content}`;
             document.getElementById('msgInput').focus();
@@ -39,8 +36,20 @@
         document.getElementById('context-menu').classList.remove('active');
     };
 
-    window.contextPin = function() {
+    window.contextPin = () => {
         window.IdlyPlugins.sendToSocket({ type: 'pin', id: contextMenuTarget.id });
+        showToast("Pinned", "success");
+        document.getElementById('context-menu').classList.remove('active');
+    };
+
+    window.contextDelete = () => {
+        if (contextMenuTarget && contextMenuTarget.sender === myUsername) {
+            const msgEl = document.querySelector(`[data-msg-id="${contextMenuTarget.id}"]`);
+            if (msgEl) {
+                msgEl.closest('.message-group').remove();
+                window.IdlyPlugins.sendToSocket({ type: 'delete_message', id: contextMenuTarget.id });
+            }
+        }
         document.getElementById('context-menu').classList.remove('active');
     };
 })();
