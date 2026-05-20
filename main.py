@@ -1,14 +1,22 @@
 import json
 import asyncio
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request 
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-app.mount("/static", StaticFiles(directory="static"), name="static")
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles # Ensure this is imported
 import cloudinary
 import cloudinary.uploader
 import database
 
+# 1. Create the app object first
+app = FastAPI()
+
+# 2. Now mount the static directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 3. Setup templates and database
+templates = Jinja2Templates(directory="templates")
+database.init_db()
 # ==========================================
 # 1. CLOUDINARY CONFIGURATION
 # ==========================================
