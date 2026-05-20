@@ -1392,16 +1392,11 @@
 
     <!-- Context Menu -->
     <div class="context-menu" id="context-menu">
-        <div class="context-menu-item" onclick="contextReply()">
-            ↩️ Reply
-        </div>
-        <div class="context-menu-item" onclick="contextCopy()">
-            📋 Copy Text
-        </div>
-        <!-- Delete is dynamically shown/hidden based on message sender -->
-        <div class="context-menu-item danger" id="ctx-delete-btn" onclick="contextDelete()">
-            🗑️ Delete
-        </div>
+    <div class="context-menu-item" onclick="contextReply()">Reply</div>
+    <div class="context-menu-item" onclick="contextForward()">Forward</div>
+    <div class="context-menu-item" onclick="contextPin()">Pin Message</div>
+    <div class="context-menu-item danger" id="ctx-delete-btn" onclick="contextDelete()">Delete</div>
+</div>
     </div>
 
     <!-- Sidebar Overlay (Mobile) -->
