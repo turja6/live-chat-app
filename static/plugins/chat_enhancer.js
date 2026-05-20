@@ -72,5 +72,12 @@
             window.IdlyPlugins.sendToSocket({ type: 'delete_message', id: id });
         }
         document.getElementById('context-menu').classList.remove('active');
+        document.addEventListener('click', (e) => {
+        const menu = document.getElementById('context-menu');
+        // If the menu exists AND is active AND the click was NOT on the menu itself
+        if (menu && menu.classList.contains('active') && !e.target.closest('#context-menu')) {
+            menu.classList.remove('active');
+        }
+    });
     };
 })();
