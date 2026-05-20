@@ -2,6 +2,8 @@ import json
 import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request 
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="static"), name="static")
 from fastapi.templating import Jinja2Templates
 import cloudinary
 import cloudinary.uploader
