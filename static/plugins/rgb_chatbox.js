@@ -1,40 +1,35 @@
 (function() {
-    console.log("Chatbox Style Plugin Loading...");
+    console.log("RGB Chatbox Plugin Loaded");
 
-    // 1. Inject the CSS
+    // 1. Inject the RGB Animation Styles
     const style = document.createElement('style');
     style.innerHTML = `
-        /* Paste the CSS from your search bar code here */
-        /* Note: Ensure you scope these styles to your chat input */
-        .input-wrapper { background: transparent !important; border: none !important; }
-        .input-wrapper:focus-within { box-shadow: none !important; }
-        
-        #poda { display: flex; align-items: center; justify-content: center; width: 100%; }
-        /* Add the rest of the .input, #poda, #main, .white, .border, .glow CSS here */
+        .rgb-container {
+            position: relative;
+            padding: 3px; /* The thickness of the glow */
+            border-radius: 9999px; /* Matches your input-wrapper */
+            background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+            background-size: 400%;
+            animation: rgb-animation 20s linear infinite;
+        }
+        @keyframes rgb-animation {
+            0% { background-position: 0 0; }
+            50% { background-position: 400% 0; }
+            100% { background-position: 0 0; }
+        }
+        /* Make sure the inner background stays dark */
+        .input-wrapper { background: var(--bg-secondary) !important; }
     `;
     document.head.appendChild(style);
 
-    // 2. Wrap your existing input in the new structure
+    // 2. Wrap the chat input in the RGB container
     const inputWrapper = document.querySelector('.input-wrapper');
-    const msgInput = document.getElementById('msgInput');
-    
-    // Create the container structure
-    const newContainer = document.createElement('div');
-    newContainer.id = 'poda';
-    newContainer.innerHTML = `
-        <div class="glow"></div>
-        <div class="darkBorderBg"></div>
-        <div class="darkBorderBg"></div>
-        <div class="darkBorderBg"></div>
-        <div class="white"></div>
-        <div class="border"></div>
-        <div id="main"></div>
-    `;
-    
-    // Move the input into the new #main div
-    const mainDiv = newContainer.querySelector('#main');
-    mainDiv.appendChild(msgInput);
-    
-    // Replace the old wrapper with the new animated one
-    inputWrapper.parentNode.replaceChild(newContainer, inputWrapper);
+    if (inputWrapper) {
+        const container = document.createElement('div');
+        container.className = 'rgb-container';
+        
+        // Move the input wrapper inside the glowing container
+        inputWrapper.parentNode.insertBefore(container, inputWrapper);
+        container.appendChild(inputWrapper);
+    }
 })();
