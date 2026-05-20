@@ -1666,19 +1666,24 @@
             initEmojiPicker();
             loadSession();
     
-            // ACTIVATED:
-            loadPlugins(['video_calls']); 
-
-            const inputField = document.getElementById("msgInput");
-            inputField.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendMsg();
-           });
-
-            // Close context menu on any click elsewhere
-            document.addEventListener('click', () => {
-                const ctx = document.getElementById('context-menu');
-                if (ctx) ctx.classList.remove('active');
-            });
+             // --- AUTOMATIC PLUGIN LOADER ---
+        async function autoLoadPlugins() {
+        try {
+        // 1. Ask the server for the list of files in the plugins folder
+            const response = await fetch('/api/get-plugins');
+            const data = await response.json();
+        
+        // 2. Loop through them and inject them
+        data.plugins.forEach(name => {
+            const script = document.createElement('script');
+            script.src = `/static/plugins/${name}.js`;
+            script.onload = () => console.log(`Auto-loaded plugin: ${name}`);
+            document.body.appendChild(script);
+        });
+    } catch (err) {
+        console.error("Failed to auto-load plugins:", err);
+    }
+}
 
             // Close emoji picker when clicking outside
             document.addEventListener('click', (e) => {

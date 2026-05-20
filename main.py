@@ -57,6 +57,14 @@ class ConnectionManager:
         await self.broadcast({"type": "user_list", "users": users})
 
 manager = ConnectionManager()
+    import os
+
+@app.get("/api/get-plugins")
+async def get_plugins():
+    # This automatically scans your plugins folder
+    plugin_dir = "static/plugins"
+    plugins = [f.replace(".js", "") for f in os.listdir(plugin_dir) if f.endswith(".js")]
+    return {"plugins": plugins}
 
 @app.get("/")
 async def get(request: Request):
