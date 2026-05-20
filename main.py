@@ -57,7 +57,7 @@ class ConnectionManager:
         await self.broadcast({"type": "user_list", "users": users})
 
 manager = ConnectionManager()
-    import os
+import os
 
 @app.get("/api/get-plugins")
 async def get_plugins():
