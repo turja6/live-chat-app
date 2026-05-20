@@ -64,14 +64,24 @@ def save_message(sender, receiver, profile_pic, content):
     finally:
         db.close()
 
+# ADDED: Permanent deletion function
+def delete_message(msg_id):
+    db = SessionLocal()
+    try:
+        # Assuming msg_id is the integer ID from the database
+        msg = db.query(Message).filter(Message.id == msg_id).first()
+        if msg:
+            db.delete(msg)
+            db.commit()
+    finally:
+        db.close()
+
 def get_chat_history(user1, user2):
     db = SessionLocal()
     try:
         if user2 == "Public":
-            # Change .limit(100) to .limit(500) or more
             msgs = db.query(Message).filter(Message.receiver == "Public").order_by(Message.id.desc()).limit(500).all() 
         else:
-            # Change .limit(100) to .limit(500) for DMs too
             msgs = db.query(Message).filter(
                 or_(
                     and_(Message.sender == user1, Message.receiver == user2),
@@ -80,6 +90,7 @@ def get_chat_history(user1, user2):
             ).order_by(Message.id.desc()).limit(500).all()
         
         return [{
+            "id": m.id, 
             "sender": m.sender, 
             "profile_pic": m.profile_pic, 
             "content": m.content, 

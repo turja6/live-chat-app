@@ -5,20 +5,13 @@
     const originalDrawMessage = window.drawMessage;
     
     window.drawMessage = function(msg, isNew) {
-        // Ensure the message has an ID if one wasn't provided
         if (!msg.id) msg.id = 'msg_' + Date.now() + Math.random().toString(36).substr(2, 5);
-        
-        // Run the original function
         originalDrawMessage(msg, isNew);
         
-        // Find the last bubble and the container
         const groups = document.querySelectorAll('.message-group');
         const lastGroup = groups[groups.length - 1];
         if (lastGroup) {
-            // Apply the ID to the container so contextDelete can find it
             lastGroup.setAttribute("data-msg-id", msg.id);
-            
-            // Format content safely
             const bubble = lastGroup.querySelector('.msg-bubble');
             if (bubble) {
                 if (msg.content.startsWith("http")) {
@@ -30,23 +23,54 @@
         }
     };
 
-    // 2. Fix the Delete logic
+    // 2. Real-time Server Sync (For Delete/Pin/etc)
+    if (!window.IdlyPlugins.messageHandlers) window.IdlyPlugins.messageHandlers = {};
+    
+    // Server says delete this message
+    window.IdlyPlugins.messageHandlers["delete_ui"] = (data) => {
+        const msgEl = document.querySelector(`[data-msg-id="${data.id}"]`);
+        if (msgEl) msgEl.remove();
+    };
+
+    // 3. Context Menu Actions
+    window.contextReply = () => {
+        if (contextMenuTarget) {
+            // Assumes setReply is defined in your main index.html
+            if (typeof setReply === 'function') {
+                setReply(contextMenuTarget.sender, contextMenuTarget.content, contextMenuTarget.id);
+            }
+        }
+        document.getElementById('context-menu').classList.remove('active');
+    };
+
+    window.contextForward = () => {
+        if (contextMenuTarget) {
+            const input = document.getElementById('msgInput');
+            input.value = `Forwarded: ${contextMenuTarget.content}`;
+            input.focus();
+        }
+        document.getElementById('context-menu').classList.remove('active');
+    };
+
+    window.contextPin = () => {
+        if (contextMenuTarget) {
+            window.IdlyPlugins.sendToSocket({ type: 'pin_message', id: contextMenuTarget.id });
+            if (typeof showToast === 'function') showToast("Message Pinned", "success");
+        }
+        document.getElementById('context-menu').classList.remove('active');
+    };
+
     window.contextDelete = () => {
         if (!contextMenuTarget) return;
         
-        // Use the ID directly from the menu target
         const id = contextMenuTarget.id;
         const msgEl = document.querySelector(`[data-msg-id="${id}"]`);
         
         if (msgEl) {
             msgEl.remove();
+            // Notify server to delete from DB
             window.IdlyPlugins.sendToSocket({ type: 'delete_message', id: id });
-            console.log("Deleted:", id);
-        } else {
-            console.error("Could not find message with ID:", id);
         }
         document.getElementById('context-menu').classList.remove('active');
     };
-
-    // ... (Keep your Reply/Forward/Pin functions the same)
 })();

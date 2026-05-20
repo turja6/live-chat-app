@@ -29,14 +29,13 @@ cloudinary.config(
 )
 
 # ==========================================
-# PLUGIN SCANNER (The "Automatic" Part)
+# PLUGIN SCANNER
 # ==========================================
 @app.get("/api/get-plugins")
 async def get_plugins():
     plugin_dir = "static/plugins"
     if not os.path.exists(plugin_dir):
         os.makedirs(plugin_dir)
-    # Automatically finds all .js files in the plugins folder
     plugins = [f.replace(".js", "") for f in os.listdir(plugin_dir) if f.endswith(".js")]
     return {"plugins": plugins}
 
@@ -130,10 +129,12 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 target = data.get("target")
                 hist = await asyncio.to_thread(database.get_chat_history, username, target)
                 await websocket.send_text(json.dumps({"type": "history", "target": target, "data": hist}))
+            
             elif msg_type == "delete_message":
-                 msg_id = data.get("id")
-                 await asyncio.to_thread(database.delete_message, msg_id)
-                 await manager.broadcast({"type": "delete_ui", "id": msg_id})
+                msg_id = data.get("id")
+                # Ensure database.delete_message is defined in database.py
+                await asyncio.to_thread(database.delete_message, msg_id)
+                await manager.broadcast({"type": "delete_ui", "id": msg_id})
 
             elif msg_type == "update_profile":
                 new_pic = data.get("pic")
@@ -142,7 +143,6 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 await manager.broadcast_user_list()
 
             else:
-                # --- UNIVERSAL PLUGIN HOOK ---
                 receiver = data.get("receiver")
                 if receiver and receiver != "Public":
                     data["sender"] = username
