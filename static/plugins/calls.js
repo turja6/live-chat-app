@@ -1,61 +1,53 @@
 (function() {
-    console.log("Loading Ultimate WebRTC A/V Call Engine (Full Version)...");
+    console.log("Loading WebRTC A/V Call Engine (Fix Applied)...");
 
     // ==========================================
-    // 1. BULLETPROOF INITIALIZATION & GLOBALS
+    // 1. GLOBALS & SOCKET SAFELOAD
     // ==========================================
     window.IdlyPlugins = window.IdlyPlugins || {};
     window.IdlyPlugins.messageHandlers = window.IdlyPlugins.messageHandlers || {};
 
-    // Safely get the active WebSocket to prevent "undefined" errors
-    function getSocket() {
-        return window.ws || window.socket || window.websocket || null;
-    }
-
     // THE FIX: Bulletproof Target User Detection
     function getTargetUser() {
         try {
-            // Attempt 1: Direct variable access (fixes the 'let' scoping issue)
-            if (typeof currentChat !== "undefined" && currentChat && currentChat !== "Public") {
-                return currentChat;
-            }
-            // Attempt 2: Window object access
-            if (window.currentChat && window.currentChat !== "Public") {
-                return window.currentChat;
-            }
-        } catch (e) {
-            console.warn("Variable scope detection failed, falling back to DOM parsing.");
-        }
-
-        // Attempt 3 (The Ultimate Fallback): Read the actual Header Text from the DOM
-        try {
-            // Looks for the exact header shown in your screenshot ("@ TG Direct Message")
-            const headerText = document.body.innerText || "";
-            const headerMatch = headerText.match(/@\s*([A-Za-z0-9_.-]+)\s*Direct Message/i);
-            
-            if (headerMatch && headerMatch[1]) {
-                console.log("DOM Fallback successful, found target:", headerMatch[1]);
-                return headerMatch[1];
-            }
-            
-            // Backup DOM check just for "@ Username"
-            const genericMatch = headerText.match(/@\s*([A-Za-z0-9_.-]+)/);
-            if (genericMatch && genericMatch[1] && genericMatch[1].toLowerCase() !== "public") {
-                return genericMatch[1];
-            }
+            if (typeof currentChat !== "undefined" && currentChat && currentChat !== "Public") return currentChat.trim();
+            if (window.currentChat && window.currentChat !== "Public") return window.currentChat.trim();
         } catch (e) {}
 
-        return "Public"; // Default fallback
+        try {
+            const headerText = document.body.innerText || "";
+            const headerMatch = headerText.match(/@\s*([A-Za-z0-9_.-]+)\s*Direct Message/i);
+            if (headerMatch && headerMatch[1]) return headerMatch[1].trim();
+            
+            const genericMatch = headerText.match(/@\s*([A-Za-z0-9_.-]+)/);
+            if (genericMatch && genericMatch[1] && genericMatch[1].toLowerCase() !== "public") return genericMatch[1].trim();
+        } catch (e) {}
+
+        return "Public";
     }
 
-    // Safely show toast notifications gracefully falling back to console
     function notify(msg, type="info") {
         if (typeof window.showToast === "function") window.showToast(msg, type);
         else console.log(`[${type.toUpperCase()}] ${msg}`);
     }
 
+    // THE FIX: Direct global WS access just like your original working file
+    function safeSend(payload) {
+        try {
+            if (typeof ws !== "undefined" && ws.readyState === 1) {
+                ws.send(JSON.stringify(payload));
+            } else if (window.ws && window.ws.readyState === 1) {
+                window.ws.send(JSON.stringify(payload));
+            } else {
+                notify("WebSocket connection lost.", "error");
+            }
+        } catch (e) {
+            console.error("Socket error", e);
+        }
+    }
+
     // ==========================================
-    // 2. ADVANCED CALL STATE MANAGEMENT
+    // 2. STATE MANAGEMENT
     // ==========================================
     const callState = {
         peerConnection: null,
@@ -72,14 +64,10 @@
         analyser: null
     };
 
-    // Premium STUN/TURN Server Configuration
     const servers = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' }
         ]
     };
 
@@ -88,7 +76,6 @@
     // ==========================================
     const styles = `
         <style>
-            /* True Fullscreen Mobile Dialer UI with Glassmorphism */
             #phone-modal {
                 position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
                 background: #0f1115; z-index: 10000; display: none; flex-direction: column;
@@ -96,16 +83,13 @@
             }
             #phone-modal.active { display: flex; opacity: 1; }
             
-            /* Background Video Layer */
             .phone-remote-vid { 
                 position: absolute; top: 0; left: 0; width: 100%; height: 100%;
                 object-fit: cover; z-index: 1; transition: filter 0.3s;
                 background: #0f1115;
             }
-            /* Active Speaker Glow */
             .phone-remote-vid.speaking { box-shadow: inset 0 0 0 6px #22c55e; }
 
-            /* Floating Draggable Local Video */
             .phone-local-vid {
                 position: absolute; top: 80px; right: 20px;
                 width: 110px; height: 160px; object-fit: cover;
@@ -115,20 +99,16 @@
             }
             .phone-local-vid:active { cursor: grabbing; transform: scale(1.05); }
 
-            /* Modes: Audio Only & Camera Off */
             .audio-mode .phone-remote-vid, .audio-mode .phone-local-vid { opacity: 0; pointer-events: none; }
             .camera-off .phone-remote-vid, .camera-off .phone-local-vid { 
                 backdrop-filter: blur(25px); opacity: 0; pointer-events: none;
             }
             
-            /* Big Circular Avatar for Audio Mode */
             .phone-avatar-container {
                 position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
                 z-index: 10; display: none; flex-direction: column; align-items: center;
             }
-            .audio-mode .phone-avatar-container, .camera-off .phone-avatar-container { 
-                display: flex; 
-            }
+            .audio-mode .phone-avatar-container, .camera-off .phone-avatar-container { display: flex; }
             .phone-avatar {
                 width: 160px; height: 160px; border-radius: 50%;
                 background: linear-gradient(135deg, #4f46e5, #7c3aed);
@@ -137,7 +117,6 @@
             }
             .phone-avatar svg { width: 80px; height: 80px; fill: currentColor; }
 
-            /* Call Info Header */
             .phone-header {
                 position: absolute; top: 0; left: 0; width: 100%;
                 padding: 40px 20px 20px; text-align: center; color: white; z-index: 20;
@@ -152,7 +131,6 @@
                 background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 20px; display: inline-block;
             }
 
-            /* Bottom Controls (Dock) */
             .phone-controls {
                 position: absolute; bottom: 0; left: 0; width: 100%;
                 padding: 30px 20px 40px; z-index: 100;
@@ -163,7 +141,6 @@
             .phone-tools { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
             .phone-actions { display: flex; gap: 40px; justify-content: center; width: 100%; }
 
-            /* Floating Buttons */
             .p-btn {
                 width: 60px; height: 60px; border-radius: 50%; border: none;
                 display: flex; align-items: center; justify-content: center;
@@ -175,14 +152,12 @@
             .p-btn.disabled { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
             .p-btn svg { width: 26px; height: 26px; fill: currentColor; }
 
-            /* Action Buttons */
             .btn-accept { background: #22c55e; color: white; width: 75px; height: 75px; display: none; animation: bounce-ring 2s infinite; }
             .btn-accept:hover { background: #16a34a; }
             .btn-reject { background: #ef4444; color: white; width: 75px; height: 75px; }
             .btn-reject:hover { background: #dc2626; }
             .btn-accept svg, .btn-reject svg { width: 36px; height: 36px; }
 
-            /* Desktop Scale Overrides */
             @media (min-width: 768px) {
                 #phone-modal { align-items: center; justify-content: center; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); }
                 .phone-remote-vid { position: relative; width: 1000px; max-width: 90vw; height: 80vh; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
@@ -205,7 +180,7 @@
     document.head.insertAdjacentHTML('beforeend', styles);
 
     // ==========================================
-    // 4. INJECT MASSIVE HTML UI
+    // 4. INJECT HTML UI
     // ==========================================
     const modalHtml = `
         <div id="phone-modal">
@@ -290,7 +265,7 @@
     };
 
     // ==========================================
-    // 7. DRAG-AND-DROP ENGINE FOR LOCAL VIDEO
+    // 7. DRAG-AND-DROP ENGINE
     // ==========================================
     let isDragging = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
     
@@ -319,7 +294,6 @@
         DOM.localVid.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
     }
     
-    // Bind Drag Listeners to Modal
     DOM.modal.addEventListener("mousedown", dragStart, false);
     DOM.modal.addEventListener("mouseup", dragEnd, false);
     DOM.modal.addEventListener("mousemove", drag, false);
@@ -328,7 +302,7 @@
     DOM.modal.addEventListener("touchmove", drag, {passive: false});
 
     // ==========================================
-    // 8. AUDIO ANALYSER (ACTIVE SPEAKER DETECTION)
+    // 8. AUDIO ANALYSER (GLOW EFFECT)
     // ==========================================
     function setupActiveSpeaker() {
         if (!callState.remoteStream) return;
@@ -354,7 +328,7 @@
                 requestAnimationFrame(checkLevel);
             }
             checkLevel();
-        } catch(e) { console.warn("Active speaker detection not supported on this device"); }
+        } catch(e) {}
     }
 
     // ==========================================
@@ -385,13 +359,11 @@
         callState.isMuted = false;
         callState.isScreenSharing = false;
         
-        // Reset Buttons
         DOM.btnMic.classList.remove('disabled');
         DOM.btnCam.classList.remove('disabled');
         DOM.btnScreen.classList.remove('disabled');
         DOM.btnAccept.style.display = 'none';
         
-        // Reset Draggable Position
         DOM.localVid.style.transform = `translate3d(0, 0, 0)`;
         xOffset = 0; yOffset = 0;
     }
@@ -412,6 +384,7 @@
         resetUI();
     }
 
+    // THE FIX: Removed facingMode constraint so it won't crash PC webcams!
     async function setupMedia(videoEnabled) {
         try {
             callState.isVideoEnabled = videoEnabled;
@@ -419,7 +392,7 @@
             else DOM.modal.classList.remove('audio-mode');
 
             callState.localStream = await navigator.mediaDevices.getUserMedia({ 
-                video: videoEnabled ? { facingMode: "user" } : false, 
+                video: videoEnabled, 
                 audio: true 
             });
             
@@ -427,18 +400,8 @@
             return true;
         } catch (err) {
             console.error("Media Error:", err);
-            notify("Camera/Mic access denied. Ensure HTTPS is active and permissions are granted.", "error");
+            notify("Camera/Mic access denied. Please allow permissions in browser.", "error");
             return false;
-        }
-    }
-
-    function safeSend(payload) {
-        const socket = getSocket();
-        if (socket && socket.readyState === 1) {
-            socket.send(JSON.stringify(payload));
-        } else {
-            console.error("WebRTC Error: WebSocket is not open.");
-            notify("Connection lost. Action failed.", "error");
         }
     }
 
@@ -456,7 +419,8 @@
 
         callState.peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                safeSend({ type: "av_ice_candidate", receiver: target, candidate: event.candidate });
+                // THE FIX: using the original 'video_ice_candidate' event names!
+                safeSend({ type: "video_ice_candidate", receiver: target, candidate: event.candidate });
             }
         };
 
@@ -466,7 +430,7 @@
                     callState.callStatus = 'connected';
                     DOM.status.innerText = '';
                     startTimer();
-                    setupActiveSpeaker(); // Boot the glowing effect
+                    setupActiveSpeaker();
                     break;
                 case 'connecting':
                     DOM.status.innerText = 'Connecting...';
@@ -483,7 +447,6 @@
     async function initCall(videoEnabled) {
         const target = getTargetUser();
         
-        // Final sanity check
         if (target === 'Public' || !target || target.toLowerCase() === 'public lobby') {
             notify("You cannot start a call in the Public Lobby.", "error");
             return;
@@ -503,13 +466,14 @@
         const offer = await callState.peerConnection.createOffer();
         await callState.peerConnection.setLocalDescription(offer);
 
-        safeSend({ type: "av_offer", receiver: target, offer: offer, isVideo: videoEnabled });
+        // THE FIX: Reverted to "video_offer" so it syncs perfectly with your old logic
+        safeSend({ type: "video_offer", receiver: target, offer: offer, isVideo: videoEnabled });
     }
 
     function hangUp(sendSignal = true) {
         const target = getTargetUser();
         if (sendSignal && target !== 'Public' && target.toLowerCase() !== 'public lobby') {
-            safeSend({ type: "av_hangup", receiver: target });
+            safeSend({ type: "video_hangup", receiver: target });
         }
         cleanupCall();
     }
@@ -548,9 +512,8 @@
                 
                 if(sender) sender.replaceTrack(screenTrack);
                 callState.isScreenSharing = true;
-                DOM.btnScreen.classList.add('disabled'); // Act as active toggle
+                DOM.btnScreen.classList.add('disabled'); 
 
-                // Auto-revert if they stop sharing via browser UI
                 screenTrack.onended = () => {
                     const videoTrack = callState.localStream.getVideoTracks()[0];
                     if(sender && videoTrack) sender.replaceTrack(videoTrack);
@@ -586,9 +549,10 @@
     // 11. WEBSOCKET EVENT LISTENERS
     // ==========================================
     
-    window.IdlyPlugins.messageHandlers['av_offer'] = async function(data) {
+    // THE FIX: Listeners are back to 'video_' instead of 'av_'
+    window.IdlyPlugins.messageHandlers['video_offer'] = async function(data) {
         if (callState.isReceiving || callState.callStatus !== 'idle') {
-            safeSend({ type: "av_hangup", receiver: data.sender }); // Busy tone
+            safeSend({ type: "video_hangup", receiver: data.sender }); 
             return; 
         }
         
@@ -612,7 +576,7 @@
             DOM.btnAccept.style.display = 'none';
             DOM.status.innerText = "Connecting secure channel...";
 
-            const mediaReady = await setupMedia(data.isVideo);
+            const mediaReady = await setupMedia(data.isVideo !== false); // default to true if undefined
             if (!mediaReady) {
                 hangUp(true);
                 return;
@@ -624,28 +588,27 @@
             const answer = await callState.peerConnection.createAnswer();
             await callState.peerConnection.setLocalDescription(answer);
 
-            safeSend({ type: "av_answer", receiver: data.sender, answer: answer });
+            safeSend({ type: "video_answer", receiver: data.sender, answer: answer });
         };
     };
 
-    window.IdlyPlugins.messageHandlers['av_answer'] = async function(data) {
+    window.IdlyPlugins.messageHandlers['video_answer'] = async function(data) {
         if (!callState.peerConnection) return;
         await callState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
     };
 
-    window.IdlyPlugins.messageHandlers['av_ice_candidate'] = async function(data) {
+    window.IdlyPlugins.messageHandlers['video_ice_candidate'] = async function(data) {
         if (!callState.peerConnection) return;
         try {
             await callState.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } catch (e) { console.error("Network ICE processing error", e); }
+        } catch (e) { console.error("ICE error", e); }
     };
 
-    window.IdlyPlugins.messageHandlers['av_hangup'] = function(data) {
+    window.IdlyPlugins.messageHandlers['video_hangup'] = function(data) {
         notify(`Call ended by @${data.sender}.`, "error");
-        hangUp(false); // Do not send back a signal to prevent endless loops
+        hangUp(false);
     };
 
-    // Connection Recovery Listeners
     window.addEventListener('offline', () => {
         if(callState.callStatus === 'connected') DOM.status.innerText = 'Network Offline...';
     });
@@ -653,5 +616,5 @@
         if(callState.callStatus === 'connected') DOM.status.innerText = '';
     });
 
-    console.log("Ultimate WebRTC Engine System Ready.");
+    console.log("Ultimate WebRTC Engine System Ready (Fixes Applied).");
 })();
