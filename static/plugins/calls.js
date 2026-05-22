@@ -72,531 +72,156 @@
     };
 
     // ==========================================
-    // 3. NATIVE MOBILE CSS ARCHITECTURE
+    // 3. MASSIVE CSS ARCHITECTURE (MOBILE & DESKTOP)
     // ==========================================
     const styles = `
         <style>
-            /* ═══════════════════════════════════════════
-               MODAL OVERLAY
-               ═══════════════════════════════════════════ */
             #phone-modal {
-                position: fixed;
-                inset: 0;
-                z-index: 10000;
-                display: none;
-                align-items: center;
-                justify-content: center;
-                background: #000;
-                opacity: 0;
-                transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', sans-serif;
-                -webkit-font-smoothing: antialiased;
-                -moz-osx-font-smoothing: grayscale;
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+                background: #0f1115; z-index: 10000; display: none; flex-direction: column;
+                opacity: 0; transition: opacity 0.3s ease; overflow: hidden;
             }
-            #phone-modal.active {
-                display: flex;
-                opacity: 1;
+            #phone-modal.active { display: flex; opacity: 1; }
+            
+            .phone-remote-vid { 
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                object-fit: cover; z-index: 1; transition: filter 0.3s;
+                background: #0f1115;
             }
+            .phone-remote-vid.speaking { box-shadow: inset 0 0 0 6px #22c55e; }
 
-            /* ═══════════════════════════════════════════
-               PHONE FRAME — Full screen on mobile, mockup on desktop
-               ═══════════════════════════════════════════ */
-            .phone-frame {
-                position: relative;
-                width: 100%;
-                height: 100%;
-                height: 100dvh;
-                background: #080b10;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-            }
-
-            @media (min-width: 768px) {
-                #phone-modal {
-                    background: rgba(0, 0, 0, 0.92);
-                    backdrop-filter: blur(24px);
-                    -webkit-backdrop-filter: blur(24px);
-                }
-                .phone-frame {
-                    width: 393px;
-                    height: 852px;
-                    border-radius: 52px;
-                    box-shadow:
-                        inset 0 0 0 1px rgba(255,255,255,0.08),
-                        0 0 0 3px #1a1a2e,
-                        0 0 0 5px rgba(255,255,255,0.04),
-                        0 50px 120px -20px rgba(0,0,0,0.8);
-                }
-            }
-
-            /* ═══════════════════════════════════════════
-               DYNAMIC ISLAND (desktop mockup only)
-               ═══════════════════════════════════════════ */
-            .phone-notch {
-                position: absolute;
-                top: 12px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 126px;
-                height: 36px;
-                background: #000;
-                border-radius: 20px;
-                z-index: 300;
-                display: none;
-            }
-            @media (min-width: 768px) {
-                .phone-notch { display: block; }
-            }
-
-            /* ═══════════════════════════════════════════
-               REMOTE VIDEO — FULL BLEED EDGE-TO-EDGE
-               ═══════════════════════════════════════════ */
-            .phone-remote-vid {
-                position: absolute;
-                inset: 0;
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                z-index: 1;
-                background: #080b10;
-                transition: box-shadow 0.4s ease;
-            }
-            .phone-remote-vid.speaking {
-                box-shadow: inset 0 0 100px rgba(34, 197, 94, 0.12);
-            }
-
-            /* ═══════════════════════════════════════════
-               LOCAL VIDEO — PiP WINDOW
-               ═══════════════════════════════════════════ */
             .phone-local-vid {
-                position: absolute;
-                top: 100px;
-                right: 16px;
-                width: 120px;
-                height: 170px;
-                object-fit: cover;
-                border-radius: 22px;
-                border: 3px solid rgba(255, 255, 255, 0.1);
-                background: #141820;
-                z-index: 50;
-                box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-                cursor: grab;
-                touch-action: none;
-                transition: opacity 0.3s ease;
-                -webkit-user-select: none;
-                user-select: none;
+                position: absolute; top: 80px; right: 20px;
+                width: 110px; height: 160px; object-fit: cover;
+                border-radius: 12px; border: 2px solid rgba(255,255,255,0.2);
+                background: #222; z-index: 50; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+                transition: opacity 0.3s, transform 0.1s; cursor: grab; touch-action: none;
             }
-            .phone-local-vid:active { cursor: grabbing; }
+            .phone-local-vid:active { cursor: grabbing; transform: scale(1.05); }
 
-            @media (max-width: 767px) {
-                .phone-local-vid {
-                    top: 88px;
-                    width: 112px;
-                    height: 158px;
-                    right: 14px;
-                }
+            .audio-mode .phone-remote-vid, .audio-mode .phone-local-vid { opacity: 0; pointer-events: none; }
+            .camera-off .phone-remote-vid, .camera-off .phone-local-vid { 
+                backdrop-filter: blur(25px); opacity: 0; pointer-events: none;
             }
-
-            /* ═══════════════════════════════════════════
-               AUDIO MODE & CAMERA OFF — HIDE VIDEOS
-               ═══════════════════════════════════════════ */
-            .audio-mode .phone-remote-vid,
-            .audio-mode .phone-local-vid,
-            .camera-off .phone-remote-vid,
-            .camera-off .phone-local-vid {
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-
-            /* Premium dark radial glow for audio-only background */
-            .audio-mode .phone-frame,
-            .camera-off .phone-frame {
-                background: radial-gradient(ellipse at 50% 38%, #0c2d4a 0%, #080b10 65%);
-            }
-
-            /* ═══════════════════════════════════════════
-               AVATAR — CENTER STAGE FOR AUDIO CALLS
-               ═══════════════════════════════════════════ */
+            
             .phone-avatar-container {
-                position: absolute;
-                top: 34%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                z-index: 10;
-                display: none;
-                flex-direction: column;
-                align-items: center;
-                gap: 24px;
+                position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+                z-index: 10; display: none; flex-direction: column; align-items: center;
             }
-            .audio-mode .phone-avatar-container,
-            .camera-off .phone-avatar-container {
-                display: flex;
-            }
-
+            .audio-mode .phone-avatar-container, .camera-off .phone-avatar-container { display: flex; }
             .phone-avatar {
-                width: 150px;
-                height: 150px;
-                border-radius: 50%;
-                background: linear-gradient(145deg, #0369a1, #0ea5e9);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                position: relative;
-                flex-shrink: 0;
+                width: 160px; height: 160px; border-radius: 50%;
+                background: linear-gradient(135deg, #4f46e5, #7c3aed);
+                display: flex; align-items: center; justify-content: center; color: white;
+                box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.6); animation: pulse-ring 2s infinite;
             }
+            .phone-avatar svg { width: 80px; height: 80px; fill: currentColor; }
 
-            /* Pulse Ring — Inner */
-            .phone-avatar::before {
-                content: '';
-                position: absolute;
-                inset: -10px;
-                border-radius: 50%;
-                border: 2.5px solid rgba(14, 165, 233, 0.5);
-                animation: avatar-ring-pulse 2.4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-            }
-            /* Pulse Ring — Outer */
-            .phone-avatar::after {
-                content: '';
-                position: absolute;
-                inset: -26px;
-                border-radius: 50%;
-                border: 1.5px solid rgba(14, 165, 233, 0.22);
-                animation: avatar-ring-pulse 2.4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite 0.5s;
-            }
-
-            .phone-avatar svg {
-                width: 68px;
-                height: 68px;
-                fill: currentColor;
-                opacity: 0.95;
-                position: relative;
-                z-index: 1;
-            }
-
-            .avatar-name {
-                color: #fff;
-                font-size: 26px;
-                font-weight: 600;
-                letter-spacing: 0.3px;
-                text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-                margin: 0;
-            }
-
-            /* ═══════════════════════════════════════════
-               HEADER — WHATSAPP STYLE
-               ═══════════════════════════════════════════ */
             .phone-header {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                z-index: 20;
-                padding: 58px 24px 32px;
-                text-align: center;
-                color: #fff;
-                background: linear-gradient(
-                    to bottom,
-                    rgba(0, 0, 0, 0.72) 0%,
-                    rgba(0, 0, 0, 0.3) 60%,
-                    transparent 100%
-                );
-                text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+                position: absolute; top: 0; left: 0; width: 100%;
+                padding: 40px 20px 20px; text-align: center; color: white; z-index: 20;
+                background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+                text-shadow: 0 2px 4px rgba(0,0,0,0.8);
             }
-            .phone-header h2 {
-                margin: 0;
-                font-size: 30px;
-                font-weight: 600;
-                letter-spacing: 0.2px;
-                line-height: 1.2;
-            }
-            .phone-header p {
-                margin: 8px 0 0;
-                font-size: 16px;
-                opacity: 0.85;
-                font-weight: 400;
+            .phone-header h2 { margin: 0; font-size: 32px; font-weight: 500; letter-spacing: 1px; }
+            .phone-header p { margin: 8px 0 0; font-size: 18px; opacity: 0.8; }
+            .phone-timer { 
+                font-size: 16px; margin-top: 10px; opacity: 0.9; 
+                font-variant-numeric: tabular-nums; display: none; 
+                background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 20px; display: inline-block;
             }
 
-            .phone-timer {
-                display: none;
-                margin-top: 10px;
-                font-size: 15px;
-                opacity: 0.95;
-                font-variant-numeric: tabular-nums;
-                letter-spacing: 0.5px;
-                background: rgba(255, 255, 255, 0.13);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                padding: 5px 16px;
-                border-radius: 20px;
-            }
-
-            @media (max-width: 767px) {
-                .phone-header { padding-top: 50px; }
-            }
-
-            /* ═══════════════════════════════════════════
-               BOTTOM DOCK — FROSTED GLASS
-               ═══════════════════════════════════════════ */
             .phone-controls {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                z-index: 100;
-                padding: 28px 20px 16px;
-                padding-bottom: calc(20px + env(safe-area-inset-bottom, 16px));
-                background: rgba(32, 44, 51, 0.88);
-                backdrop-filter: blur(20px) saturate(180%);
-                -webkit-backdrop-filter: blur(20px) saturate(180%);
-                border-top: 1px solid rgba(255, 255, 255, 0.06);
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 24px;
+                position: absolute; bottom: 0; left: 0; width: 100%;
+                padding: 30px 20px 40px; z-index: 100;
+                background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+                display: flex; flex-direction: column; align-items: center; gap: 30px;
+                padding-bottom: env(safe-area-inset-bottom, 40px);
             }
+            .phone-tools { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+            .phone-actions { display: flex; gap: 40px; justify-content: center; width: 100%; }
+
+            .p-btn {
+                width: 60px; height: 60px; border-radius: 50%; border: none;
+                display: flex; align-items: center; justify-content: center;
+                background: rgba(255,255,255,0.15); color: white; backdrop-filter: blur(10px);
+                cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            }
+            .p-btn:active { transform: scale(0.9); }
+            .p-btn:hover { background: rgba(255,255,255,0.25); }
+            .p-btn.disabled { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+            .p-btn svg { width: 26px; height: 26px; fill: currentColor; }
+
+            .btn-accept { background: #22c55e; color: white; width: 75px; height: 75px; display: none; animation: bounce-ring 2s infinite; }
+            .btn-accept:hover { background: #16a34a; }
+            .btn-reject { background: #ef4444; color: white; width: 75px; height: 75px; }
+            .btn-reject:hover { background: #dc2626; }
+            .btn-accept svg, .btn-reject svg { width: 36px; height: 36px; }
 
             @media (min-width: 768px) {
-                .phone-controls {
-                    border-radius: 0 0 52px 52px;
-                }
+                #phone-modal { align-items: center; justify-content: center; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); }
+                .phone-remote-vid { position: relative; width: 1000px; max-width: 90vw; height: 80vh; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+                .phone-controls { position: absolute; width: 1000px; max-width: 90vw; border-radius: 0 0 24px 24px; bottom: 10vh; }
+                .phone-header { position: absolute; width: 1000px; max-width: 90vw; border-radius: 24px 24px 0 0; top: 10vh; }
+                .phone-local-vid { top: calc(10vh + 30px); right: calc(5vw + 30px); width: 150px; height: 200px; }
             }
 
-            .phone-tools {
-                display: flex;
-                gap: 22px;
-                justify-content: center;
-                align-items: center;
+            @keyframes pulse-ring {
+                0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.6); }
+                70% { box-shadow: 0 0 0 30px rgba(79, 70, 229, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
             }
-
-            .phone-actions {
-                display: flex;
-                gap: 64px;
-                justify-content: center;
-                align-items: center;
-                width: 100%;
+            @keyframes bounce-ring {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
             }
-
-            /* ═══════════════════════════════════════════
-               CIRCULAR BUTTONS — TOUCH OPTIMIZED
-               ═══════════════════════════════════════════ */
-            .p-btn {
-                width: 58px;
-                height: 58px;
-                border-radius: 50%;
-                border: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: rgba(255, 255, 255, 0.11);
-                color: #fff;
-                cursor: pointer;
-                transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-                -webkit-tap-highlight-color: transparent;
-                outline: none;
-                position: relative;
-                overflow: hidden;
-            }
-            .p-btn:active {
-                transform: scale(0.88);
-            }
-            .p-btn svg {
-                width: 24px;
-                height: 24px;
-                fill: currentColor;
-                transition: fill 0.2s;
-            }
-
-            .p-btn.disabled {
-                background: rgba(239, 68, 68, 0.22);
-                color: #f87171;
-            }
-
-            /* Desktop-only buttons hidden on mobile */
-            .p-btn.desktop-only { display: flex; }
-            @media (max-width: 767px) {
-                .p-btn.desktop-only { display: none !important; }
-                .p-btn-wrap.desktop-only { display: none !important; }
-            }
-
-            /* ═══════════════════════════════════════════
-               ACCEPT & REJECT — VIBRANT LARGE ACTIONS
-               ═══════════════════════════════════════════ */
-            .btn-accept {
-                background: #22c55e;
-                color: #fff;
-                width: 76px;
-                height: 76px;
-                display: none;
-                box-shadow:
-                    0 0 0 0 rgba(34, 197, 94, 0.5),
-                    0 6px 28px rgba(34, 197, 94, 0.35);
-                animation: accept-glow 2s ease-in-out infinite;
-            }
-            .btn-accept:active {
-                transform: scale(0.9);
-                background: #16a34a;
-            }
-            .btn-accept svg { width: 34px; height: 34px; }
-
-            .btn-reject {
-                background: #ef4444;
-                color: #fff;
-                width: 76px;
-                height: 76px;
-                box-shadow: 0 6px 28px rgba(239, 68, 68, 0.35);
-            }
-            .btn-reject:active {
-                transform: scale(0.9);
-                background: #dc2626;
-            }
-            .btn-reject svg { width: 34px; height: 34px; }
-
-            /* Button sub-labels */
-            .p-btn-wrap {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 6px;
-            }
-            .p-btn-text {
-                font-size: 10px;
-                color: rgba(255, 255, 255, 0.5);
-                font-weight: 500;
-                letter-spacing: 0.3px;
-                text-align: center;
-                line-height: 1;
-            }
-            .p-btn-text.accept-label { color: rgba(34, 197, 94, 0.8); }
-            .p-btn-text.reject-label { color: rgba(239, 68, 68, 0.7); }
-
-            /* Hide accept label when accept btn is hidden */
-            .p-btn-wrap.accept-wrap { display: none; }
-
-            /* ═══════════════════════════════════════════
-               HOME INDICATOR BAR
-               ═══════════════════════════════════════════ */
-            .phone-home-bar {
-                position: absolute;
-                bottom: 8px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 134px;
-                height: 5px;
-                background: rgba(255, 255, 255, 0.16);
-                border-radius: 100px;
-                z-index: 200;
-            }
-
-            /* ═══════════════════════════════════════════
-               RINGING ANIMATION — INCOMING CALL SHAKE
-               ═══════════════════════════════════════════ */
-            @keyframes avatar-ring-pulse {
-                0% { transform: scale(1); opacity: 0.8; }
-                100% { transform: scale(1.4); opacity: 0; }
-            }
-
-            @keyframes accept-glow {
-                0%, 100% {
-                    box-shadow:
-                        0 0 0 0 rgba(34, 197, 94, 0.5),
-                        0 6px 28px rgba(34, 197, 94, 0.35);
-                }
-                50% {
-                    box-shadow:
-                        0 0 0 16px rgba(34, 197, 94, 0),
-                        0 6px 28px rgba(34, 197, 94, 0.35);
-                }
-            }
-
-            /* ═══════════════════════════════════════════
-               UTILITY
-               ═══════════════════════════════════════════ */
-            * { box-sizing: border-box; }
         </style>
     `;
     document.head.insertAdjacentHTML('beforeend', styles);
 
     // ==========================================
-    // 4. INJECT HTML UI — NATIVE PHONE LAYOUT
+    // 4. INJECT HTML UI
     // ==========================================
     const modalHtml = `
         <div id="phone-modal">
-            <div class="phone-frame">
-
-                <!-- Dynamic Island (visible on desktop mockup only) -->
-                <div class="phone-notch"></div>
-
-                <!-- Header: Username + Status + Timer -->
-                <div class="phone-header">
-                    <h2 id="phone-name">@User</h2>
-                    <p id="phone-status">Calling...</p>
-                    <span class="phone-timer" id="phone-timer" style="display:none;">00:00</span>
+            <div class="phone-header">
+                <h2 id="phone-name">@User</h2>
+                <p id="phone-status">Calling...</p>
+                <div class="phone-timer" id="phone-timer" style="display:none;">00:00</div>
+            </div>
+            
+            <video id="phone-remote-vid" class="phone-remote-vid" autoplay playsinline></video>
+            <video id="phone-local-vid" class="phone-local-vid" autoplay playsinline muted></video>
+            
+            <div class="phone-avatar-container">
+                <div class="phone-avatar">
+                    <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                 </div>
+            </div>
 
-                <!-- Full-Bleed Remote Video -->
-                <video id="phone-remote-vid" class="phone-remote-vid" autoplay playsinline></video>
-
-                <!-- Local PiP Video -->
-                <video id="phone-local-vid" class="phone-local-vid" autoplay playsinline muted></video>
-
-                <!-- Avatar for Audio-Only / Camera-Off -->
-                <div class="phone-avatar-container">
-                    <div class="phone-avatar">
-                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                    </div>
-                    <p class="avatar-name" id="phone-avatar-name">@User</p>
+            <div class="phone-controls dock">
+                <div class="phone-tools">
+                    <button id="phone-btn-mic" class="p-btn" title="Mute Microphone">
+                        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                    </button>
+                    <button id="phone-btn-cam" class="p-btn" title="Toggle Camera">
+                        <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                    </button>
+                    <button id="phone-btn-screen" class="p-btn desktop-only" title="Share Screen">
+                        <svg viewBox="0 0 24 24"><path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
+                    </button>
+                    <button id="phone-btn-pip" class="p-btn desktop-only" title="Picture-in-Picture">
+                        <svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
+                    </button>
                 </div>
-
-                <!-- Frosted Glass Bottom Dock -->
-                <div class="phone-controls">
-                    <div class="phone-tools">
-                        <div class="p-btn-wrap">
-                            <button id="phone-btn-mic" class="p-btn" title="Mute Microphone">
-                                <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-                            </button>
-                            <span class="p-btn-text">Mute</span>
-                        </div>
-                        <div class="p-btn-wrap">
-                            <button id="phone-btn-cam" class="p-btn" title="Toggle Camera">
-                                <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-                            </button>
-                            <span class="p-btn-text">Camera</span>
-                        </div>
-                        <div class="p-btn-wrap desktop-only">
-                            <button id="phone-btn-screen" class="p-btn desktop-only" title="Share Screen">
-                                <svg viewBox="0 0 24 24"><path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
-                            </button>
-                            <span class="p-btn-text">Share</span>
-                        </div>
-                        <div class="p-btn-wrap desktop-only">
-                            <button id="phone-btn-pip" class="p-btn desktop-only" title="Picture-in-Picture">
-                                <svg viewBox="0 0 24 24"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
-                            </button>
-                            <span class="p-btn-text">PiP</span>
-                        </div>
-                    </div>
-                    <div class="phone-actions">
-                        <div class="p-btn-wrap accept-wrap" id="accept-wrap">
-                            <button id="phone-btn-accept" class="p-btn btn-accept" title="Accept Call">
-                                <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
-                            </button>
-                            <span class="p-btn-text accept-label">Accept</span>
-                        </div>
-                        <div class="p-btn-wrap">
-                            <button id="phone-btn-reject" class="p-btn btn-reject" title="End Call">
-                                <svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
-                            </button>
-                            <span class="p-btn-text reject-label">Decline</span>
-                        </div>
-                    </div>
+                <div class="phone-actions">
+                    <button id="phone-btn-accept" class="p-btn btn-accept" title="Accept Call">
+                        <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+                    </button>
+                    <button id="phone-btn-reject" class="p-btn btn-reject" title="End Call">
+                        <svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+                    </button>
                 </div>
-
-                <!-- iOS Home Indicator -->
-                <div class="phone-home-bar"></div>
-
             </div>
         </div>
     `;
@@ -636,9 +261,7 @@
         btnMic: document.getElementById('phone-btn-mic'),
         btnCam: document.getElementById('phone-btn-cam'),
         btnScreen: document.getElementById('phone-btn-screen'),
-        btnPip: document.getElementById('phone-btn-pip'),
-        acceptWrap: document.getElementById('accept-wrap'),
-        avatarName: document.getElementById('phone-avatar-name')
+        btnPip: document.getElementById('phone-btn-pip')
     };
 
     // ==========================================
@@ -740,7 +363,6 @@
         DOM.btnCam.classList.remove('disabled');
         DOM.btnScreen.classList.remove('disabled');
         DOM.btnAccept.style.display = 'none';
-        if (DOM.acceptWrap) DOM.acceptWrap.style.display = 'none';
         
         DOM.localVid.style.transform = `translate3d(0, 0, 0)`;
         xOffset = 0; yOffset = 0;
@@ -797,6 +419,7 @@
 
         callState.peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
+                // THE FIX: using the original 'video_ice_candidate' event names!
                 safeSend({ type: "video_ice_candidate", receiver: target, candidate: event.candidate });
             }
         };
@@ -834,17 +457,16 @@
 
         callState.callStatus = 'calling';
         DOM.peerName.innerText = `@${target}`;
-        if (DOM.avatarName) DOM.avatarName.innerText = `@${target}`;
         DOM.status.innerText = "Calling...";
         DOM.modal.classList.add('active');
         DOM.btnAccept.style.display = 'none';
-        if (DOM.acceptWrap) DOM.acceptWrap.style.display = 'none';
 
         createPeerConnection(target);
 
         const offer = await callState.peerConnection.createOffer();
         await callState.peerConnection.setLocalDescription(offer);
 
+        // THE FIX: Reverted to "video_offer" so it syncs perfectly with your old logic
         safeSend({ type: "video_offer", receiver: target, offer: offer, isVideo: videoEnabled });
     }
 
@@ -927,6 +549,7 @@
     // 11. WEBSOCKET EVENT LISTENERS
     // ==========================================
     
+    // THE FIX: Listeners are back to 'video_' instead of 'av_'
     window.IdlyPlugins.messageHandlers['video_offer'] = async function(data) {
         if (callState.isReceiving || callState.callStatus !== 'idle') {
             safeSend({ type: "video_hangup", receiver: data.sender }); 
@@ -941,7 +564,6 @@
         }
 
         DOM.peerName.innerText = `@${data.sender}`;
-        if (DOM.avatarName) DOM.avatarName.innerText = `@${data.sender}`;
         DOM.status.innerText = data.isVideo ? "Incoming Video Call..." : "Incoming Audio Call...";
         
         if (!data.isVideo) DOM.modal.classList.add('audio-mode');
@@ -949,14 +571,12 @@
 
         DOM.modal.classList.add('active');
         DOM.btnAccept.style.display = 'flex';
-        if (DOM.acceptWrap) DOM.acceptWrap.style.display = 'flex';
 
         DOM.btnAccept.onclick = async () => {
             DOM.btnAccept.style.display = 'none';
-            if (DOM.acceptWrap) DOM.acceptWrap.style.display = 'none';
             DOM.status.innerText = "Connecting secure channel...";
 
-            const mediaReady = await setupMedia(data.isVideo !== false);
+            const mediaReady = await setupMedia(data.isVideo !== false); // default to true if undefined
             if (!mediaReady) {
                 hangUp(true);
                 return;
