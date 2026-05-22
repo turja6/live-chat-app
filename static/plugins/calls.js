@@ -6,7 +6,6 @@
     // ==========================================
     const styles = `
         <style>
-            /* Base Modal styling */
             #av-modal {
                 position: fixed; top: 0; left: 0; width: 100%; height: 100%;
                 background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px);
@@ -16,17 +15,14 @@
             }
             #av-modal.active { display: flex; opacity: 1; }
             
-            /* Responsive Video Container */
             .av-container {
                 position: relative; width: 100%; height: 100%;
                 max-width: 900px; max-height: 85vh; background: #000;
                 border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             }
             
-            /* Remote Video (Full background) */
             .remote-vid { width: 100%; height: 100%; object-fit: cover; }
             
-            /* Local Video (Floating Picture-in-Picture) */
             .local-vid {
                 position: absolute; bottom: 20px; right: 20px;
                 width: 150px; height: 200px; object-fit: cover;
@@ -34,7 +30,6 @@
                 background: #222; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             }
 
-            /* Audio-Only Mode Placeholder */
             .audio-avatar {
                 display: none; position: absolute; top: 50%; left: 50%;
                 transform: translate(-50%, -50%); width: 150px; height: 150px;
@@ -44,11 +39,9 @@
                 animation: pulse 2s infinite;
             }
 
-            /* Modes */
             .audio-mode .remote-vid, .audio-mode .local-vid { opacity: 0; }
             .audio-mode .audio-avatar { display: flex; }
 
-            /* Call Header (Status & Name) */
             .av-header {
                 position: absolute; top: 30px; left: 0; width: 100%;
                 text-align: center; color: white; z-index: 20;
@@ -57,7 +50,6 @@
             .av-header h2 { margin: 0; font-size: 24px; font-weight: 600; }
             .av-header p { margin: 5px 0 0; font-size: 16px; opacity: 0.8; }
 
-            /* Controls (Bottom floating buttons) */
             .av-controls {
                 position: absolute; bottom: 40px; left: 50%;
                 transform: translateX(-50%); display: flex; gap: 25px; z-index: 20;
@@ -73,7 +65,6 @@
             .btn-hangup { background: #ef4444; }
             .av-btn svg { width: 30px; height: 30px; fill: currentColor; }
 
-            /* Mobile Overrides (Phone Size) */
             @media (max-width: 768px) {
                 .av-container { max-width: 100%; max-height: 100%; border-radius: 0; }
                 .local-vid { width: 100px; height: 140px; bottom: 120px; right: 15px; }
@@ -127,14 +118,12 @@
     // ==========================================
     const headerActions = document.querySelector('.chat-header-actions');
     if (headerActions) {
-        // Video Call Button
         const videoBtn = document.createElement('button');
         videoBtn.className = 'icon-btn';
         videoBtn.title = "Video Call";
         videoBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>`;
         videoBtn.onclick = () => startCall(true);
         
-        // Audio Call Button
         const audioBtn = document.createElement('button');
         audioBtn.className = 'icon-btn';
         audioBtn.title = "Audio Call";
@@ -175,7 +164,6 @@
     async function setupMedia(videoEnabled) {
         try {
             isVideoCallActive = videoEnabled;
-            // Toggle CSS modes based on call type
             if (!videoEnabled) {
                 container.classList.add('audio-mode');
             } else {
@@ -248,7 +236,8 @@
         }));
     }
 
-    function hangUp() {
+    // UPDATED: Added sendSignal parameter to prevent infinite notification loop
+    function hangUp(sendSignal = true) {
         modal.classList.remove('active');
         if (peerConnection) {
             peerConnection.close();
@@ -263,12 +252,14 @@
         isReceivingCall = false;
         container.classList.remove('audio-mode');
 
-        if (ws && ws.readyState === WebSocket.OPEN && currentChat !== 'Public') {
+        // Only broadcast if the user clicked the button, not if the server told us to close
+        if (sendSignal && ws && ws.readyState === WebSocket.OPEN && currentChat !== 'Public') {
             ws.send(JSON.stringify({ type: "av_hangup", receiver: currentChat }));
         }
     }
 
-    hangupBtn.onclick = hangUp;
+    // When clicking the button, tell the network we hung up
+    hangupBtn.onclick = () => hangUp(true);
 
     // ==========================================
     // 6. WEBSOCKET HOOKS
@@ -286,7 +277,6 @@
         peerNameText.innerText = `@${data.sender}`;
         statusText.innerText = data.isVideo ? "Incoming Video Call..." : "Incoming Audio Call...";
         
-        // Prep UI based on incoming call type
         if (!data.isVideo) container.classList.add('audio-mode');
         else container.classList.remove('audio-mode');
 
@@ -299,7 +289,7 @@
 
             const mediaReady = await setupMedia(data.isVideo);
             if (!mediaReady) {
-                hangUp();
+                hangUp(true);
                 return;
             }
 
@@ -335,7 +325,8 @@
         if (typeof showToast === "function") {
             showToast(`@${data.sender} ended the call.`, "error");
         }
-        hangUp();
+        // UPDATED: Pass false so we don't bounce the hangup event back to the sender
+        hangUp(false);
     };
 
 })();
